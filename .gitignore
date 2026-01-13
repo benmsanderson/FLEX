@@ -22,6 +22,19 @@ build/
 outputs/
 *.db
 
+# Generated CSV outputs
+first_draft_extended_*.csv
+co2_fossil_fuel_extenstions_*.csv
+continuous_emissions_timeseries_*.csv
+extended_scenarios_*.csv
+extensions_*.csv
+
+# Large regional data files
+data/history_regional.csv
+data/scenarios_regional.csv
+data/scenarios_complete_global.csv
+data/history.csv
+
 # Plots
 *.png
 *.pdf
@@ -32,3 +45,4 @@ outputs/
 # Temporary files
 *.tmp
 *.log
+data/scenarios_regional.csv

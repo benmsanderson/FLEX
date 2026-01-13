@@ -61,9 +61,10 @@ def glue_with_historical(scen_df: pd.DataFrame, hist_df: pd.DataFrame, history_e
         df_row.iloc[orig_len:] = hist_df.loc[pix.ismatch(variable=index[3])].values[
             0, : int(scen_df.columns[0] - hist_df.columns[0])
         ]
-        for year in range(scen_df.columns[0], history_end + 1):
-            if np.isnan(df_row.iloc[year - scen_df.columns[0]]):
-                df_row.iloc[year - scen_df.columns[0]] = hist_df.loc[pix.ismatch(variable=index[3])].values[
+        for year in range(int(scen_df.columns[0]), int(history_end) + 1):
+            idx = int(year - scen_df.columns[0])
+            if np.isnan(df_row.iloc[idx]):
+                df_row.iloc[idx] = hist_df.loc[pix.ismatch(variable=index[3])].values[
                     0, int(year - hist_df.columns[0])
                 ]
         out.loc[index, :] = df_row.values
