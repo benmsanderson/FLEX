@@ -18,10 +18,17 @@ seaborn = ">=0.12"
 jupytext = ">=1.14"
 jupyter = ">=1.0"
 jupyterlab = ">=4.0"
-pandas-indexing = ">=1.1"
 openscm-units = ">=0.5"
 tqdm = ">=4.65"
+pip = "*"
+
+[pypi-dependencies]
+pandas-indexing = "*"
+pandas-openscm = "*"
 
 [feature.dev.dependencies]
 ruff = ">=0.1"
 black = ">=23.0"
+
+[environments]
+dev = ["dev"]
