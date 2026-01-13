@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Pixi
+.pixi/
+
+# VS Code
+.vscode/
+
+# Data outputs
+outputs/
+*.db
+
+# Plots
+*.png
+*.pdf
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log

@@ -1,0 +1,2 @@
+# Jupytext configuration for notebooks
+formats = "ipynb,py:percent"

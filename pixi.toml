@@ -1,0 +1,27 @@
+[project]
+name = "scenariomip-extensions"
+version = "0.1.0"
+description = "ScenarioMIP marker scenario extensions to 2500"
+authors = ["Benjamin Sanderson"]
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "osx-64", "linux-64"]
+
+[tasks]
+notebook = "jupyter lab"
+
+[dependencies]
+python = ">=3.10,<3.13"
+pandas = ">=2.0"
+numpy = ">=1.24"
+matplotlib = ">=3.7"
+seaborn = ">=0.12"
+jupytext = ">=1.14"
+jupyter = ">=1.0"
+jupyterlab = ">=4.0"
+pandas-indexing = ">=1.1"
+openscm-units = ">=0.5"
+tqdm = ">=4.65"
+
+[feature.dev.dependencies]
+ruff = ">=0.1"
+black = ">=23.0"
