@@ -37,14 +37,15 @@ import seaborn as sns
 import tqdm.auto
 
 # Add src directory to path for extensions imports
-repo_root = Path.cwd()
-src_dir = repo_root / "src"
+src_dir = (Path(__file__).parent.parent / "src" if "__file__" in globals() 
+           else Path().resolve().parent / "src")
+
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 # Data directories
-DATA_DIR = Path.cwd() / "data"
-OUTPUTS_DIR = Path.cwd() / "outputs"
+DATA_DIR = Path().resolve().parent / "data"
+OUTPUTS_DIR = Path().resolve().parent / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
@@ -93,17 +94,6 @@ make_plots: bool = False
 dump_csvs: bool = True
 
 # %% [markdown]
-# More preamble
-
-# %%
-dump_with_full_scenario_names = True
-
-pandas_openscm.register_pandas_accessor()
-
-UR = openscm_units.unit_registry
-Q = UR.Quantity
-
-# %% [markdown]
 # ## Loading scenarios
 
 # %%
@@ -136,11 +126,32 @@ history_regional = pd.read_csv(
 )
 print(f"Loaded history_regional: {history_regional.shape}")
 
+# Convert year columns to numeric types
+print("\nConverting column names to numeric types...")
+scenarios_complete_global.columns = pd.to_numeric(scenarios_complete_global.columns, errors='coerce')
+history.columns = pd.to_numeric(history.columns, errors='coerce')
+scenarios_regional.columns = pd.to_numeric(scenarios_regional.columns, errors='coerce')
+history_regional.columns = pd.to_numeric(history_regional.columns, errors='coerce')
 
-# %%
+# Drop any NaN columns that may have been created
+print("\nDropping any NaN columns...")
+scenarios_complete_global = scenarios_complete_global.loc[:, scenarios_complete_global.columns.notna()]
+history = history.loc[:, history.columns.notna()]
+scenarios_regional = scenarios_regional.loc[:, scenarios_regional.columns.notna()]
+history_regional = history_regional.loc[:, history_regional.columns.notna()]
 
-# %%
-scenarios_regional.pix.unique("region")
+# Add 'workflow' level to scenarios_regional if missing
+if 'workflow' not in scenarios_regional.index.names:
+    print("\nAdding 'workflow' level to scenarios_regional...")
+    scenarios_regional['workflow'] = 'for_scms'
+    scenarios_regional = scenarios_regional.set_index('workflow', append=True)
+    print(f"  scenarios_regional now has index: {scenarios_regional.index.names}")
+
+print(f"  scenarios_complete_global columns dtype: {scenarios_complete_global.columns.dtype}")
+print(f"  history columns dtype: {history.columns.dtype}")
+print(f"  scenarios_regional columns dtype: {scenarios_regional.columns.dtype}")
+print(f"  history_regional columns dtype: {history_regional.columns.dtype}")
+
 
 # %%
 unique_model_scenario_pairs = scenarios_complete_global.index.droplevel(
@@ -308,6 +319,15 @@ component_global_targets = {
 
 # %% [markdown]
 # Main functionality for all non-co2 extensions
+
+
+# %%
+# Diagnostic: Check scenarios_regional index structure
+print("=== SCENARIOS_REGIONAL INDEX STRUCTURE ===")
+print(f"Index names: {scenarios_regional.index.names}")
+print(f"Index levels: {scenarios_regional.index.nlevels}")
+print(f"Sample index values:")
+print(scenarios_regional.index[:5])
 
 
 # %%
@@ -580,6 +600,9 @@ df_afolu.head()
 
 # %% [markdown]
 # ## Removal disaggregation
+
+# %%
+scenarios_complete_global.loc[pix.ismatch(variable="Emissions|CO2|Ocean")]
 
 # %%
 
