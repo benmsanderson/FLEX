@@ -36,15 +36,11 @@ import pandas_openscm
 import seaborn as sns
 import tqdm.auto
 
-# Add notebooks directory to path for helper function imports
-# When run by papermill, we need to find the notebooks directory relative to the repo root
+# Add src directory to path for extensions imports
 repo_root = Path.cwd()
-notebooks_dir = repo_root / "notebooks"
-if notebooks_dir.exists() and str(notebooks_dir) not in sys.path:
-    sys.path.insert(0, str(notebooks_dir))
-elif str(Path.cwd()) not in sys.path:
-    # Fallback: add current directory
-    sys.path.insert(0, str(Path.cwd()))
+src_dir = repo_root / "src"
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
 
 # Data directories
 DATA_DIR = Path.cwd() / "data"
@@ -52,34 +48,32 @@ OUTPUTS_DIR = Path.cwd() / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
-from emissions_harmonization_historical.extensions.afolu_extension_functions import (
+from extensions.afolu_extension_functions import (
     get_cumulative_afolu,
     get_cumulative_afolu_fill_from_hist,
 )
-from emissions_harmonization_historical.extensions.cdr_and_fossil_splits import (
+from extensions.cdr_and_fossil_splits import (
     add_removals_and_positive_fossil_emissions_to_historical,
     extend_cdr_components_vectorized,
     get_2100_compound_composition_co2,
 )
 
-# from emissions_harmonization_historical.constants import DATA_ROOT
-# from emissions_harmonization_historical.io import load_global_scenario_data
-from emissions_harmonization_historical.extensions.extension_functionality import (
+from extensions.extension_functionality import (
     extend_linear_rampdown,
     sigmoid_function,
 )
-from emissions_harmonization_historical.extensions.extensions_functions_for_non_co2 import (
+from extensions.extensions_functions_for_non_co2 import (
     do_single_component_for_scenario_model_regionally,
     plot_just_global,
 )
-from emissions_harmonization_historical.extensions.finish_regional_extensions import (
+from extensions.finish_regional_extensions import (
     extend_regional_for_missing,
     merge_historical_future_timeseries,
 )
-from emissions_harmonization_historical.extensions.fossil_co2_storyline_functions import (
+from extensions.fossil_co2_storyline_functions import (
     extend_co2_for_scen_storyline,
 )
-from emissions_harmonization_historical.extensions.general_utils_for_extensions import (
+from extensions.general_utils_for_extensions import (
     dump_data_per_model,
     fix_up_and_concatenate_extensions,
     glue_with_historical,
