@@ -41,7 +41,24 @@ The extension methodology takes CMIP7 ScenarioMIP marker scenarios (pre-2100) an
    cd scenariomip-extensions
    ```
 
-2. Install dependencies with pixi:
+2. Install Git LFS (if not already installed):
+   ```bash
+   # macOS
+   brew install git-lfs
+   
+   # Ubuntu/Debian
+   sudo apt-get install git-lfs
+   
+   # Initialize Git LFS
+   git lfs install
+   ```
+
+3. Pull large data files:
+   ```bash
+   git lfs pull
+   ```
+
+4. Install dependencies with pixi:
    ```bash
    pixi install
    ```
@@ -62,11 +79,13 @@ pixi run python notebooks/5191_extension.py
 
 ## Input Data
 
-The `data/` folder contains pre-processed CSV files:
-- **scenarios_complete_global.csv**: Global marker scenarios (1750-2100)
-- **history.csv**: Historical emissions for harmonization
-- **scenarios_regional.csv**: Regional scenarios (1750-2100)
-- **history_regional.csv**: Regional historical emissions
+The `data/` folder contains pre-processed CSV files (~488 MB total, managed by Git LFS):
+- **scenarios_complete_global.csv** (8 MB): Global marker scenarios (1750-2100)
+- **history.csv** (192 KB): Historical emissions for harmonization
+- **scenarios_regional.csv** (320 MB): Regional scenarios (1750-2100)
+- **history_regional.csv** (160 MB): Regional historical emissions
+
+**Note**: These files are tracked with Git Large File Storage (Git LFS). Make sure you've run `git lfs pull` after cloning to download them. See [data/README.md](data/README.md) for more details on working with these files.
 
 ## Output Data
 
