@@ -1,5 +1,5 @@
 [project]
-name = "scenariomip-extensions"
+name = "flex"
 version = "0.1.0"
 description = "ScenarioMIP marker scenario extensions to 2500"
 authors = ["Benjamin Sanderson"]
@@ -8,10 +8,12 @@ platforms = ["osx-arm64", "osx-64", "linux-64"]
 
 [tasks]
 notebook = "jupyter lab"
+test = "python -m pytest tests"
+test-cov = "pytest --cov=src"
 
 [dependencies]
 python = ">=3.10,<3.13"
-pandas = ">=2.0"
+pandas = ">=3.0.1,<4"
 numpy = ">=1.24"
 matplotlib = ">=3.7"
 seaborn = ">=0.12"
@@ -21,10 +23,12 @@ jupyterlab = ">=4.0"
 openscm-units = ">=0.5"
 tqdm = ">=4.65"
 pip = "*"
+openpyxl = "*"
+pytest = "*"
 
 [pypi-dependencies]
 pandas-indexing = "*"
-pandas-openscm = "*"
+pandas-openscm=">=0.5.0"
 
 [feature.dev.dependencies]
 ruff = ">=0.1"

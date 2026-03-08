@@ -90,7 +90,7 @@ TUPLE_LENGTH_WITH_STAGE = 6
 
 # %% tags=["parameters"]
 # Papermill parameters
-make_plots: bool = False
+make_plots: bool = True
 dump_csvs: bool = True
 
 # %% [markdown]
