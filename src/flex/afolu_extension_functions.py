@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 import pandas_indexing as pix
 
-from .general_utils_for_extensions import interpolate_to_annual
+from .general_utils_for_extensions import interpolate_to_annual, glue_with_historical
+from .extension_functionality import extend_linear_rampdown
 
 # Dictionaries for sectors and targets
 # May not be needed for anything
@@ -127,3 +128,47 @@ def get_cumulative_afolu_fill_from_hist(  # noqa: PLR0913
         index=cumulative.index,
     )
     return cum_df
+
+def extend_one_scenario_afolu(
+    scenarios_complete_global: pd.DataFrame, 
+    history: pd.DataFrame,
+    cumulative_history_afolu,
+    model: str, 
+    scenario: str,
+    extension_end_year=2500,
+    ) -> pd.DataFrame:
+    """
+    Extend AFOLU emissions for one scenario by filling from historical data
+
+    Parameters
+    ----------
+    scenarios_complete_global : pd.DataFrame
+        Complete global emissions data for all scenarios.
+    history : pd.DataFrame
+        Historical emissions data.
+    model : str
+        Model name.
+    scenario : str
+        Scenario name.
+    emi_kind : str, optional
+        Emission kind pattern, default "**CO2|AFOLU".
+    scenario_end_year : int, optional
+        End year of the scenario, default 2100.
+
+    Returns
+    -------
+    pd.DataFrame
+        Extended AFOLU emissions for the scenario.
+    """
+    scen = scenarios_complete_global.loc[pix.ismatch(variable="**CO2|AFOLU", model=model, scenario=scenario)]
+    scen_full = glue_with_historical(scen, history.loc[pix.ismatch(variable="Emissions|CO2|AFOLU")])
+    cumulative_2100 = get_cumulative_afolu_fill_from_hist(scen, model, scenario, cumulative_history_afolu)
+    em_ext_linear_ramp_down = extend_linear_rampdown(
+        scen_full.values[0, :], np.arange(cumulative_2100.columns[0], extension_end_year + 1)
+        )
+    df_afolu_linear_ramp_down = pd.DataFrame(
+            data=[em_ext_linear_ramp_down],
+            columns=np.arange(cumulative_2100.columns[0], extension_end_year + 1),
+            index=scen.index,
+        )
+    return df_afolu_linear_ramp_down

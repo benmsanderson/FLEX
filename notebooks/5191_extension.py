@@ -51,7 +51,7 @@ OUTPUTS_DIR.mkdir(exist_ok=True)
 # Package imports
 from flex.afolu_extension_functions import (
     get_cumulative_afolu,
-    get_cumulative_afolu_fill_from_hist,
+    extend_one_scenario_afolu,
 )
 from flex.cdr_and_fossil_splits import (
     add_removals_and_positive_fossil_emissions_to_historical,
@@ -60,7 +60,6 @@ from flex.cdr_and_fossil_splits import (
 )
 
 from flex.extension_functionality import (
-    extend_linear_rampdown,
     sigmoid_function,
 )
 from flex.extensions_functions_for_non_co2 import (
@@ -75,9 +74,7 @@ from flex.fossil_co2_storyline_functions import (
     extend_co2_for_scen_storyline,
 )
 from flex.general_utils_for_extensions import (
-    dump_data_per_model,
     fix_up_and_concatenate_extensions,
-    glue_with_historical,
     interpolate_to_annual,
     save_continuous_timeseries_to_csv,
 )
@@ -214,78 +211,14 @@ def calculate_afolu_extensions(scenarios_complete_global, history, cumulative_hi
     """
     Calculate AFOLU extensions for all scenarios and models
     """
-    if plot:
-        _fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(30, 10))
     temp_list_for_new_data_linear_ramp_down = []
     for s, meta in scenario_model_match.items():
-        scen = scenarios_complete_global.loc[pix.ismatch(variable="**CO2|AFOLU", model=meta[1], scenario=meta[0])]
-        scen_full = glue_with_historical(scen, history.loc[pix.ismatch(variable="Emissions|CO2|AFOLU")])
-        cumulative_2100 = get_cumulative_afolu_fill_from_hist(scen, meta[1], meta[0], cumulative_history_afolu)
-        em_ext_linear_ramp_down = extend_linear_rampdown(
-            scen_full.values[0, :], np.arange(cumulative_2100.columns[0], 2501)
+        df_afolu_linear_ramp_down = extend_one_scenario_afolu(
+            scenarios_complete_global, history, cumulative_history_afolu, meta[1], meta[0]
         )
-        if plot:
-            axs[0].plot(cumulative_2100.columns, cumulative_2100.values[0, :], color=meta[2])
-            axs[0].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                np.cumsum(em_ext_linear_ramp_down),
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-            axs[1].plot(scen_full.columns, scen_full.values[0, :], color=meta[2])
-            axs[1].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                em_ext_linear_ramp_down,
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-            axs[2].plot(cumulative_2100.columns, cumulative_2100.values[0, :], color=meta[2])
-            axs[2].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                np.cumsum(em_ext_linear_ramp_down),
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-            axs[3].plot(scen_full.columns, scen_full.values[0, :], color=meta[2])
-            axs[3].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                em_ext_linear_ramp_down,
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-        df_afolu_linear_ramp_down = pd.DataFrame(
-            data=[em_ext_linear_ramp_down],
-            columns=np.arange(cumulative_2100.columns[0], 2501),
-            index=scen.index,
-        )
+
         temp_list_for_new_data_linear_ramp_down.append(df_afolu_linear_ramp_down)
     extended_data_afolu_linear_ramp_down = pd.concat(temp_list_for_new_data_linear_ramp_down)
-
-    if plot:
-        for ax in axs:
-            ax.set_xlabel("Year")
-            ax.legend()
-            ax.axvline(x=2100, ls="--", color="k")
-        axs[0].set_ylabel("Cumulative Emissions CO2 AFOLU")
-        axs[0].set_title("Cumulative Emissions CO2 AFOLU")
-        axs[1].set_ylabel("Emissions CO2 AFOLU")
-        axs[1].set_title("Emissions CO2 AFOLU")
-        axs[2].set_ylabel("Cumulative Emissions CO2 AFOLU")
-        axs[2].set_title("Cumulative Emissions CO2 AFOLU")
-        axs[3].set_ylabel("Emissions CO2 AFOLU")
-        axs[3].set_title("Emissions CO2 AFOLU")
-        axs[2].set_xlim(2000, 2300)
-        axs[3].set_xlim(2000, 2300)
-
-        plt.savefig("afolu_first_draft_extensions.png")
     return {
         "linear_afolu_rampdown": extended_data_afolu_linear_ramp_down,
     }
@@ -354,7 +287,6 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
         Concatenated DataFrame of all extended non-CO2 emission variables across scenarios and models.
     """
     total_df_list = []
-    look_at_all = False
 
     for variable in tqdm.auto.tqdm(scenarios_complete_global.pix.unique("variable").values):
         print(variable)
@@ -388,48 +320,6 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
                 sys.exit(4)
             total_df_list.append(df_comp_scen_model)
             # print(df_comp_scen_model.columns)
-            if look_at_all:
-                pdf = df_comp_scen_model.openscm.to_long_data()
-                fg = sns.relplot(
-                    data=pdf,
-                    x="time",
-                    y="value",
-                    col="variable",
-                    col_order=sorted(pdf["variable"].unique()),
-                    col_wrap=2,
-                    hue="region",
-                    hue_order=sorted(pdf["region"].unique()),
-                    kind="line",
-                    linewidth=2.0,
-                    alpha=0.7,
-                    facet_kws=dict(sharey=False),
-                    errorbar=None,
-                )
-                for ax in fg.axes.flatten():
-                    if "CO2" in ax.get_title():
-                        ax.axhline(0.0, linestyle="--", color="gray")
-                    else:
-                        ax.set_ylim(ymin=0.0)
-                        ax.axvline(2100, linestyle="--", color="gray")
-                    if ax.get_title().endswith("Emissions|BC"):
-                        ax.axhline(2.0814879929813928, linestyle="--", color="gray")
-                    # ax.set_xticks(np.arange(2020, 2, 10))
-                    ax.grid()
-                # fg.savefig(f"regionally_extended_{variable.split('|')[-1]}_{meta[0].replace(' ', '')}
-                # _{meta[1].replace(' ', '')}.png")
-                plt.show()
-                plt.clf()
-                plt.close()
-            elif make_plots:
-                plot_just_global(
-                    meta[0],
-                    meta[1],
-                    variable,
-                    df_comp_scen_model.loc[pix.ismatch(region="World", variable=f"{variable}")],
-                    scenarios_complete_global,
-                    history,
-                    scenarios_regional=scenarios_regional,
-                )
     df_all = pix.concat(total_df_list)
     return df_all
 
