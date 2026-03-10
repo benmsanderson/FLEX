@@ -49,32 +49,32 @@ OUTPUTS_DIR = Path().resolve().parent / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
-from extensions.afolu_extension_functions import (
+from flex.afolu_extension_functions import (
     get_cumulative_afolu,
     get_cumulative_afolu_fill_from_hist,
 )
-from extensions.cdr_and_fossil_splits import (
+from flex.cdr_and_fossil_splits import (
     add_removals_and_positive_fossil_emissions_to_historical,
     extend_cdr_components_vectorized,
     get_2100_compound_composition_co2,
 )
 
-from extensions.extension_functionality import (
+from flex.extension_functionality import (
     extend_linear_rampdown,
     sigmoid_function,
 )
-from extensions.extensions_functions_for_non_co2 import (
+from flex.extensions_functions_for_non_co2 import (
     do_single_component_for_scenario_model_regionally,
     plot_just_global,
 )
-from extensions.finish_regional_extensions import (
+from flex.finish_regional_extensions import (
     extend_regional_for_missing,
     merge_historical_future_timeseries,
 )
-from extensions.fossil_co2_storyline_functions import (
+from flex.fossil_co2_storyline_functions import (
     extend_co2_for_scen_storyline,
 )
-from extensions.general_utils_for_extensions import (
+from flex.general_utils_for_extensions import (
     dump_data_per_model,
     fix_up_and_concatenate_extensions,
     glue_with_historical,
@@ -90,7 +90,7 @@ TUPLE_LENGTH_WITH_STAGE = 6
 
 # %% tags=["parameters"]
 # Papermill parameters
-make_plots: bool = True
+make_plots: bool = False
 dump_csvs: bool = True
 
 # %% [markdown]
@@ -115,15 +115,17 @@ print(f"Loaded history: {history.shape}")
 print("Loading scenarios_regional from CSV...")
 scenarios_regional = pd.read_csv(
     DATA_DIR / "scenarios_regional.csv",
-    index_col=[0, 1, 2, 3, 4]
+    index_col=[0, 1, 2, 3, 4, 5]
 )
 print(f"Loaded scenarios_regional: {scenarios_regional.shape}")
 
 print("Loading history_regional from CSV...")
 history_regional = pd.read_csv(
     DATA_DIR / "history_regional.csv",
-    index_col=[0, 1, 2, 3, 4]
+    index_col=[0, 1, 2, 3, 4, 5]
 )
+
+
 print(f"Loaded history_regional: {history_regional.shape}")
 
 # Convert year columns to numeric types
@@ -140,6 +142,7 @@ history = history.loc[:, history.columns.notna()]
 scenarios_regional = scenarios_regional.loc[:, scenarios_regional.columns.notna()]
 history_regional = history_regional.loc[:, history_regional.columns.notna()]
 
+
 # Add 'workflow' level to scenarios_regional if missing
 if 'workflow' not in scenarios_regional.index.names:
     print("\nAdding 'workflow' level to scenarios_regional...")
@@ -151,7 +154,6 @@ print(f"  scenarios_complete_global columns dtype: {scenarios_complete_global.co
 print(f"  history columns dtype: {history.columns.dtype}")
 print(f"  scenarios_regional columns dtype: {scenarios_regional.columns.dtype}")
 print(f"  history_regional columns dtype: {history_regional.columns.dtype}")
-
 
 # %%
 unique_model_scenario_pairs = scenarios_complete_global.index.droplevel(
@@ -328,7 +330,6 @@ print(f"Index names: {scenarios_regional.index.names}")
 print(f"Index levels: {scenarios_regional.index.nlevels}")
 print(f"Sample index values:")
 print(scenarios_regional.index[:5])
-
 
 # %%
 def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0912
