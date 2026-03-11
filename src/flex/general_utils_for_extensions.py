@@ -47,7 +47,7 @@ def fix_year_columns_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
     pd.DataFrame
         DataFrame with year columns converted to numeric.
     """
-    year_cols = [col for col in df_all.columns if str(col).isdigit()]
+    year_cols = [col for col in df.columns if str(col).isdigit()]
     df.rename(columns={col: float(col) for col in year_cols}, inplace=True)
     return df
 
