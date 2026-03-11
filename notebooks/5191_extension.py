@@ -49,36 +49,33 @@ OUTPUTS_DIR = Path().resolve().parent / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
-from extensions.afolu_extension_functions import (
+from flex.afolu_extension_functions import (
     get_cumulative_afolu,
-    get_cumulative_afolu_fill_from_hist,
+    extend_one_scenario_afolu,
 )
-from extensions.cdr_and_fossil_splits import (
+from flex.cdr_and_fossil_splits import (
     add_removals_and_positive_fossil_emissions_to_historical,
     extend_cdr_components_vectorized,
     get_2100_compound_composition_co2,
 )
 
-from extensions.extension_functionality import (
-    extend_linear_rampdown,
+from flex.extension_functionality import (
     sigmoid_function,
 )
-from extensions.extensions_functions_for_non_co2 import (
+from flex.extensions_functions_for_non_co2 import (
     do_single_component_for_scenario_model_regionally,
-    plot_just_global,
 )
-from extensions.finish_regional_extensions import (
+from flex.finish_regional_extensions import (
     extend_regional_for_missing,
     merge_historical_future_timeseries,
 )
-from extensions.fossil_co2_storyline_functions import (
-    extend_co2_for_scen_storyline,
+from flex.fossil_co2_storyline_functions import (
+    process_single_scenario_storyline_wrapper,
 )
-from extensions.general_utils_for_extensions import (
-    dump_data_per_model,
+from flex.general_utils_for_extensions import (
     fix_up_and_concatenate_extensions,
-    glue_with_historical,
     interpolate_to_annual,
+    fix_year_columns_to_numeric,
     save_continuous_timeseries_to_csv,
 )
 
@@ -86,6 +83,7 @@ from extensions.general_utils_for_extensions import (
 FUTURE_START_YEAR = 2023.0
 HISTORICAL_START_YEAR = 1900
 SCENARIO_END_YEAR = 2100
+EXTENSIONS_END_YEAR = 2500
 TUPLE_LENGTH_WITH_STAGE = 6
 
 # %% tags=["parameters"]
@@ -115,15 +113,17 @@ print(f"Loaded history: {history.shape}")
 print("Loading scenarios_regional from CSV...")
 scenarios_regional = pd.read_csv(
     DATA_DIR / "scenarios_regional.csv",
-    index_col=[0, 1, 2, 3, 4]
+    index_col=[0, 1, 2, 3, 4, 5]
 )
 print(f"Loaded scenarios_regional: {scenarios_regional.shape}")
 
 print("Loading history_regional from CSV...")
 history_regional = pd.read_csv(
     DATA_DIR / "history_regional.csv",
-    index_col=[0, 1, 2, 3, 4]
+    index_col=[0, 1, 2, 3, 4, 5]
 )
+
+
 print(f"Loaded history_regional: {history_regional.shape}")
 
 # Convert year columns to numeric types
@@ -140,6 +140,7 @@ history = history.loc[:, history.columns.notna()]
 scenarios_regional = scenarios_regional.loc[:, scenarios_regional.columns.notna()]
 history_regional = history_regional.loc[:, history_regional.columns.notna()]
 
+
 # Add 'workflow' level to scenarios_regional if missing
 if 'workflow' not in scenarios_regional.index.names:
     print("\nAdding 'workflow' level to scenarios_regional...")
@@ -151,7 +152,6 @@ print(f"  scenarios_complete_global columns dtype: {scenarios_complete_global.co
 print(f"  history columns dtype: {history.columns.dtype}")
 print(f"  scenarios_regional columns dtype: {scenarios_regional.columns.dtype}")
 print(f"  history_regional columns dtype: {history_regional.columns.dtype}")
-
 
 # %%
 unique_model_scenario_pairs = scenarios_complete_global.index.droplevel(
@@ -212,78 +212,14 @@ def calculate_afolu_extensions(scenarios_complete_global, history, cumulative_hi
     """
     Calculate AFOLU extensions for all scenarios and models
     """
-    if plot:
-        _fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(30, 10))
     temp_list_for_new_data_linear_ramp_down = []
     for s, meta in scenario_model_match.items():
-        scen = scenarios_complete_global.loc[pix.ismatch(variable="**CO2|AFOLU", model=meta[1], scenario=meta[0])]
-        scen_full = glue_with_historical(scen, history.loc[pix.ismatch(variable="Emissions|CO2|AFOLU")])
-        cumulative_2100 = get_cumulative_afolu_fill_from_hist(scen, meta[1], meta[0], cumulative_history_afolu)
-        em_ext_linear_ramp_down = extend_linear_rampdown(
-            scen_full.values[0, :], np.arange(cumulative_2100.columns[0], 2501)
+        df_afolu_linear_ramp_down = extend_one_scenario_afolu(
+            scenarios_complete_global, history, cumulative_history_afolu, meta[1], meta[0]
         )
-        if plot:
-            axs[0].plot(cumulative_2100.columns, cumulative_2100.values[0, :], color=meta[2])
-            axs[0].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                np.cumsum(em_ext_linear_ramp_down),
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-            axs[1].plot(scen_full.columns, scen_full.values[0, :], color=meta[2])
-            axs[1].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                em_ext_linear_ramp_down,
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-            axs[2].plot(cumulative_2100.columns, cumulative_2100.values[0, :], color=meta[2])
-            axs[2].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                np.cumsum(em_ext_linear_ramp_down),
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-            axs[3].plot(scen_full.columns, scen_full.values[0, :], color=meta[2])
-            axs[3].plot(
-                np.arange(cumulative_2100.columns[0], 2501),
-                em_ext_linear_ramp_down,
-                "--",
-                alpha=0.7,
-                label=s,
-                color=meta[2],
-            )
-        df_afolu_linear_ramp_down = pd.DataFrame(
-            data=[em_ext_linear_ramp_down],
-            columns=np.arange(cumulative_2100.columns[0], 2501),
-            index=scen.index,
-        )
+
         temp_list_for_new_data_linear_ramp_down.append(df_afolu_linear_ramp_down)
     extended_data_afolu_linear_ramp_down = pd.concat(temp_list_for_new_data_linear_ramp_down)
-
-    if plot:
-        for ax in axs:
-            ax.set_xlabel("Year")
-            ax.legend()
-            ax.axvline(x=2100, ls="--", color="k")
-        axs[0].set_ylabel("Cumulative Emissions CO2 AFOLU")
-        axs[0].set_title("Cumulative Emissions CO2 AFOLU")
-        axs[1].set_ylabel("Emissions CO2 AFOLU")
-        axs[1].set_title("Emissions CO2 AFOLU")
-        axs[2].set_ylabel("Cumulative Emissions CO2 AFOLU")
-        axs[2].set_title("Cumulative Emissions CO2 AFOLU")
-        axs[3].set_ylabel("Emissions CO2 AFOLU")
-        axs[3].set_title("Emissions CO2 AFOLU")
-        axs[2].set_xlim(2000, 2300)
-        axs[3].set_xlim(2000, 2300)
-
-        plt.savefig("afolu_first_draft_extensions.png")
     return {
         "linear_afolu_rampdown": extended_data_afolu_linear_ramp_down,
     }
@@ -329,7 +265,6 @@ print(f"Index levels: {scenarios_regional.index.nlevels}")
 print(f"Sample index values:")
 print(scenarios_regional.index[:5])
 
-
 # %%
 def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0912
     """
@@ -353,7 +288,6 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
         Concatenated DataFrame of all extended non-CO2 emission variables across scenarios and models.
     """
     total_df_list = []
-    look_at_all = False
 
     for variable in tqdm.auto.tqdm(scenarios_complete_global.pix.unique("variable").values):
         print(variable)
@@ -387,48 +321,6 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
                 sys.exit(4)
             total_df_list.append(df_comp_scen_model)
             # print(df_comp_scen_model.columns)
-            if look_at_all:
-                pdf = df_comp_scen_model.openscm.to_long_data()
-                fg = sns.relplot(
-                    data=pdf,
-                    x="time",
-                    y="value",
-                    col="variable",
-                    col_order=sorted(pdf["variable"].unique()),
-                    col_wrap=2,
-                    hue="region",
-                    hue_order=sorted(pdf["region"].unique()),
-                    kind="line",
-                    linewidth=2.0,
-                    alpha=0.7,
-                    facet_kws=dict(sharey=False),
-                    errorbar=None,
-                )
-                for ax in fg.axes.flatten():
-                    if "CO2" in ax.get_title():
-                        ax.axhline(0.0, linestyle="--", color="gray")
-                    else:
-                        ax.set_ylim(ymin=0.0)
-                        ax.axvline(2100, linestyle="--", color="gray")
-                    if ax.get_title().endswith("Emissions|BC"):
-                        ax.axhline(2.0814879929813928, linestyle="--", color="gray")
-                    # ax.set_xticks(np.arange(2020, 2, 10))
-                    ax.grid()
-                # fg.savefig(f"regionally_extended_{variable.split('|')[-1]}_{meta[0].replace(' ', '')}
-                # _{meta[1].replace(' ', '')}.png")
-                plt.show()
-                plt.clf()
-                plt.close()
-            elif make_plots:
-                plot_just_global(
-                    meta[0],
-                    meta[1],
-                    variable,
-                    df_comp_scen_model.loc[pix.ismatch(region="World", variable=f"{variable}")],
-                    scenarios_complete_global,
-                    history,
-                    scenarios_regional=scenarios_regional,
-                )
     df_all = pix.concat(total_df_list)
     return df_all
 
@@ -450,6 +342,7 @@ if do_and_write_to_csv:
         df_all.to_csv("first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
             afolu_df.to_csv(f"first_draft_extended_afolu_{name}.csv")
+
 
 # %%
 if not do_and_write_to_csv:
@@ -511,8 +404,6 @@ fossil_evolution_dictionary = {
 # %%
 name = "linear_afolu_rampdown"
 df_afolu = afolu_dfs[name]
-if make_plots:
-    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(30, 15))
 temp_list_for_new_data = []
 for s, meta in scenario_model_match.items():
     print(f"Processing fossil CO2 to match storyline and AFOLU for {s}")
@@ -525,84 +416,36 @@ for s, meta in scenario_model_match.items():
             )
         ]
     )
-    year_cols = [
-        col
-        for col in co2_fossil.columns
-        if (isinstance(col, int | float) and col >= FUTURE_START_YEAR)
-        or (re.match(r"^\d{4}(?:\.0)?$", str(col)) and float(col) >= FUTURE_START_YEAR)
-    ]
-    non_year_cols = [
-        col
-        for col in co2_fossil.columns
-        if not (
-            (isinstance(col, int | float) and (HISTORICAL_START_YEAR <= col <= SCENARIO_END_YEAR))
-            or re.match(r"^\d{4}(?:\.0)?$", str(col))
-        )
-    ]
-    co2_fossil = co2_fossil[non_year_cols + year_cols]
+
     # co2_afolu = df_afolu.loc[(df_afolu["model"] == meta[1]) & (df_afolu["scenario"] == meta[0])]
     co2_afolu = df_afolu.loc[pix.ismatch(model=meta[1], scenario=meta[0])]
 
-    co2_total_extend, co2_fossil_extend, extend_years = extend_co2_for_scen_storyline(
-        co2_afolu, co2_fossil, fossil_evolution_dictionary[s]
-    )
 
-    df_total = pd.DataFrame(data=[co2_fossil_extend], columns=extend_years, index=co2_fossil.index)
+    df_total = process_single_scenario_storyline_wrapper(
+        co2_fossil, 
+        co2_afolu, 
+        fossil_evolution_dictionary[s],
+        start = int(FUTURE_START_YEAR),
+        end = EXTENSIONS_END_YEAR,
+        scenario_end = int(SCENARIO_END_YEAR),
+        history_start = HISTORICAL_START_YEAR,
+        )
     temp_list_for_new_data.append(df_total)
-
-    if make_plots:
-        axs[0].plot(co2_fossil.columns, co2_fossil.values.flatten(), label=s, color=meta[2])
-        axs[0].plot(extend_years, co2_fossil_extend, label=s, color=meta[2], linestyle="--")
-        axs[0].plot(co2_fossil.columns, co2_fossil.values.flatten(), label=s, color=meta[2])
-        axs[1].plot(
-            extend_years,
-            co2_afolu.loc[:, "2023":].to_numpy().flatten(),
-            label=s,
-            color=meta[2],
-            linestyle="--",
-        )
-        axs[2].plot(extend_years, co2_total_extend, label=s, color=meta[2], linestyle="--")
-        axs[2].plot(
-            co2_fossil.columns,
-            co2_fossil.values.flatten() + co2_afolu.loc[:, "2023":"2100"].to_numpy().flatten(),
-            label=s,
-            color=meta[2],
-        )
 
 fossil_extension_df = pd.concat(temp_list_for_new_data)
 if dump_csvs:
     fossil_extension_df.to_csv(f"co2_fossil_fuel_extenstions_{name}.csv")
-if make_plots:
-    axs[0].set_title("CO2 fossil", fontsize="x-large")
-    axs[1].set_title("CO2 AFOLU", fontsize="x-large")
-    axs[2].set_title("CO2 total", fontsize="x-large")
-    for ax in axs:
-        ax.set_xlabel("Years", fontsize="x-large")
-    axs[2].legend(fontsize="x-large")
-
-    plt.savefig(f"co2_fossil_fuel_extenstions_{name}.png")
-    plt.clf()
 
 # %% [markdown]
 # # Dataframe cleanup
 
 # %%
 # Convert year columns in df_afolu_fixed to floats (if possible)
-year_cols = [col for col in df_all.columns if str(col).isdigit()]
-df_all.rename(columns={col: float(col) for col in year_cols}, inplace=True)
-df_all.head()
-
-# %%
-# Convert year columns in df_afolu_fixed to floats (if possible)
-year_cols = [col for col in df_afolu.columns if str(col).isdigit()]
-df_afolu.rename(columns={col: float(col) for col in year_cols}, inplace=True)
-df_afolu.head()
+df_all = fix_year_columns_to_numeric(df_all)
+df_afolu = fix_year_columns_to_numeric(df_afolu)
 
 # %% [markdown]
 # ## Removal disaggregation
-
-# %%
-scenarios_complete_global.loc[pix.ismatch(variable="Emissions|CO2|Ocean")]
 
 # %%
 
@@ -705,9 +548,7 @@ removal_dictionary = {
 
 
 # Extension configuration
-last_year = 2100
-target_year = 2500
-years_extension = np.arange(last_year + 1, target_year + 1)
+years_extension = np.arange(SCENARIO_END_YEAR + 1, EXTENSIONS_END_YEAR + 1)
 
 # Initialize extension DataFrames with all new columns at once
 # Create empty DataFrames for the extension years with same index
@@ -718,7 +559,7 @@ extension_cols_cdr = pd.DataFrame(np.nan, index=global_cdr.index, columns=years_
 co2_gross_positive_ext = pd.concat([co2_gross_positive, extension_cols_gross_pos], axis=1)
 global_cdr_ext = pd.concat([global_cdr, extension_cols_cdr], axis=1)
 
-print(f"Extension setup complete. Extending from {last_year + 1} to {target_year}")
+print(f"Extension setup complete. Extending from {SCENARIO_END_YEAR + 1} to {EXTENSIONS_END_YEAR}")
 print(f"Number of extension years: {len(years_extension)}")
 
 # Map removal_dictionary keys to actual scenario names
