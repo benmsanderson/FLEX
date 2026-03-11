@@ -1,6 +1,7 @@
 """Storyline-driven CO2 extension helpers for fossil and AFOLU splitting and trajectories."""
 
 import sys
+import re
 
 import numpy as np
 import pandas as pd
@@ -395,6 +396,7 @@ def extend_co2_for_scen_storyline(  # noqa: PLR0913
     """
     extended_years = np.arange(start, end + 1)
     co2_fossil_extend = np.zeros(len(extended_years))
+    print(df_fossil.shape)
     co2_fossil_extend[: scenario_end + 1 - start] = df_fossil.loc[f"{start}" :, :].to_numpy().flatten()
     co2_total_extend = co2_fossil_extend + df_extended_afolu.loc[:, f"{start}" :].to_numpy().flatten()
 
@@ -416,3 +418,61 @@ def extend_co2_for_scen_storyline(  # noqa: PLR0913
         sys.exit(4)
 
     return co2_total_extend, co2_fossil_extend, extended_years
+
+
+def process_single_scenario_storyline_wrapper(
+    co2_fossil: pd.DataFrame, 
+    co2_afolu: pd.DataFrame, 
+    storyline: list, 
+    start=2023, 
+    end=2500, 
+    scenario_end=2100,
+    history_start=1750
+    ):
+    """
+    Wrapper function to process a single scenario storyline for CO2 emissions extension.
+
+    This function serves as a convenient interface to extend CO2 emissions for a single scenario
+    based on the provided fossil and AFOLU emissions data and the specified storyline parameters.
+
+    Parameters
+    ----------
+    co2_fossil : pandas.DataFrame
+        DataFrame containing fossil CO2 emissions for the scenario, indexed or columned by year.
+    co2_afolu : pandas.DataFrame
+        DataFrame containing AFOLU CO2 emissions for the scenario, indexed or columned by year.
+    storyline : tuple
+        Scenario storyline parameters. The first element specifies the storyline type ("CS", "ECS", "CSCS"),
+        followed by integers specifying transition years and target values for the extension.
+    start : int, optional
+        Start year for the extension (default is 2023).
+    end : int, optional
+        End year for the extension (default is 2500).
+    scenario_end : int, optional
+        End year of the scenario (default is 2100).
+    history_start : int, optional
+        Start year of the historical data (default is 1750).
+    """
+    year_cols = [
+        col
+        for col in co2_fossil.columns
+        if (isinstance(col, int | float) and col >= start)
+        or (re.match(r"^\d{4}(?:\.0)?$", str(col)) and float(col) >= start)
+    ]
+    non_year_cols = [
+        col
+        for col in co2_fossil.columns
+        if not (
+            (isinstance(col, int | float) and (history_start <= col <= scenario_end))
+            or re.match(r"^\d{4}(?:\.0)?$", str(col))
+        )
+    ]
+    print(year_cols)
+    print(non_year_cols)
+    co2_fossil = co2_fossil[non_year_cols + year_cols]
+    co2_total_extend, co2_fossil_extend, extend_years = extend_co2_for_scen_storyline(
+        co2_afolu, co2_fossil, storyline=storyline, start=start, end=end, scenario_end=scenario_end
+    )
+
+    df_total = pd.DataFrame(data=[co2_fossil_extend], columns=extend_years, index=co2_fossil.index)
+    return df_total

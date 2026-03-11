@@ -34,6 +34,23 @@ def interpolate_to_annual(idf: pd.DataFrame, max_supplement: float = 1e-5) -> pd
 
     return out
 
+def fix_year_columns_to_numeric(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert year columns to numeric, handling cases like '2020.0' or '2020'
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame with year columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with year columns converted to numeric.
+    """
+    year_cols = [col for col in df_all.columns if str(col).isdigit()]
+    df.rename(columns={col: float(col) for col in year_cols}, inplace=True)
+    return df
+
 
 def glue_with_historical(scen_df: pd.DataFrame, hist_df: pd.DataFrame, history_end=2023) -> pd.DataFrame:
     """
