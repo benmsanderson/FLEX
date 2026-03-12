@@ -22,47 +22,36 @@ flags:
   make_plots: false
   dump_csvs: true
 
-# --- Plot colors per marker (for FaIR result visualizations) ---
-plot_colors:
-  HL: "#E744F6"
-  H: "#a41212"
-  M: "#fc7b03"
-  ML: "#dec820"
-  L: "#20A359"
-  LN: "#22e5db"
-  VL: "#16188F"
-  HL-CF: "#FF6600"
-
 # --- Scenario-to-model mapping ---
 scenario_model_match:
   VL:
     scenario: "SSP1 - Very Low Emissions"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "tab:blue"
+    color: "#16188F"
   LN:
     scenario: "SSP2 - Low Overshoot_a"
     model: "AIM 3.0"
-    color: "tab:cyan"
+    color: "#22e5db"
   L:
     scenario: "SSP2 - Low Emissions"
     model: "MESSAGEix-GLOBIOM-GAINS 2.1-M-R12"
-    color: "tab:green"
+    color: "#20A359"
   ML:
     scenario: "SSP2 - Medium-Low Emissions"
     model: "COFFEE 1.6"
-    color: "tab:pink"
+    color: "#dec820"
   M:
     scenario: "SSP2 - Medium Emissions"
     model: "IMAGE 3.4"
-    color: "tab:purple"
+    color: "#fc7b03"
   H:
     scenario: "SSP3 - High Emissions"
     model: "GCAM 8s"
-    color: "tab:red"
+    color: "#a41212"
   HL:
     scenario: "SSP5 - Medium-Low Emissions_a"
     model: "WITCH 6.0"
-    color: "tab:brown"
+    color: "#E744F6"
   HL-CF:
     scenario: "SSP5 - Medium-Low Emissions_a"
     model: "WITCH 6.0"
