@@ -26,10 +26,10 @@ flags:
 
 # --- Plot colors per marker (for FaIR result visualizations) ---
 plot_colors:
-  VL-fossil-frankenstein: "#20A359"
-  VL-fossil-frankenstein-zero-afolu: "#22e5db"
-  VL-fossil-frankenstein-hold: "#0dba4f"
-  VL-fossil-frankenstein-zero-afolu-hold: "#14b8a9"
+  VL-fossil-frankenstein: "#2196F3"
+  VL-fossil-frankenstein-zero-afolu: "#FF9800"
+  VL-fossil-frankenstein-hold: "#9C27B0"
+  VL-fossil-frankenstein-zero-afolu-hold: "#E91E63"
 
 # --- Scenario-to-model mapping ---
 # Each marker maps to: [scenario_name, model_name, plot_color]
@@ -37,19 +37,19 @@ scenario_model_match:
   VL-fossil-frankenstein:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "tab:cyan"
+    color: "#2196F3"
   VL-fossil-frankenstein-zero-afolu:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "tab:green"
+    color: "#FF9800"
   VL-fossil-frankenstein-hold:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#0dba4f"
+    color: "#9C27B0"
   VL-fossil-frankenstein-zero-afolu-hold:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#14b8a9"
+    color: "#E91E63"
 
 # --- Fossil CO2 storyline parameters ---
 # Storyline types:
@@ -129,19 +129,19 @@ forcing_scenario:
 optimization:
   VL-fossil-frankenstein-hold:
     enabled: true
-    departure_year: 2050
+    departure_year: 2035
     optimize_params: [exp_targ, sig_start]
     fixed_params:
-      sig_end: 2300
+      sig_end: 2450
     bounds:
       exp_targ: [-5000.0, 5000.0]
-      sig_start: [2050, 2200]
+      sig_start: [2035, 2200]
   VL-fossil-frankenstein-zero-afolu-hold:
     enabled: true
-    departure_year: 2050
+    departure_year: 2035
     optimize_params: [exp_targ, sig_start]
     fixed_params:
-      sig_end: 2300
+      sig_end: 2450
     bounds:
       exp_targ: [-5000.0, 5000.0]
-      sig_start: [2050, 2200]
+      sig_start: [2035, 2200]
