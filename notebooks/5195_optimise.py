@@ -24,17 +24,11 @@
 # includes the optimized counterfactual scenarios alongside the originals.
 
 # %%
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-# Add src directory to path
-src_dir = Path().resolve().parent / "src"
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
 
 from flex.config import load_config, DATA_DIR
 from flex.optimise import (

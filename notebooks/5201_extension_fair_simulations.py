@@ -23,7 +23,6 @@
 
 # %%
 import os
-import sys
 import warnings
 from pathlib import Path
 
@@ -36,14 +35,7 @@ from fair import FAIR
 from fair.interface import initialise
 from fair.io import read_properties
 
-# Add src directory to path
-src_dir = Path().resolve().parent / "src"
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
-
-from flex.config import load_config
-
-from flex.config import DATA_DIR
+from flex.config import load_config, DATA_DIR
 
 # %% tags=["parameters"]
 config_name = "scenariomip_default"

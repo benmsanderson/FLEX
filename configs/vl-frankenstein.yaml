@@ -129,7 +129,7 @@ forcing_scenario:
 optimization:
   VL-fossil-frankenstein-hold:
     enabled: true
-    departure_year: 2035
+    departure_year: 2030
     optimize_params: [exp_targ, sig_start]
     fixed_params:
       sig_end: 2450
@@ -138,7 +138,7 @@ optimization:
       sig_start: [2035, 2200]
   VL-fossil-frankenstein-zero-afolu-hold:
     enabled: true
-    departure_year: 2035
+    departure_year: 2030
     optimize_params: [exp_targ, sig_start]
     fixed_params:
       sig_end: 2450

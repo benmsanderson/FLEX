@@ -24,7 +24,6 @@
 # %%
 import glob
 import re
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -36,18 +35,7 @@ import pandas_openscm
 import seaborn as sns
 import tqdm.auto
 
-# Add src directory to path for extensions imports
-src_dir = (Path(__file__).parent.parent / "src" if "__file__" in globals() 
-           else Path().resolve().parent / "src")
-
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
-
-# Data directories
-DATA_DIR = Path().resolve().parent / "data"
-
-# Package imports
-from flex.config import load_config
+from flex.config import load_config, DATA_DIR
 from flex.afolu_extension_functions import (
     get_cumulative_afolu,
     extend_one_scenario_afolu,
@@ -353,9 +341,9 @@ if do_and_write_to_csv:
         scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots
     )
     if dump_csvs:
-        df_all.to_csv("first_draft_extended_nonCO2_all.csv")
+        df_all.to_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
-            afolu_df.to_csv(f"first_draft_extended_afolu_{name}.csv")
+            afolu_df.to_csv(OUTPUTS_DIR / f"first_draft_extended_afolu_{name}.csv")
 
 
 # %%
@@ -440,7 +428,7 @@ for s, meta in scenario_model_match.items():
 
 fossil_extension_df = pd.concat(temp_list_for_new_data)
 if dump_csvs:
-    fossil_extension_df.to_csv(f"co2_fossil_fuel_extenstions_{name}.csv")
+    fossil_extension_df.to_csv(OUTPUTS_DIR / f"co2_fossil_fuel_extenstions_{name}.csv")
 
 # %% [markdown]
 # # Dataframe cleanup
@@ -768,7 +756,7 @@ if make_plots and co2_gross_positive_ext is not None:
     )
 
     plt.tight_layout()
-    plt.savefig("gross_positive_vs_cdr_vs_ffi_by_scenario.png")
+    plt.savefig(cfg.plots_dir / "gross_positive_vs_cdr_vs_ffi_by_scenario.png")
 
 
 # %% [markdown]

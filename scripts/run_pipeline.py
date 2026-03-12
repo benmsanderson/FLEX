@@ -30,7 +30,6 @@ def run_notebook(notebook_name: str, config_name: str, output_dir: Path) -> None
         str(input_path),
         str(output_path),
         parameters={"config_name": config_name},
-        cwd=str(NOTEBOOKS_DIR),
         kernel_name="python3",
     )
     print(f"  -> Saved to {output_path}")
