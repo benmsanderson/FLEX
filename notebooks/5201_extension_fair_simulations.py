@@ -63,7 +63,7 @@ f.ch4_method = "Thornhill2021"
 #
 
 # %%
-if ~memory_limited:
+if not memory_limited:
     # Define the Zenodo record DOI and the specific file you want
     ZENODO_DOI = "10.5281/zenodo.7112539"  # Replace with your Zenodo DOI
     FILE_NAME = "calibrated_constrained_parameters.csv"  # Replace with your file name on Zenodo
