@@ -36,11 +36,11 @@ scenario_model_match:
     scenario: "SSP1 - Very Low Emissions"
     model: "REMIND-MAgPIE 3.5-4.11"
     color: "tab:blue"
-  "VL-fossil-frankenstein":
+  VL-fossil-frankenstein:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein"
     model: "REMIND-MAgPIE 3.5-4.11"
     color: "tab:cyan"
-  VL-fossil-frankenstein-zero-afolu":
+  VL-fossil-frankenstein-zero-afolu:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
     model: "REMIND-MAgPIE 3.5-4.11"
     color: "tab:green"
