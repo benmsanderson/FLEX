@@ -150,6 +150,7 @@ optimization:
   HL-CF:
     enabled: true
     departure_year: 2080
+    n_configs: 1
     # Optimize these fossil_evolution params (indices into params list)
     # For ECS: [exp_end, exp_targ, sig_start, sig_end, roll_in, roll_out]
     optimize_params: [exp_targ, sig_start]

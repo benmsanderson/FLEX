@@ -1,6 +1,6 @@
 """Optimization of extension parameters to meet FaIR temperature targets.
 
-Adjusts fossil CO2 storyline parameters so that FaIR median temperature
+Adjusts fossil CO2 storyline parameters so that FaIR mean temperature
 holds steady at a specified level (e.g., the departure-year peak).
 """
 
@@ -19,6 +19,7 @@ def setup_fair(
     scenarios: list[str],
     memory_limited: bool = True,
     scenario_mapping: dict[str, str] | None = None,
+    n_configs: int | None = None,
 ) -> FAIR:
     """Set up a FaIR instance ready to run.
 
@@ -30,9 +31,14 @@ def setup_fair(
         List of scenario short names (e.g. ["LN"]).
     memory_limited
         If True, use 5-member ensemble; otherwise full ~1000 member.
+        Ignored when *n_configs* is set.
     scenario_mapping
         Maps new scenario names to base scenarios for the forcing file.
         E.g. {"HL-CF": "HL"} means HL-CF reuses HL's volcanic/solar forcing.
+    n_configs
+        Explicit number of configs to use, drawn evenly-spaced from the
+        full ~1000-member parameter set.  Overrides *memory_limited* when
+        set.  Use 1 for a fast deterministic run during optimization.
 
     Returns
     -------
@@ -50,12 +56,19 @@ def setup_fair(
     f.define_species(species, properties)
     f.ch4_method = "Thornhill2021"
 
-    if memory_limited:
+    if n_configs is not None:
+        # Always draw from the full parameter set so any ensemble size
+        # from 1 up to ~1000 is representative.
+        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
+    elif memory_limited:
         params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters_short.csv"
     else:
         params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
 
     df_configs = pd.read_csv(params_file, index_col=0)
+    if n_configs is not None and n_configs < len(df_configs):
+        indices = np.linspace(0, len(df_configs) - 1, n_configs, dtype=int)
+        df_configs = df_configs.iloc[indices]
     f.define_configs(df_configs.index)
     f.allocate()
 
@@ -110,18 +123,21 @@ def run_fair_single_scenario(
     scenario: str,
     memory_limited: bool = True,
     base_scenario: str | None = None,
+    n_configs: int | None = None,
 ) -> np.ndarray:
-    """Run FaIR for a single scenario and return median temperature.
+    """Run FaIR for a single scenario and return mean temperature.
 
     Parameters
     ----------
     base_scenario
         If the scenario is new (not in the forcing file), map it to this
         base scenario for volcanic/solar forcing.
+    n_configs
+        Explicit number of configs (passed to *setup_fair*).
 
     Returns
     -------
-    1D array of median surface temperature (751 timebounds, 1750-2500).
+    1D array of mean surface temperature (751 timebounds, 1750-2500).
     """
     mapping = None
     if base_scenario:
@@ -130,10 +146,11 @@ def run_fair_single_scenario(
         emissions_csv_path, [scenario],
         memory_limited=memory_limited,
         scenario_mapping=mapping,
+        n_configs=n_configs,
     )
     f.run()
     temp = f.temperature.sel(scenario=scenario, layer=0)
-    return temp.median(dim="config").values
+    return temp.mean(dim="config").values
 
 
 def modify_emissions_csv(
@@ -299,6 +316,7 @@ def _objective_plateau(
     temp_csv_path: str,
     memory_limited: bool = True,
     forcing_scenario: str | None = None,
+    n_configs: int | None = None,
 ) -> float:
     """Objective function: squared temperature deviation from target post-departure.
 
@@ -369,6 +387,7 @@ def _objective_plateau(
             modified_csv, new_scenario,
             memory_limited=memory_limited,
             base_scenario=forcing_scenario or base_scenario,
+            n_configs=n_configs,
         )
     except Exception as e:
         print(f"FaIR failed with params {params}: {e}")
@@ -390,6 +409,7 @@ def optimize_scenario(
     marker: str,
     base_emissions_csv: str,
     memory_limited: bool = True,
+    n_configs: int | None = None,
 ) -> dict:
     """Optimize fossil evolution parameters for a scenario to achieve temperature plateau.
 
@@ -402,13 +422,21 @@ def optimize_scenario(
     base_emissions_csv
         Path to FaIR emissions CSV with all standard scenarios.
     memory_limited
-        Use reduced ensemble for speed.
+        Use reduced ensemble for speed. Ignored during optimization
+        (which always draws from the full parameter set via *n_configs*).
+    n_configs
+        Number of FaIR climate configs to use during optimization.
+        Drawn evenly-spaced from the full ~1000-member calibrated set.
+        If *None*, read from the YAML config's ``optimization.<marker>.n_configs``
+        (default 1).
 
     Returns
     -------
     Dict with optimized params, target temperature, and final cost.
     """
     opt_settings = cfg.optimization[marker]
+    if n_configs is None:
+        n_configs = opt_settings.get("n_configs", 1)
     departure_year = opt_settings["departure_year"]
     bounds_cfg = opt_settings["bounds"]
 
@@ -429,10 +457,13 @@ def optimize_scenario(
     print(f"Optimizing {marker} based on {source_marker} (departure {departure_year}, forcing={forcing_scen})")
 
     # Step 1: Get target temperature from source scenario at departure year
-    print("Running baseline FaIR to get target temperature...")
+    # Use the same n_configs as the optimization loop so the target is
+    # consistent with the objective function.
+    print(f"Running baseline FaIR ({n_configs} config(s)) to get target temperature...")
     temp_baseline = run_fair_single_scenario(
         base_emissions_csv, source_marker, memory_limited=memory_limited,
         base_scenario=forcing_scen if forcing_scen != source_marker else None,
+        n_configs=n_configs,
     )
     timebounds = np.arange(1750, 2501, 1.0)
     dep_idx = np.searchsorted(timebounds, departure_year)
@@ -473,6 +504,7 @@ def optimize_scenario(
             temp_csv_path=temp_csv,
             memory_limited=memory_limited,
             forcing_scenario=forcing_scen,
+            n_configs=n_configs,
         ),
         bounds=bounds,
         seed=42,
