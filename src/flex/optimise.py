@@ -302,6 +302,39 @@ def build_ch4_plateau_trajectory(
     return values
 
 
+def _build_co2_trajectory(
+    base_co2: np.ndarray,
+    years: np.ndarray,
+    departure_year: int,
+    exp_targ: float,
+    sig_start: float,
+    sig_end: float,
+) -> np.ndarray:
+    """Build CO2 FFI trajectory: linear ramp -> hold -> smoothstep -> zero."""
+    co2 = base_co2.copy()
+    dep_idx = np.searchsorted(years, departure_year + 0.5)
+    dep_value = co2[dep_idx]
+    exp_end = int(sig_start)
+
+    for i in range(dep_idx, len(co2)):
+        yr = years[i] - departure_year
+        yr_total = exp_end - departure_year
+        if years[i] <= exp_end + 0.5 and yr_total > 0:
+            frac = yr / yr_total
+            co2[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
+        elif years[i] <= sig_start + 0.5:
+            co2[i] = exp_targ
+        elif years[i] <= sig_end + 0.5:
+            frac = (years[i] - sig_start) / (sig_end - sig_start)
+            t = np.clip(frac, 0, 1)
+            s = 3 * t**2 - 2 * t**3
+            co2[i] = exp_targ * (1 - s)
+        else:
+            co2[i] = 0.0
+
+    return co2
+
+
 def _objective_plateau(
     params: np.ndarray,
     *,
@@ -404,6 +437,123 @@ def _objective_plateau(
     return cost
 
 
+def _batch_objective_plateau(
+    x: np.ndarray,
+    *,
+    optimize_params: list[str],
+    fixed_params: dict[str, float],
+    base_scenario: str,
+    ch4_trajectory: np.ndarray,
+    departure_year: int,
+    target_temp: float,
+    temp_csv_path: str,
+    memory_limited: bool,
+    forcing_scenario: str | None,
+    n_configs: int | None,
+    base_df: pd.DataFrame,
+    base_co2: np.ndarray,
+    years: np.ndarray,
+    year_cols: list[str],
+) -> np.ndarray | float:
+    """Vectorized objective: evaluate N candidates in one FaIR run.
+
+    Accepts ``(D, N)`` from ``differential_evolution(vectorized=True)``
+    or ``(D,)`` during the polish step.
+    """
+    if x.ndim == 1:
+        x = x.reshape(-1, 1)
+        return float(
+            _batch_objective_plateau(
+                x,
+                optimize_params=optimize_params,
+                fixed_params=fixed_params,
+                base_scenario=base_scenario,
+                ch4_trajectory=ch4_trajectory,
+                departure_year=departure_year,
+                target_temp=target_temp,
+                temp_csv_path=temp_csv_path,
+                memory_limited=memory_limited,
+                forcing_scenario=forcing_scenario,
+                n_configs=n_configs,
+                base_df=base_df,
+                base_co2=base_co2,
+                years=years,
+                year_cols=year_cols,
+            )[0]
+        )
+
+    n_candidates = x.shape[1]
+    costs = np.full(n_candidates, 1e6)
+
+    # Build CO2 trajectories for each valid candidate
+    valid: list[tuple[int, str, np.ndarray]] = []
+    for j in range(n_candidates):
+        params = x[:, j]
+        all_p = dict(zip(optimize_params, params)) | fixed_params
+        if all_p["sig_start"] >= all_p["sig_end"]:
+            continue
+        co2 = _build_co2_trajectory(
+            base_co2, years, departure_year,
+            all_p["exp_targ"], all_p["sig_start"], all_p["sig_end"],
+        )
+        valid.append((j, f"_opt_{j}", co2))
+
+    if not valid:
+        return costs
+
+    # Assemble one emissions DataFrame with all candidate scenarios
+    source_rows = base_df[base_df["scenario"] == base_scenario]
+    dep_idx = int(np.searchsorted(years, departure_year + 0.5))
+    post_dep_cols = year_cols[dep_idx:]
+    co2_row_mask = source_rows["variable"] == "CO2 FFI"
+    ch4_row_mask = source_rows["variable"] == "CH4"
+    ch4_post_dep = ch4_trajectory[dep_idx:]
+
+    new_blocks: list[pd.DataFrame] = []
+    scenario_names: list[str] = []
+    for _j, scen_name, co2_traj in valid:
+        rows = source_rows.copy()
+        rows["scenario"] = scen_name
+        rows.loc[co2_row_mask, post_dep_cols] = co2_traj[dep_idx:]
+        rows.loc[ch4_row_mask, post_dep_cols] = ch4_post_dep
+        new_blocks.append(rows)
+        scenario_names.append(scen_name)
+
+    df_combined = pd.concat(new_blocks, ignore_index=True)
+    df_combined.to_csv(temp_csv_path, index=False)
+
+    # Single FaIR run with all candidate scenarios
+    base_forcing = forcing_scenario or base_scenario
+    mapping = {s: base_forcing for s in scenario_names}
+    try:
+        f = setup_fair(
+            temp_csv_path,
+            scenario_names,
+            memory_limited=memory_limited,
+            scenario_mapping=mapping,
+            n_configs=n_configs,
+        )
+        f.run()
+    except Exception as e:
+        print(f"Batch FaIR failed: {e}")
+        return costs
+
+    # Compute per-candidate cost
+    timebounds = np.arange(1750, 2501, 1.0)
+    dep_bound_idx = int(np.searchsorted(timebounds, departure_year))
+    for j, scen_name, _ in valid:
+        temp = f.temperature.sel(scenario=scen_name, layer=0).mean(dim="config").values
+        post_dep = temp[dep_bound_idx:]
+        costs[j] = np.sum((post_dep - target_temp) ** 2)
+
+        params = x[:, j]
+        all_p = dict(zip(optimize_params, params)) | fixed_params
+        opt_str = ", ".join(f"{k}={all_p[k]:.0f}" for k in optimize_params)
+        print(f"  {opt_str} -> cost={costs[j]:.4f}")
+
+    return costs
+
+
 def optimize_scenario(
     cfg: FlexConfig,
     marker: str,
@@ -490,14 +640,21 @@ def optimize_scenario(
     if fixed_params:
         print(f"Fixed: {fixed_params}")
 
+    # Pre-load base emissions once for the vectorized objective
+    base_df = pd.read_csv(base_emissions_csv)
+    source_co2 = base_df[
+        (base_df["scenario"] == source_marker) & (base_df["variable"] == "CO2 FFI")
+    ]
+    year_cols = [c for c in base_df.columns if c.replace(".", "").replace("-", "").isdigit()]
+    years_arr = np.array([float(c) for c in year_cols])
+    base_co2_vals = source_co2[year_cols].values.flatten().copy()
+
     result = differential_evolution(
-        lambda params: _objective_plateau(
-            params,
+        lambda x: _batch_objective_plateau(
+            x,
             optimize_params=optimize_params,
             fixed_params=fixed_params,
-            base_emissions_csv=base_emissions_csv,
             base_scenario=source_marker,
-            new_scenario=marker,
             ch4_trajectory=ch4_traj,
             departure_year=departure_year,
             target_temp=target_temp,
@@ -505,6 +662,10 @@ def optimize_scenario(
             memory_limited=memory_limited,
             forcing_scenario=forcing_scen,
             n_configs=n_configs,
+            base_df=base_df,
+            base_co2=base_co2_vals,
+            years=years_arr,
+            year_cols=year_cols,
         ),
         bounds=bounds,
         seed=42,
@@ -514,6 +675,7 @@ def optimize_scenario(
         popsize=5,
         polish=True,
         disp=True,
+        vectorized=True,
     )
 
     # Map result back to named params
