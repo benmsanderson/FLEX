@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.18.1
+#       jupytext_version: 1.19.0
 #   kernelspec:
 #     display_name: default
 #     language: python
@@ -89,16 +89,16 @@ TUPLE_LENGTH_WITH_STAGE = 6
 
 # %% [markdown]
 # ## Loading scenarios
-
-for vl_file in glob.glob(str(DATA_DIR / "*.csv")):
-    print(f"Found VL extension input file: {vl_file}")
-    test_df = pd.read_csv(vl_file)
-    print(test_df.head())
-    print(test_df.shape)
-    print(test_df.columns[:10])
-    print(test_df["region"].unique())
-    print(test_df["scenario"].unique())
-#sys.exit(4)
+#
+# for vl_file in glob.glob(str(DATA_DIR / "*.csv")):
+#     print(f"Found VL extension input file: {vl_file}")
+#     test_df = pd.read_csv(vl_file)
+#     print(test_df.head())
+#     print(test_df.shape)
+#     print(test_df.columns[:10])
+#     print(test_df["region"].unique())
+#     print(test_df["scenario"].unique())
+# sys.exit(4)
 # %%
 # Load data from CSV files
 print("Loading scenarios_complete_global from CSV...")

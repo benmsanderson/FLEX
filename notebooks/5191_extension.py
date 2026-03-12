@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.18.1
+#       jupytext_version: 1.19.0
 #   kernelspec:
 #     display_name: default
 #     language: python
@@ -45,10 +45,9 @@ if str(src_dir) not in sys.path:
 
 # Data directories
 DATA_DIR = Path().resolve().parent / "data"
-OUTPUTS_DIR = Path().resolve().parent / "outputs"
-OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
+from flex.config import load_config
 from flex.afolu_extension_functions import (
     get_cumulative_afolu,
     extend_one_scenario_afolu,
@@ -79,17 +78,25 @@ from flex.general_utils_for_extensions import (
     save_continuous_timeseries_to_csv,
 )
 
-# Constants
-FUTURE_START_YEAR = 2023.0
-HISTORICAL_START_YEAR = 1900
-SCENARIO_END_YEAR = 2100
-EXTENSIONS_END_YEAR = 2500
+# --- Load ensemble configuration ---
+config_name = "scenariomip_default"
+cfg = load_config(config_name)
+OUTPUTS_DIR = cfg.outputs_dir
+print(f"Loaded config: {cfg.name}")
+print(f"Outputs: {OUTPUTS_DIR}")
+print(f"Plots: {cfg.plots_dir}")
+
+# Constants (from config)
+FUTURE_START_YEAR = cfg.future_start_year
+HISTORICAL_START_YEAR = cfg.historical_start_year
+SCENARIO_END_YEAR = cfg.scenario_end_year
+EXTENSIONS_END_YEAR = cfg.extensions_end_year
 TUPLE_LENGTH_WITH_STAGE = 6
 
 # %% tags=["parameters"]
 # Papermill parameters
-make_plots: bool = False
-dump_csvs: bool = True
+make_plots: bool = cfg.make_plots
+dump_csvs: bool = cfg.dump_csvs
 
 # %% [markdown]
 # ## Loading scenarios
@@ -167,19 +174,7 @@ for i, (model, scenario) in enumerate(unique_model_scenario_pairs, 1):
 # Marker definitions
 
 # %%
-scenario_model_match = {
-    "VL": [
-        "SSP1 - Very Low Emissions",
-        "REMIND-MAgPIE 3.5-4.11",
-        "tab:blue",
-    ],  # old VLLO
-    "LN": ["SSP2 - Low Overshoot_a", "AIM 3.0", "tab:cyan"],  # old VLHO
-    "L": ["SSP2 - Low Emissions", "MESSAGEix-GLOBIOM-GAINS 2.1-M-R12", "tab:green"],
-    "ML": ["SSP2 - Medium-Low Emissions", "COFFEE 1.6", "tab:pink"],
-    "M": ["SSP2 - Medium Emissions", "IMAGE 3.4", "tab:purple"],
-    "H": ["SSP3 - High Emissions", "GCAM 8s", "tab:red"],
-    "HL": ["SSP5 - Medium-Low Emissions_a", "WITCH 6.0", "tab:brown"],
-}
+scenario_model_match = cfg.scenario_model_match
 
 # %%
 scenarios_regional = scenarios_regional.sort_index(axis="columns").T.interpolate("index").T
@@ -232,26 +227,7 @@ def calculate_afolu_extensions(scenarios_complete_global, history, cumulative_hi
 # First defining some non-zero end-points for certain gases per marker:
 
 # %%
-component_global_targets = {
-    "Emissions|CH4": {
-        "VL": 95.0,
-        "LN": 150.0,
-        "L": 95.0,
-        "ML": 120.0,
-        "M": 450.0,
-        "H": 520.0,
-        "HL": 110.0,
-    },
-    "Emissions|Sulfur": {
-        "VL": 20.0,
-        "LN": 10.0,
-        "L": None,
-        "ML": 20.0,
-        "M": 20.0,
-        "H": 50.0,
-        "HL": 10.0,
-    },
-}
+component_global_targets = cfg.component_global_targets
 
 # %% [markdown]
 # Main functionality for all non-co2 extensions
@@ -387,15 +363,7 @@ if not do_and_write_to_csv:
 # ["ECS",exp_end,exp_targ,sig_start,sig_end,roll_in,roll_out]
 # ["CSCS",stop_const,sig_targ,end_sig1,start_sig2,end_sig2,roll_in,roll_out]
 
-fossil_evolution_dictionary = {
-    "VL": ["ECS", 2200, -3.5e3, 2450, 2500, 20, 20],
-    "LN": ["ECS", 2120, -24e3, 2200, 2300, 20, 20],
-    "L": ["ECS", 2160, None, 2160, 2260, 40, 20],
-    "ML": ["ECS", 2150, -13e3, 2230, 2300, 20, 20],
-    "M": ["CS", 2100, 2240, 20, 20],
-    "H": ["ECS", 2150, None, 2175, 2300, 20, 20],
-    "HL": ["ECS", 2150, -22e3, 2200, 2300, 20, 20],
-}
+fossil_evolution_dictionary = cfg.fossil_evolution_dictionary
 
 
 # %% [markdown]
@@ -533,15 +501,7 @@ else:
     co2_gross_positive = None
 
 # %%
-removal_dictionary = {
-    "VL": ["NEG", 100, 60],
-    "LN": ["NEG", 50, 100],
-    "L": ["NEG", 50, 50],
-    "ML": ["NEG", 100, 0],
-    "M": ["POS"],
-    "H": ["POS"],
-    "HL": ["NEG", 80, 20],
-}
+removal_dictionary = cfg.removal_dictionary
 
 # %%
 # --- Extension of co2_gross_positive and global_cdr to 2500 using rule-based logic ---
