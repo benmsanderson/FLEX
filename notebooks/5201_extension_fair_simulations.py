@@ -9,6 +9,7 @@
 # %%
 import os
 import sys
+import warnings
 from pathlib import Path
 
 import matplotlib.patheffects as pe
@@ -231,7 +232,6 @@ f.run()
 # %%
 # Suppress All-NaN slice warnings during export
 # (These occur when forcing species have no data for certain scenarios/configs)
-import warnings
 warnings.filterwarnings('ignore', message='All-NaN slice encountered')
 
 # %%

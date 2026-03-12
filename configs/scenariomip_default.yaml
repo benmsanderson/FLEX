@@ -22,6 +22,16 @@ flags:
   make_plots: false
   dump_csvs: true
 
+# --- Plot colors per marker (for FaIR result visualizations) ---
+plot_colors:
+  HL: "#E744F6"
+  H: "#a41212"
+  M: "#fc7b03"
+  ML: "#dec820"
+  L: "#20A359"
+  LN: "#22e5db"
+  VL: "#16188F"
+
 # --- Scenario-to-model mapping ---
 # Each marker maps to: [scenario_name, model_name, plot_color]
 scenario_model_match:

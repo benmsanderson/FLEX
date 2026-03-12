@@ -82,16 +82,8 @@ snames = ["VL", "LN", "L", "ML", "M", "H", "HL"]
 ldict = {s: s for s in snames}
 ldict21 = {s: s for s in snames}
 
-# Scenario colors
-colors = {
-    "HL": "#E744F6",  # Very High
-    "H": "#a41212",   # High
-    "M": "#fc7b03",   # Medium
-    "ML": "#dec820",  # Medium-Low
-    "L": "#20A359",   # Low
-    "LN": "#22e5db",  # Low-Norm
-    "VL": "#16188F",  # Very Low
-}
+# Scenario colors (from config)
+colors = cfg.plot_colors
 
 # Plots directory already created by config loader
 
