@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import jupytext
 from pathlib import Path
 
 import papermill as pm
@@ -19,15 +20,22 @@ ALL_STEPS = [
 
 def run_notebook(notebook_name: str, config_name: str, output_dir: Path) -> None:
     """Execute a notebook with papermill, injecting config_name."""
-    input_path = NOTEBOOKS_DIR / f"{notebook_name}.ipynb"
+    input_path = NOTEBOOKS_DIR / f"{notebook_name}.py"
     output_path = output_dir / f"{notebook_name}.ipynb"
+
+    notebook_jupytext = jupytext.read(input_path)
+
+    # Write the .py file as .ipynb
+    in_notebook = output_dir / f"{notebook_name}_unexecuted.ipynb"
+    in_notebook.parent.mkdir(exist_ok=True, parents=True)
+    jupytext.write(notebook_jupytext, in_notebook, fmt="ipynb")
 
     print(f"\n{'='*60}")
     print(f"Running {notebook_name} with config={config_name}")
     print(f"{'='*60}")
 
     pm.execute_notebook(
-        str(input_path),
+        str(in_notebook),
         str(output_path),
         parameters={"config_name": config_name},
         cwd=str(NOTEBOOKS_DIR),
