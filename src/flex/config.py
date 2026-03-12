@@ -44,6 +44,8 @@ class FlexConfig:
     optimization: dict[str, dict] = field(default_factory=dict)
     # Optional alternate data sources (paths relative to DATA_DIR)
     data_sources: dict | None = None
+    # Maps marker names to volcanic_solar.csv scenario IDs (e.g. "VL")
+    forcing_scenario: dict[str, str] = field(default_factory=dict)
     # Derived paths
     outputs_dir: Path = field(init=False)
     plots_dir: Path = field(init=False)
@@ -159,6 +161,7 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         component_global_targets=raw["non_co2_targets"],
         optimization=raw.get("optimization", {}),
         data_sources=raw.get("data_sources", None),
+        forcing_scenario=raw.get("forcing_scenario", {}),
     )
 
 

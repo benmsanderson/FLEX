@@ -411,10 +411,11 @@ def convert_continuous_to_fair_csv(
     """
     df = pd.read_csv(continuous_csv_path)
 
-    # Build long-scenario -> marker mapping
+    # Build long-scenario -> marker mapping (first-seen wins, so
+    # non-optimized markers take priority over their -hold variants)
     long_to_marker: dict[str, str] = {}
     for marker, info in scenario_model_match.items():
-        long_to_marker[info[0]] = marker  # first entry is scenario name
+        long_to_marker.setdefault(info[0], marker)
 
     # Filter to World, drop workflow
     df = df[df["region"] == "World"].copy()

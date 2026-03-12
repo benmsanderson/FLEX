@@ -199,6 +199,10 @@ def modify_emissions_csv(
             if i >= departure_idx:
                 new_rows.loc[mask, col] = ch4_trajectory[i]
 
+    # Drop any pre-existing rows for new_scenario (e.g. from a naive 5191 extension)
+    # so we replace rather than duplicate.
+    df = df[df["scenario"] != new_scenario]
+
     # Combine: original + new scenario
     df_out = pd.concat([df, new_rows], ignore_index=True)
 
@@ -294,6 +298,7 @@ def _objective_plateau(
     target_temp: float,
     temp_csv_path: str,
     memory_limited: bool = True,
+    forcing_scenario: str | None = None,
 ) -> float:
     """Objective function: squared temperature deviation from target post-departure.
 
@@ -363,7 +368,7 @@ def _objective_plateau(
         temp_median = run_fair_single_scenario(
             modified_csv, new_scenario,
             memory_limited=memory_limited,
-            base_scenario=base_scenario,
+            base_scenario=forcing_scenario or base_scenario,
         )
     except Exception as e:
         print(f"FaIR failed with params {params}: {e}")
@@ -420,12 +425,14 @@ def optimize_scenario(
         msg = f"No source marker found for {marker} (scenario={base_scenario})"
         raise ValueError(msg)
 
-    print(f"Optimizing {marker} based on {source_marker} (departure {departure_year})")
+    forcing_scen = cfg.forcing_scenario.get(source_marker, source_marker)
+    print(f"Optimizing {marker} based on {source_marker} (departure {departure_year}, forcing={forcing_scen})")
 
     # Step 1: Get target temperature from source scenario at departure year
     print("Running baseline FaIR to get target temperature...")
     temp_baseline = run_fair_single_scenario(
-        base_emissions_csv, source_marker, memory_limited=memory_limited
+        base_emissions_csv, source_marker, memory_limited=memory_limited,
+        base_scenario=forcing_scen if forcing_scen != source_marker else None,
     )
     timebounds = np.arange(1750, 2501, 1.0)
     dep_idx = np.searchsorted(timebounds, departure_year)
@@ -465,6 +472,7 @@ def optimize_scenario(
             target_temp=target_temp,
             temp_csv_path=temp_csv,
             memory_limited=memory_limited,
+            forcing_scenario=forcing_scen,
         ),
         bounds=bounds,
         seed=42,
