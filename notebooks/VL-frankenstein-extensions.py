@@ -172,17 +172,17 @@ for i, (model, scenario) in enumerate(unique_model_scenario_pairs, 1):
 
 # %%
 scenario_model_match = {
-    "VL": [
-        "SSP1 - Very Low Emissions",
-        "REMIND-MAgPIE 3.5-4.11",
-        "tab:blue",
-    ],  
+    # "VL": [
+    #     "SSP1 - Very Low Emissions",
+    #     "REMIND-MAgPIE 3.5-4.11",
+    #     "tab:blue",
+    # ],  
     "VL-fossil-frankenstein": [        
         "SSP1 - Very Low Emissions fossil frankenstein",
         "REMIND-MAgPIE 3.5-4.11", 
         "tab:cyan"
         ], 
-    "VL-fossil-frankeenstein": [        
+    "VL-fossil-frankenstein-zero-afolu": [        
         "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero",
         "REMIND-MAgPIE 3.5-4.11", 
         "tab:green"
@@ -192,10 +192,20 @@ scenario_model_match = {
 # %%
 scenarios_regional = scenarios_regional.sort_index(axis="columns").T.interpolate("index").T
 scenarios_regional_afolu_zero = scenarios_regional.copy()
-scenarios_regional_afolu_zero.index["scenario"] = "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
-print(scenarios_regional_afolu_zero.pix.unique("scenario").values)
+
+scenarios_regional_afolu_zero.index = scenarios_regional_afolu_zero.index.set_levels(
+    ["SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"],
+    level="scenario"
+)
+print(scenarios_regional_afolu_zero.shape)
+print(scenarios_complete_global.shape)
 print(scenarios_regional_afolu_zero.pix.unique("variable").values)
-sys.exit(4)
+print(scenarios_complete_global.pix.unique("variable").values)
+#sys.exit(4)
+scenarios_regional = pd.concat([scenarios_regional, scenarios_regional_afolu_zero])
+print(scenarios_regional_afolu_zero.pix.unique("scenario").values)
+
+#sys.exit(4)
 print(scenarios_regional.pix.unique("scenario").values)
 
 # TODO: Add regional copy for frankenstein AFOLU zero scenario
@@ -252,9 +262,13 @@ def calculate_afolu_extensions(scenarios_complete_global, history, cumulative_hi
 component_global_targets = {
     "Emissions|CH4": {
         "VL": 95.0,
+        "VL-fossil-frankenstein": 95.0,
+        "VL-fossil-frankenstein-zero-afolu": 95.0,
     },
     "Emissions|Sulfur": {
         "VL": 20.0,
+        "VL-fossil-frankenstein": 20,
+        "VL-fossil-frankenstein-zero-afolu": 20.0,
     },
 }
 
@@ -342,7 +356,7 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
 do_and_write_to_csv = True
 if do_and_write_to_csv:
     df_all = do_all_non_co2_extensions(scenarios_complete_global, history)
-    sys.exit(4)
+    #sys.exit(4)
     #(Make AFOLU flat from here?)
     afolu_dfs = calculate_afolu_extensions(
         scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots

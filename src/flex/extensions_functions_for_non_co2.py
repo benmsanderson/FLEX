@@ -164,6 +164,10 @@ def do_single_component_for_scenario_model_regionally(  # noqa: PLR0913, PLR0912
             end_scenario_year - int(scen_full.columns[0]),
             global_target,
         )
+        if scen_full.columns[0] != full_years[0]:
+            print("Warning: start year of scenario and regional data do not match, check if this is intended")
+            print("For now cropping extension to match regional data start year")
+            data_extend = data_extend[int(full_years[0])- int(scen_full.columns[0]) :]
         df_regional = pd.DataFrame(data=[data_extend], columns=full_years, index=data_scenario_global.index)
         if "workflow" not in df_regional.index.names:
             df_regional = add_workflow_level_to_index(df_regional)
