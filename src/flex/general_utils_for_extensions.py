@@ -361,3 +361,85 @@ def dump_data_per_model(
     model_data.columns = [str(col) for col in model_data.columns]
 
     output_db.save(model_data, allow_overwrite=True)
+
+
+# --- IAMC-to-FaIR variable mapping ---
+_IAMC_TO_FAIR_SPECIAL: dict[str, str] = {
+    "Emissions|CO2|Energy and Industrial Processes": "CO2 FFI",
+    "Emissions|CO2|AFOLU": "CO2 AFOLU",
+    "Emissions|HFC|HFC43-10": "HFC-4310mee",
+}
+
+
+def _iamc_var_to_fair(var: str) -> str:
+    """Convert an IAMC variable name to a FaIR species name."""
+    if var in _IAMC_TO_FAIR_SPECIAL:
+        return _IAMC_TO_FAIR_SPECIAL[var]
+
+    name = var.removeprefix("Emissions|").replace("HFC|", "")
+
+    # Insert dashes for species that FaIR expects them
+    # CFC11 -> CFC-11, HCFC22 -> HCFC-22, Halon1211 -> Halon-1211, etc.
+    import re
+    name = re.sub(r"^(CFC|HCFC|HFC|Halon)(\d)", r"\1-\2", name)
+    # cC4F8 -> c-C4F8
+    if name == "cC4F8":
+        name = "c-C4F8"
+    return name
+
+
+def convert_continuous_to_fair_csv(
+    continuous_csv_path: str,
+    output_path: str,
+    scenario_model_match: dict,
+) -> str:
+    """Convert the continuous emissions timeseries (IAMC format) to FaIR-format CSV.
+
+    Parameters
+    ----------
+    continuous_csv_path
+        Path to ``continuous_emissions_timeseries_1750_2500.csv`` from 5191.
+    output_path
+        Where to write the FaIR-format CSV.
+    scenario_model_match
+        Config's ``scenario_model_match`` dict mapping marker short names to
+        ``(scenario_long, model, ...)`` tuples.
+
+    Returns
+    -------
+    Path written.
+    """
+    df = pd.read_csv(continuous_csv_path)
+
+    # Build long-scenario -> marker mapping
+    long_to_marker: dict[str, str] = {}
+    for marker, info in scenario_model_match.items():
+        long_to_marker[info[0]] = marker  # first entry is scenario name
+
+    # Filter to World, drop workflow
+    df = df[df["region"] == "World"].copy()
+    if "workflow" in df.columns:
+        df = df.drop(columns=["workflow"])
+
+    # Map scenario long names -> marker short names
+    df["long_scenario"] = df["scenario"]
+    df["scenario"] = df["long_scenario"].map(long_to_marker)
+    df = df.dropna(subset=["scenario"])
+
+    # Map IAMC variable names -> FaIR species names
+    df["variable"] = df["variable"].apply(_iamc_var_to_fair)
+
+    # Shift year columns by +0.5 (FaIR uses mid-year timepoints)
+    year_cols = [c for c in df.columns if c.replace(".", "").replace("-", "").isdigit()]
+    rename_map = {c: str(float(c) + 0.5) for c in year_cols}
+    df = df.rename(columns=rename_map)
+
+    # Reorder columns: metadata first, then years
+    meta_cols = [c for c in ["model", "long_scenario", "region", "variable", "unit", "scenario"]
+                 if c in df.columns]
+    new_year_cols = [rename_map[c] for c in year_cols]
+    df = df[meta_cols + new_year_cols]
+
+    df.to_csv(output_path, index=False)
+    print(f"Wrote FaIR-format emissions CSV: {output_path} ({len(df)} rows)")
+    return output_path

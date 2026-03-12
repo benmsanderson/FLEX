@@ -150,7 +150,9 @@ def do_single_component_for_scenario_model_regionally(  # noqa: PLR0913, PLR0912
 
     full_years = np.arange(data_regional.columns[0], end_year + 1)
 
-    fractions = get_2100_compound_composition(data_regional[end_scenario_year].copy(), variable)
+    # Fall back to the last available year if end_scenario_year isn't in the columns
+    _esy = end_scenario_year if end_scenario_year in data_regional.columns else data_regional.columns[-1]
+    fractions = get_2100_compound_composition(data_regional[_esy].copy(), variable)
 
     sectors = data_regional.pix.unique("variable")
     regions = data_regional.pix.unique("region")
@@ -190,7 +192,7 @@ def do_single_component_for_scenario_model_regionally(  # noqa: PLR0913, PLR0912
             data_extend = do_simple_sigmoid_or_exponential_extension_to_target(
                 data.values[0, :],
                 full_years,
-                end_scenario_year - int(data.columns[0]),
+                _esy - int(data.columns[0]),
                 target,
             )
             df_regional = pd.DataFrame(data=[data_extend], columns=full_years, index=data.index)

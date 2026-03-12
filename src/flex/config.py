@@ -42,6 +42,8 @@ class FlexConfig:
 
     # Optimization settings (empty dict if no optimization configured)
     optimization: dict[str, dict] = field(default_factory=dict)
+    # Optional alternate data sources (paths relative to DATA_DIR)
+    data_sources: dict | None = None
     # Derived paths
     outputs_dir: Path = field(init=False)
     plots_dir: Path = field(init=False)
@@ -156,6 +158,7 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         removal_dictionary=_convert_removal_strategy(raw["removal_strategy"]),
         component_global_targets=raw["non_co2_targets"],
         optimization=raw.get("optimization", {}),
+        data_sources=raw.get("data_sources", None),
     )
 
 
