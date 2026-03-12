@@ -30,19 +30,19 @@ scenario_model_match:
   VL-fossil-frankenstein:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#20A359"
+    color: "#2196F3"
   VL-fossil-frankenstein-zero-afolu:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#22e5db"
+    color: "#FF9800"
   VL-fossil-frankenstein-hold:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#0dba4f"
+    color: "#9C27B0"
   VL-fossil-frankenstein-zero-afolu-hold:
     scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
     model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#14b8a9"
+    color: "#E91E63"
 
 # --- Fossil CO2 storyline parameters ---
 # Storyline types:
@@ -99,14 +99,6 @@ non_co2_targets:
 # --- Data sources (paths relative to data/) ---
 # Overrides the default CSVs when loading input data.
 data_sources:
-
-# --- Forcing scenario mapping ---
-# Maps marker names to scenario IDs in volcanic_solar.csv
-forcing_scenario:
-  VL-fossil-frankenstein: VL
-  VL-fossil-frankenstein-zero-afolu: VL
-  VL-fossil-frankenstein-hold: VL
-  VL-fossil-frankenstein-zero-afolu-hold: VL
   scenarios_global:
     - "vl-extensions-inputs/VL_frankenstein-full.csv"
     - "vl-extensions-inputs/VL_frankenstein_AFOLU-full.csv"
@@ -115,6 +107,14 @@ forcing_scenario:
   regional_scenario_fallback:
     "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero": "SSP1 - Very Low Emissions fossil frankenstein"
 
+# --- Forcing scenario mapping ---
+# Maps marker names to scenario IDs in volcanic_solar.csv
+forcing_scenario:
+  VL-fossil-frankenstein: VL
+  VL-fossil-frankenstein-zero-afolu: VL
+  VL-fossil-frankenstein-hold: VL
+  VL-fossil-frankenstein-zero-afolu-hold: VL
+
 # --- Optimization settings ---
 # The -hold variants branch at 2050 and are optimized to hold
 # FaIR median temperature constant at the 2050 level.
@@ -122,19 +122,19 @@ forcing_scenario:
 optimization:
   VL-fossil-frankenstein-hold:
     enabled: true
-    departure_year: 2050
+    departure_year: 2035
     optimize_params: [exp_targ, sig_start]
     fixed_params:
-      sig_end: 2300
+      sig_end: 2450
     bounds:
       exp_targ: [-5000.0, 5000.0]
-      sig_start: [2050, 2200]
+      sig_start: [2035, 2200]
   VL-fossil-frankenstein-zero-afolu-hold:
     enabled: true
-    departure_year: 2050
+    departure_year: 2035
     optimize_params: [exp_targ, sig_start]
     fixed_params:
-      sig_end: 2300
+      sig_end: 2450
     bounds:
       exp_targ: [-5000.0, 5000.0]
-      sig_start: [2050, 2200]
+      sig_start: [2035, 2200]

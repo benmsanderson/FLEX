@@ -141,16 +141,17 @@ print(f"Using emissions: {emissions_csv}")
 gwpmat = pd.read_csv(DATA_DIR / "fair-inputs" / "gwp_mass_adjusted_100y.csv", index_col=0)
 
 # %%
-# Apply scenario_mapping for counterfactual scenarios (e.g. HL-CF → HL)
+# Apply scenario_mapping + forcing_scenario for counterfactual scenarios
 # so they inherit volcanic/solar forcing from their source scenario
 import tempfile
 
 forcing_path = str(DATA_DIR / "fair-inputs" / "volcanic_solar.csv")
-if cfg.scenario_mapping:
+forcing_map = {**cfg.scenario_mapping, **cfg.forcing_scenario}
+if forcing_map:
     # Duplicate forcing rows for mapped scenarios
     df_forcing_raw = pd.read_csv(forcing_path)
     new_rows = []
-    for new_scen, base_scen in cfg.scenario_mapping.items():
+    for new_scen, base_scen in forcing_map.items():
         base_rows = df_forcing_raw[df_forcing_raw["Scenario"] == base_scen].copy()
         if not base_rows.empty:
             base_rows["Scenario"] = new_scen

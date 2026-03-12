@@ -175,7 +175,7 @@ print(f"Verifying scenarios: {all_scenarios}")
 f = setup_fair(
     current_csv, all_scenarios,
     memory_limited=True,
-    scenario_mapping=cfg.scenario_mapping,
+    scenario_mapping={**cfg.scenario_mapping, **cfg.forcing_scenario},
 )
 f.run()
 
