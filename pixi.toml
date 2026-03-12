@@ -25,10 +25,12 @@ tqdm = ">=4.65"
 pip = "*"
 openpyxl = "*"
 pytest = "*"
+pooch = ">=1.7"
 
 [pypi-dependencies]
 pandas-indexing = "*"
 pandas-openscm=">=0.5.0"
+fair = ">=2.2"
 
 [feature.dev.dependencies]
 ruff = ">=0.1"

@@ -1,0 +1,1009 @@
+# %% [markdown]
+# # FaIR Climate Model Simulations with Extended Emissions Scenarios
+#
+# This notebook runs the FaIR v2.2 climate model with extended emissions scenarios (1750-2501)
+# to generate climate projections. It processes emissions through CO2-equivalent calculations,
+# applies blending for smooth transitions, and produces temperature and concentration projections
+# across seven scenarios ranging from very low (VL) to very high (HL) emissions.
+
+# %%
+import os
+
+import matplotlib.patheffects as pe
+import matplotlib.pyplot as pl
+import numpy as np
+import pandas as pd
+import pooch
+from fair import FAIR
+from fair.interface import initialise
+from fair.io import read_properties
+
+# %%
+f = FAIR()
+memory_limited = False
+
+# %% [markdown]
+#
+
+# %%
+snames = ["VL", "LN", "L", "ML", "M", "H", "HL"]
+snames_short = ["VL", "LN", "L", "ML", "M", "H", "HL"]
+sname21_short = ["VL", "LN", "L", "ML", "M", "H", "HL"]
+
+f.define_time(1750, 2501, 1)
+f.define_scenarios(snames)
+species, properties = read_properties("../data/fair-inputs/species_configs_properties_1.4.1.csv")
+f.define_species(species, properties)
+f.ch4_method = "Thornhill2021"
+
+
+# %% [markdown]
+# 'memory_limited' is for testing, runs only 5 ensemble members.
+#
+# If running full AR6 ensemble, need to
+# - set 'memory_limited' to False
+# - config file will be pulled from zenodo
+#
+
+# %%
+if ~memory_limited:
+    # Define the Zenodo record DOI and the specific file you want
+    ZENODO_DOI = "10.5281/zenodo.7112539"  # Replace with your Zenodo DOI
+    FILE_NAME = "calibrated_constrained_parameters.csv"  # Replace with your file name on Zenodo
+    FILE_HASH = "md5:8a70a3fb05d0e0cf35e136de382582a5"  # Replace with the actual SHA256 hash of your file
+
+    # Create a Pooch instance
+    data_pooch = pooch.create(
+        path="../data/fair-inputs",  # Local cache directory
+        base_url=f"doi:{ZENODO_DOI}",  # Zenodo DOI as base URL
+        version="1.5.0",
+        registry={FILE_NAME: FILE_HASH},
+    )
+
+    # Fetch the file
+    local_file_path = data_pooch.fetch(FILE_NAME)
+
+    print(f"Config file downloaded to: {local_file_path}")
+
+# %%
+if memory_limited:
+    df_configs_short = pd.read_csv("../data/fair-inputs/1.5.0/calibrated_constrained_parameters_short.csv")
+    f.define_configs(df_configs_short.index)
+else:
+    df_configs = pd.read_csv("../data/fair-inputs/1.5.0/calibrated_constrained_parameters.csv", index_col=0)
+    f.define_configs(df_configs.index)
+
+# %%
+f.allocate()
+
+# %%
+scens = f.emissions.scenario.values
+
+# %%
+ldict = {}
+ldict21 = {}
+for i, s in enumerate(snames):
+    ldict[s] = snames_short[i]
+    ldict21[s] = sname21_short[i]
+
+
+# %%
+colors = {
+    snames[6]: "#E744F6",  # HL
+    snames[5]: "#a41212",  # H
+    snames[4]: "#fc7b03",  # M
+    snames[3]: "#dec820",  # ML
+    snames[2]: "#20A359",  # L
+    snames[1]: "#22e5db",  # LN
+    snames[0]: "#16188F",  # VL
+}
+
+# %%
+os.makedirs("../plots", exist_ok=True)
+
+# %% [markdown]
+# ../data/fair-inputs/emissions_1750-2500.csv
+# is generated from 0503_extension_functioality_as_notebook.py
+
+# %%
+df_emis = pd.read_csv("../outputs/continuous_emissions_timeseries_1750_2500.csv")
+df_emis.head()
+
+# %%
+
+# %% [markdown]
+# ## Setup and Configuration
+#
+# **Scenarios**: Seven emissions scenarios (VL, LN, L, ML, M, H, HL) representing very low
+# to very high emissions pathways
+# **Time range**: 1750-2501 (752 years)
+# **Species**: CO2 (FFI & AFOLU), CH4, N2O, plus 37 other GHGs and aerosols
+# **FaIR configuration**: Using calibrated parameters from Smith et al. with legacy CH4 lifetime method
+
+# %%
+gwpmat = pd.read_csv("../data/fair-inputs/gwp_mass_adjusted_100y.csv", index_col=0)
+
+# %%
+f.fill_from_csv(
+    forcing_file="../data/fair-inputs/volcanic_solar.csv",
+    emissions_file="../data/fair-inputs/emissions_1750-2500.csv",
+)
+
+# %%
+gwp_nonco2 = gwpmat.copy()
+gwp_nonco2.loc["CO2 AFOLU"] = np.nan
+gwp_nonco2.loc["CO2 FFI"] = np.nan
+
+
+# %%
+nonco2 = f.emissions.sel(specie="CO2 FFI")[:, :, 0].copy()
+for specie in f.emissions.specie.values:
+    try:
+        gwp = gwp_nonco2[specie]
+    except KeyError:
+        gwp = np.nan
+    if ~np.isnan(gwp):
+        nonco2 = nonco2 + f.emissions.sel(specie=specie)[:, :, 0] * gwp
+    else:
+        0
+
+
+# %%
+ncflr = np.ones(len(scens))
+for i in range(len(scens)):
+    ncflr[i] = nonco2.sel(scenario=scens[i])[-1] / 1e6
+ncflr
+
+# %%
+scens_shrt = [ldict[s] for s in scens]
+
+# %% [markdown]
+# ## CO2-Equivalent Emissions Calculation
+#
+# Convert all GHG emissions to CO2-equivalents using 100-year Global Warming Potentials (GWP100).
+# This aggregates the climate forcing from all greenhouse gases into a single metric for
+# comparison across scenarios.
+#
+# **Method**: Multiply each species' emissions by its GWP (e.g., CH4 = 29.8, N2O = 273) and sum to get total CO2e.
+
+# %% [markdown]
+#
+# - Solar forcing set to zero (natural forcing handled separately by FaIR)
+
+# %%
+for s in f.scenarios:
+    f.forcing.loc[dict(scenario=s, specie="Solar")] = 0
+
+
+# %% [markdown]
+# Plot emissions before running
+
+# %%
+fig, ax = pl.subplots(nrows=1, ncols=2, figsize=(14, 5))
+for scenario in f.scenarios:
+    ax[0].plot(
+        f.timepoints,
+        (
+            f.emissions.sel(scenario=scenario, specie="CO2 FFI", config=f.configs[0])
+            + f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])
+        ),
+        label=scenario,
+        color=colors[scenario],
+    )
+ax[0].set_ylabel("CO$_2$ emissions, GtCO$_2$ yr$^{-1}$")
+ax[0].axhline(ls=":", color="k", lw=0.5)
+ax[0].legend()
+ax[0].grid()
+for scenario in f.scenarios:
+    ax[1].plot(
+        f.timepoints,
+        (
+            f.emissions.sel(scenario=scenario, specie="CO2 FFI", config=f.configs[0])
+            + f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])
+        ).cumsum(),
+        label=scenario,
+        color=colors[scenario],
+    )
+ax[1].set_ylabel("Cumulative CO$_2$ emissions, GtCO$_2$ yr$^{-1}$")
+ax[1].axhline(ls=":", color="k", lw=0.5)
+ax[1].legend()
+ax[1].grid()
+pl.savefig("../plots/co2_emissions.png")
+
+# %%
+scens_out = []
+for s in scens:
+    df_scen = f.emissions.sel(scenario=s, config=df_configs.index[0]).to_pandas().T
+    df_scen.insert(loc=0, column="Scenario", value=s)
+    df_scen.dropna(inplace=True)
+    scens_out.append(df_scen)
+scens_out = pd.concat(scens_out)
+
+
+# %% [markdown]
+# Calculate CO2e
+
+# %%
+co2eo = f.emissions.sel(specie="CO2 FFI")[:, :, 0].copy() * 0
+for specie in f.emissions.specie.values:
+    try:
+        gwp = gwpmat["ar6_gwp_mass_adjusted"][specie]
+
+    except KeyError:
+        gwp = np.nan
+    if ~np.isnan(gwp):
+        co2eo = co2eo + f.emissions.sel(specie=specie)[:, :, 0] * gwp / 1000000
+    else:
+        0
+co2e = co2eo * 1e6  # -co2eo.loc[dict(timepoints=2019.5)].values+53.e6
+
+# %%
+fig, ax = pl.subplots(1, 2, figsize=(14, 5))
+for scenario in f.scenarios:
+    ax[0].plot(
+        f.timepoints,
+        (
+            f.emissions.sel(scenario=scenario, specie="CO2 FFI", config=f.configs[0])
+            + f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])
+        ),
+        label=ldict21[scenario],
+        color=colors[scenario],
+    )
+ax[0].set_ylabel("CO$_2$ emissions, GtCO$_2$ yr$^{-1}$")
+ax[0].axhline(ls=":", color="k", lw=0.5)
+ax[0].set_xlim(2015, 2300)
+ax[0].set_ylim(-40, 100)
+
+ax[0].legend()
+ax[0].grid()
+
+for scenario in f.scenarios:
+    ax[1].plot(
+        f.timepoints,
+        co2e.sel(scenario=scenario) / 1e6,
+        label=ldict21[scenario],
+        color=colors[scenario],
+    )
+ax[1].set_ylabel("GHG emissions, GtCO$_2$eq yr$^{-1}$")
+ax[1].axhline(ls=":", color="k", lw=0.5)
+# ax[1].legend()
+ax[1].set_xlim(2015, 2300)
+ax[1].set_ylim(-50, 100)
+
+ax[1].grid()
+pl.savefig("../plots/ghg_emissions.png")
+
+# %% [markdown]
+# ## Run FaIR
+
+# %%
+f.fill_species_configs("../data/fair-inputs/species_configs_properties_1.4.1.csv")
+if memory_limited:
+    f.override_defaults("../data/fair-inputs/1.5.0/calibrated_constrained_parameters_short.csv")
+else:
+    f.override_defaults("../data/fair-inputs/1.5.0/calibrated_constrained_parameters.csv")
+initialise(f.concentration, f.species_configs["baseline_concentration"])
+initialise(f.forcing, 0)
+initialise(f.temperature, 0)
+initialise(f.cumulative_emissions, 0)
+initialise(f.airborne_emissions, 0)
+initialise(f.ocean_heat_content_change, 0)
+f.run()
+
+# %% [markdown]
+# ## Results Visualization
+#
+# Generate comprehensive plots showing:
+# 1. **GHG emissions** (CO2e) trajectories with uncertainty bands (33rd-66th percentiles until 2100,
+# extended projections 2100-2150)
+# 2. **Temperature anomalies** relative to 1850-1900 baseline with 5th-95th percentile ranges
+# 3. **Multi-panel diagnostics**: CO2 emissions, cumulative CO2, CO2e, radiative forcing,
+# CO2 concentrations, and temperature
+# 4. **Probability distributions**: Temperature outcomes at 2100, 2300, and peak warming across scenarios
+
+# %% [markdown]
+#
+
+# %%
+# nohos=[x for x in f.scenarios if x != "high-overshoot"]
+nohos = [x for x in f.scenarios]
+
+# %%
+f.timepoints[275]
+
+# %%
+fig, ax = pl.subplots(1, 2, figsize=(12, 5))
+
+unc = np.tanh((co2e.sel(scenario=nohos[0]) - co2e.sel(scenario=nohos[-2])) / 1e6 / 10) * 8
+for scenario in nohos:
+    ax[0].fill_between(
+        f.timebounds[:351],
+        co2e.sel(scenario=scenario)[:351] / 1e6 - unc[:351],
+        co2e.sel(scenario=scenario)[:351] / 1e6 + unc[:351],
+        color=colors[scenario],
+        lw=0,
+        alpha=0.3,
+    )
+    ax[0].fill_between(
+        f.timepoints[350:],
+        co2e.sel(scenario=scenario)[350:] / 1e6 - unc[350:],
+        co2e.sel(scenario=scenario)[350:] / 1e6 + unc[350:],
+        color=colors[scenario],
+        hatch="XXX",
+        lw=0,
+        alpha=0.1,
+    )
+    ax[0].plot(
+        f.timepoints[:275],
+        co2e.sel(scenario=scenario)[:275] / 1e6,
+        color="k",
+    )
+    # ax[0].plot(
+    #     f.timepoints[350:],
+    #     co2e.sel(scenario=scenario)[350:]/ 1e6,
+    #     label=ldict21[scenario],
+    #     color=colors[scenario],linestyle='--'
+    # )
+ax[0].text(2030, -39, "IAM generated \nscenarios \n(2025-2100)")
+ax[0].text(2105, -39, "Priority extension\nperiod \n(2101-2150)")
+ax[0].set_ylabel("GHG emissions, GtCO$_2$eq yr$^{-1}$")
+ax[0].axhline(ls=":", color="k", lw=0.5)
+# ax[1].legend()
+ax[0].set_xlim(2000, 2150)
+ax[0].set_ylim(-50, 100)
+
+ax[0].grid()
+ax[0].set_title("(a)")
+
+for i, scenario in enumerate(nohos):
+    ax[1].fill_between(
+        f.timebounds[:],
+        (
+            f.temperature.sel(scenario=scenario, layer=0)[:]
+            - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+        ).quantile(0.33, dim="config"),
+        (
+            f.temperature.sel(scenario=scenario, layer=0)[:]
+            - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+        ).quantile(0.66, dim="config"),
+        color=colors[scenario],
+        lw=0,
+        alpha=0.3,
+        label=snames_short[i],
+    )
+    # ax[1].fill_between(
+    #     f.timebounds[350:],
+    #     (
+    #         f.temperature.sel(scenario=scenario, layer=0)[350:]
+    #         - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+    #     ).quantile(0.33, dim="config"),
+    #     (
+    #         f.temperature.sel(scenario=scenario, layer=0)[350:]
+    #         - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+    #     ).quantile(0.66, dim="config"),
+    #     color=colors[scenario],
+    #     hatch="XXX",
+    #     lw=0,
+    #     alpha=0.1,
+    # )
+ax[1].fill_between(
+    f.timebounds[:274],
+    (
+        f.temperature.sel(scenario=scenario, layer=0)[:274]
+        - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+    ).quantile(0.33, dim="config"),
+    (
+        f.temperature.sel(scenario=scenario, layer=0)[:274]
+        - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+    ).quantile(0.66, dim="config"),
+    color="k",
+    alpha=0.5,
+)
+ax[1].axhline(0, ls=":", color="k", lw=0.5)
+ax[1].set_ylabel("Temperature above 1850-1900, K")
+ax[1].set_ylim(0, 5)
+ax[1].set_xlim(2000, 2150)
+
+ax[1].grid()
+ax[1].legend()
+
+ax[1].set_title("(b)")
+pl.savefig("../plots/temperature_emis.png", dpi=600, bbox_inches='tight')
+pl.savefig("../plots/temperature_emis.pdf", format='pdf', bbox_inches='tight')
+
+# %%
+fig, ax = pl.subplots(nrows=4, ncols=2, figsize=(14, 16))
+ax = ax.flatten()
+for scenario in f.scenarios:
+    ax[0].plot(
+        f.timepoints,
+        (
+            f.emissions.sel(scenario=scenario, specie="CO2 FFI", config=f.configs[0])
+            + f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])
+        ),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+# Add black historical line for CO2 emissions
+ax[0].plot(
+    f.timepoints[0:273],
+    (
+        f.emissions.sel(scenario=scenario, specie="CO2 FFI", config=f.configs[0])[0:273]
+        + f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])[0:273]
+    ),
+    color="k",
+)
+ax[0].set_ylabel("CO$_2$ emissions, GtCO$_2$ yr$^{-1}$")
+ax[0].axhline(ls=":", color="k", lw=0.5)
+ax[0].legend()
+ax[0].grid()
+
+for scenario in f.scenarios:
+    ax[1].plot(
+        f.timepoints,
+        (
+            f.emissions.sel(scenario=scenario, specie="CO2 FFI", config=f.configs[0])
+            + f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])
+        ).cumsum(),
+        label=scenario,
+        color=colors[scenario],
+    )
+# Add black historical line for cumulative CO2 emissions
+ax[1].plot(
+    f.timepoints[0:273],
+    (
+        f.emissions.sel(scenario=scenario, specie="CO2 FFI", config=f.configs[0])
+        + f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])
+    ).cumsum()[0:273],
+    color="k",
+)
+ax[1].set_ylabel("Cumulative CO$_2$ emissions, GtCO$_2$")
+ax[1].axhline(ls=":", color="k", lw=0.5)
+# ax[1].legend()
+ax[1].grid()
+
+for scenario in f.scenarios:
+    ax[2].plot(
+        f.timepoints,
+        f.emissions.sel(scenario=scenario, specie="CH4", config=f.configs[0]),
+        label=scenario,
+        color=colors[scenario],
+    )
+# Add black historical line for CH4 emissions
+ax[2].plot(
+    f.timepoints[0:273],
+    f.emissions.sel(scenario=scenario, specie="CH4", config=f.configs[0])[0:273],
+    color="k",
+)
+ax[2].set_ylabel("CH$_4$ emissions, MtCH$_4$ yr$^{-1}$")
+ax[2].axhline(ls=":", color="k", lw=0.5)
+# ax[2].legend()
+ax[2].grid()
+
+for scenario in f.scenarios:
+    ax[3].plot(
+        f.timepoints,
+        f.emissions.sel(scenario=scenario, specie="Sulfur", config=f.configs[0]),
+        label=scenario,
+        color=colors[scenario],
+    )
+# Add black historical line for sulfate emissions
+ax[3].plot(
+    f.timepoints[0:273],
+    f.emissions.sel(scenario=scenario, specie="Sulfur", config=f.configs[0])[0:273],
+    color="k",
+)
+ax[3].set_ylabel("SO$_2$ emissions, MtS yr$^{-1}$")
+ax[3].axhline(ls=":", color="k", lw=0.5)
+# ax[3].legend()
+ax[3].grid()
+
+for scenario in f.scenarios:
+    ax[4].plot(
+        f.timepoints,
+        co2e.sel(scenario=scenario) / 1e6,
+        label=scenario,
+        color=colors[scenario],
+    )
+# Add black historical line for GHG emissions
+ax[4].plot(
+    f.timepoints[0:273],
+    co2e.sel(scenario=scenario)[0:273] / 1e6,
+    color="k",
+)
+ax[4].set_ylabel("GHG emissions, GtCO$_2$eq yr$^{-1}$")
+ax[4].axhline(ls=":", color="k", lw=0.5)
+# ax[4].legend()
+ax[4].grid()
+
+for scenario in f.scenarios:
+    ax[5].fill_between(
+        f.timebounds,
+        f.forcing_sum.sel(scenario=scenario).quantile(0.05, dim="config"),
+        f.forcing_sum.sel(scenario=scenario).quantile(0.95, dim="config"),
+        color=colors[scenario],
+        lw=0,
+        alpha=0.1,
+    )
+    ax[5].plot(
+        f.timebounds[274:],
+        f.forcing_sum.sel(scenario=scenario).median(dim="config")[274:],
+        path_effects=[pe.Stroke(linewidth=4, foreground="w", alpha=0.8), pe.Normal()],
+        color=colors[scenario],
+    )
+for scenario in f.scenarios:
+    ax[5].plot(
+        f.timebounds,
+        f.forcing_sum.sel(scenario=scenario).median(dim="config"),
+        label=scenario,
+        color=colors[scenario],
+    )
+# Add black historical line for radiative forcing
+ax[5].plot(
+    f.timebounds[0:273],
+    f.forcing_sum.sel(scenario=scenario).median(dim="config")[0:273],
+    color="k",
+)
+ax[5].set_ylabel("Effective radiative forcing, W m$^{-2}$")
+# pl.legend();
+ax[5].grid()
+
+for scenario in f.scenarios:
+    ax[6].fill_between(
+        f.timebounds,
+        (
+            f.concentration.sel(specie="CO2").sel(
+                scenario=scenario,
+            )
+        ).quantile(0.05, dim="config"),
+        (f.concentration.sel(specie="CO2").sel(scenario=scenario)).quantile(0.95, dim="config"),
+        color=colors[scenario],
+        lw=0,
+        alpha=0.1,
+    )
+    ax[6].plot(
+        f.timebounds[274:],
+        (f.concentration.sel(specie="CO2").sel(scenario=scenario)).median(dim="config")[274:],
+        label=scenario,
+        path_effects=[pe.Stroke(linewidth=5, foreground="w", alpha=0.8), pe.Normal()],
+        color=colors[scenario],
+    )
+for scenario in f.scenarios:
+    ax[6].plot(
+        f.timebounds,
+        (f.concentration.sel(specie="CO2").sel(scenario=scenario)).median(dim="config"),
+        label=scenario,
+        color=colors[scenario],
+    )
+# Add black historical line for CO2 concentration
+ax[6].plot(
+    f.timebounds[0:273],
+    (f.concentration.sel(specie="CO2").sel(scenario=scenario)).median(dim="config")[0:273],
+    color="k",
+)
+ax[6].axhline(0, ls=":", color="k", lw=0.5)
+ax[6].set_ylabel("Atmospheric CO2 concentration, ppm")
+ax[6].set_ylim(0, 1500)
+ax[6].grid()
+
+for scenario in f.scenarios:
+    ax[7].fill_between(
+        f.timebounds,
+        (
+            f.temperature.sel(scenario=scenario, layer=0)
+            - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+        ).quantile(0.05, dim="config"),
+        (
+            f.temperature.sel(scenario=scenario, layer=0)
+            - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+        ).quantile(0.95, dim="config"),
+        color=colors[scenario],
+        lw=0,
+        alpha=0.1,
+    )
+    ax[7].plot(
+        f.timebounds[274:],
+        (
+            f.temperature.sel(scenario=scenario, layer=0)[274:]
+            - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+        ).median(dim="config"),
+        path_effects=[pe.Stroke(linewidth=4, foreground="w", alpha=0.8), pe.Normal()],
+        color=colors[scenario],
+    )
+for scenario in f.scenarios:
+    ax[7].plot(
+        f.timebounds,
+        (
+            f.temperature.sel(scenario=scenario, layer=0)
+            - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+        ).median(dim="config"),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+ax[7].plot(
+    f.timebounds[0:273],
+    (
+        f.temperature.sel(scenario=scenario, layer=0)[0:273]
+        - f.temperature.sel(scenario=scenario, layer=0, timebounds=np.arange(1850, 1902)).mean(dim="timebounds")
+    ).median(dim="config"),
+    color="k",
+)
+ax[7].axhline(0, ls=":", color="k", lw=0.5)
+ax[7].set_ylabel("Temperature above 1850-1900, K")
+ax[7].set_ylim(-1, 8)
+ax[7].legend()
+
+ax[7].grid()
+
+pl.savefig("../plots/extensions.png", dpi=600, bbox_inches='tight')
+pl.savefig("../plots/extensions.pdf", format='pdf', bbox_inches='tight')
+
+# %%
+fig, ax = pl.subplots(figsize=(12, 8))
+
+# Get all forcing species for HL scenario
+forcing_species = f.forcing.specie.values
+
+# Time range filter
+time_mask = (f.timebounds >= 2020) & (f.timebounds <= 2100)  # noqa: PLR2004
+
+# Calculate median forcing for each species and filter out near-zero components
+# Threshold: max absolute forcing > 0.05 W/m2 over the time period
+threshold = 0.05
+significant_species = []
+forcing_medians = {}
+
+for specie in forcing_species:
+    forcing_data = f.forcing.sel(scenario="HL", specie=specie)
+    median_forcing = forcing_data[time_mask].median(dim="config")
+
+    if np.abs(median_forcing).max() > threshold:
+        significant_species.append(specie)
+        forcing_medians[specie] = median_forcing.values
+
+print(f"Plotting {len(significant_species)} significant forcing components (out of {len(forcing_species)} total)")
+print(f"Significant species: {significant_species}")
+
+# Separate positive and negative forcings for stacking
+time_values = f.timebounds[time_mask]
+
+# Define forcing component categories
+forcing_categories = {
+    "CO2": ["CO2"],
+    "CH4": ["CH4"],
+    "N2O": ["N2O"],
+    "Aerosols": ["Sulfur", "BC", "OC", "NH3", "NOx", "Aerosol-radiation interactions", "Aerosol-cloud interactions"],
+    "Other": [],  # Will contain everything else
+}
+
+# Categorize significant species and aggregate forcing
+categorized_forcing = {}
+for category in forcing_categories.keys():
+    categorized_forcing[category] = np.zeros(len(time_values))
+
+for specie in significant_species:
+    forcing_values = forcing_medians[specie]
+    categorized = False
+
+    for category, species_list in forcing_categories.items():
+        if category != "Other" and specie in species_list:
+            categorized_forcing[category] += forcing_values
+            categorized = True
+            break
+
+    if not categorized:
+        categorized_forcing["Other"] += forcing_values
+
+# Define colors for categories
+category_colors = {
+    "CO2": "#d62728",  # Red
+    "CH4": "#ff7f0e",  # Orange
+    "N2O": "#2ca02c",  # Green
+    "Aerosols": "#1f77b4",  # Blue
+    "Other": "#9467bd",  # Purple
+}
+
+# Create arrays to hold cumulative positive and negative forcings
+positive_cumulative = np.zeros(len(time_values))
+negative_cumulative = np.zeros(len(time_values))
+
+# Plot stacked areas by category
+for category in ["CO2", "CH4", "N2O", "Other", "Aerosols"]:
+    if category not in categorized_forcing:
+        continue
+
+    forcing_values = categorized_forcing[category]
+
+    # Skip if forcing is negligible
+    if np.abs(forcing_values).max() < 0.01:  # noqa: PLR2004
+        continue
+
+    # Split into positive and negative contributions
+    positive_part = np.maximum(forcing_values, 0)
+    negative_part = np.minimum(forcing_values, 0)
+
+    # Stack positive forcings
+    if positive_part.max() > 0:
+        ax.fill_between(
+            time_values,
+            positive_cumulative,
+            positive_cumulative + positive_part,
+            label=category if forcing_values.max() > np.abs(forcing_values.min()) else None,
+            color=category_colors.get(category, "#gray"),
+            alpha=0.8,
+            edgecolor="none",
+        )
+        positive_cumulative += positive_part
+
+    # Stack negative forcings
+    if negative_part.min() < 0:
+        ax.fill_between(
+            time_values,
+            negative_cumulative,
+            negative_cumulative + negative_part,
+            label=category if np.abs(forcing_values.min()) > forcing_values.max() else None,
+            color=category_colors.get(category, "#gray"),
+            alpha=0.8,
+            edgecolor="none",
+        )
+        negative_cumulative += negative_part
+
+# Add total forcing line
+total_forcing = f.forcing_sum.sel(scenario="HL")[time_mask].median(dim="config")
+ax.plot(time_values, total_forcing, color="black", linewidth=2.5, label="Total ERF", zorder=100)
+
+ax.axhline(0, ls=":", color="k", lw=1)
+ax.grid(True, alpha=0.3)
+ax.set_ylabel("Effective Radiative Forcing (W m$^{-2}$)", fontsize=11)
+ax.set_xlabel("Year", fontsize=11)
+ax.set_title("Forcing Components for HL Scenario (2020-2100)", fontsize=13, fontweight="bold")
+ax.legend(loc="upper left", fontsize=9, ncol=2, framealpha=0.9)
+ax.set_xlim(2020, 2100)
+
+pl.tight_layout()
+pl.savefig("../plots/forcing_components_HL_stacked_2020-2100.png", dpi=300, bbox_inches="tight")
+
+# %%
+fig, axes = pl.subplots(1, 2, figsize=(14, 6))
+
+# Time range filter
+time_mask = (f.timebounds >= 2020) & (f.timebounds <= 2100)  # noqa: PLR2004
+time_values = f.timebounds[time_mask]
+
+# CO2 forcing subplot
+co2_forcing = f.forcing.sel(scenario="HL", specie="CO2")[time_mask].median(dim="config")
+axes[0].fill_between(
+    time_values,
+    f.forcing.sel(scenario="HL", specie="CO2")[time_mask].quantile(0.05, dim="config"),
+    f.forcing.sel(scenario="HL", specie="CO2")[time_mask].quantile(0.95, dim="config"),
+    color="#d62728",
+    alpha=0.2,
+)
+axes[0].plot(time_values, co2_forcing, color="#d62728", linewidth=2.5, label="CO₂")
+axes[0].axhline(0, ls=":", color="k", lw=1)
+axes[0].grid(True, alpha=0.3)
+axes[0].set_ylabel("Effective Radiative Forcing (W m$^{-2}$)", fontsize=11)
+axes[0].set_xlabel("Year", fontsize=11)
+axes[0].set_title("CO₂ Forcing (HL Scenario)", fontsize=12, fontweight="bold")
+axes[0].set_xlim(2020, 2100)
+axes[0].legend(fontsize=10)
+
+# CH4 forcing subplot
+ch4_forcing = f.forcing.sel(scenario="HL", specie="CH4")[time_mask].median(dim="config")
+axes[1].fill_between(
+    time_values,
+    f.forcing.sel(scenario="HL", specie="CH4")[time_mask].quantile(0.05, dim="config"),
+    f.forcing.sel(scenario="HL", specie="CH4")[time_mask].quantile(0.95, dim="config"),
+    color="#ff7f0e",
+    alpha=0.2,
+)
+axes[1].plot(time_values, ch4_forcing, color="#ff7f0e", linewidth=2.5, label="CH₄")
+axes[1].axhline(0, ls=":", color="k", lw=1)
+axes[1].grid(True, alpha=0.3)
+axes[1].set_ylabel("Effective Radiative Forcing (W m$^{-2}$)", fontsize=11)
+axes[1].set_xlabel("Year", fontsize=11)
+axes[1].set_title("CH₄ Forcing (HL Scenario)", fontsize=12, fontweight="bold")
+axes[1].set_xlim(2020, 2100)
+axes[1].legend(fontsize=10)
+
+pl.tight_layout()
+pl.savefig("../plots/forcing_CO2_CH4_HL_2020-2100.png", dpi=300, bbox_inches="tight")
+
+# %%
+fig, ax = pl.subplots(figsize=(10, 6))
+
+# Time range filter
+time_mask = (f.timebounds >= 2020) & (f.timebounds <= 2100)  # noqa: PLR2004
+time_values = f.timebounds[time_mask]
+
+# Plot CH4 forcing for all scenarios
+for scenario in f.scenarios:
+    ch4_forcing = f.forcing.sel(scenario=scenario, specie="CH4")[time_mask].median(dim="config")
+
+    # Plot median
+    ax.plot(time_values, ch4_forcing, color=colors[scenario], linewidth=2, label=ldict[scenario])
+
+    # Add uncertainty bands (5th-95th percentile)
+    ax.fill_between(
+        time_values,
+        f.forcing.sel(scenario=scenario, specie="CH4")[time_mask].quantile(0.05, dim="config"),
+        f.forcing.sel(scenario=scenario, specie="CH4")[time_mask].quantile(0.95, dim="config"),
+        color=colors[scenario],
+        alpha=0.15,
+    )
+
+ax.axhline(0, ls=":", color="k", lw=1)
+ax.grid(True, alpha=0.3)
+ax.set_ylabel("Effective Radiative Forcing (W m$^{-2}$)", fontsize=11)
+ax.set_xlabel("Year", fontsize=11)
+ax.set_title("CH₄ Forcing by Scenario (2020-2100)", fontsize=13, fontweight="bold")
+ax.set_xlim(2020, 2100)
+ax.legend(fontsize=10, loc="upper left", framealpha=0.9)
+
+pl.tight_layout()
+pl.savefig("../plots/forcing_CH4_all_scenarios_2020-2100.png", dpi=300, bbox_inches="tight")
+
+# %%
+fig, ax = pl.subplots(nrows=1, ncols=2, figsize=(14, 4))
+ax = ax.flatten()
+for scenario in f.scenarios:
+    ax[0].plot(
+        f.timepoints,
+        (f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+# Add black historical line for CO2 emissions
+ax[0].plot(
+    f.timepoints[0:273],
+    (f.emissions.sel(scenario=scenario, specie="CO2 AFOLU", config=f.configs[0])[0:273]),
+    color="k",
+)
+ax[0].set_ylabel("AFOLU CO$_2$ emissions, GtCO$_2$ yr$^{-1}$")
+ax[0].axhline(ls=":", color="k", lw=0.5)
+ax[0].legend()
+ax[0].grid()
+ax[0].set_xlim(1750, 2300)
+
+
+# %%
+f21c = scens
+
+# %%
+fig, ax = pl.subplots(3, 1, figsize=(12, 8))
+ax = ax.flatten()
+
+for scenario in f21c:
+    a = ax[0].ecdf(
+        f.temperature.sel(scenario=scenario, layer=0, timebounds=2100)
+        - f.temperature.sel(scenario=scenario, layer=0, timebounds=1850),
+        color=colors[scenario],
+        label=ldict21[scenario],
+    )
+ax[0].set_title("Temperature anomaly in 2100 relative to 1850, K")
+ax[0].set_xlabel("K")
+ax[0].set_ylabel("Cumulative probability")
+ax[0].set_yticks([0.1, 0.25, 0.33, 0.5, 0.66, 0.75, 0.9])
+ax[0].set_xticks(np.array([-0.5, 0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]) * 2)
+ax[0].set_xlim([-1, 10])
+ax[0].legend()
+ax[0].grid()
+
+
+for scenario in f21c:
+    a = ax[1].ecdf(
+        f.temperature.sel(scenario=scenario, layer=0, timebounds=2300)
+        - f.temperature.sel(scenario=scenario, layer=0, timebounds=1850),
+        color=colors[scenario],
+        label=ldict21[scenario],
+    )
+ax[1].set_title("Temperature anomaly in 2300 relative to 1850, K")
+ax[1].set_ylabel("Cumulative probability")
+ax[1].set_xlabel("K")
+
+ax[1].set_yticks([0.1, 0.25, 0.33, 0.5, 0.66, 0.75, 0.9])
+ax[1].set_xticks(np.array([-0.5, 0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]) * 2)
+ax[1].set_xlim([-1, 10])
+ax[1].legend()
+ax[1].grid()
+
+
+for scenario in f21c:
+    a = ax[2].ecdf(
+        f.temperature.sel(scenario=scenario, layer=0).max(dim="timebounds")
+        - f.temperature.sel(scenario=scenario, layer=0, timebounds=1850),
+        color=colors[scenario],
+        label=ldict21[scenario],
+    )
+ax[2].set_title("Maximum temperature anomaly relative to 1850, K")
+ax[2].set_xlabel("K")
+ax[2].set_ylabel("Cumulative probability")
+ax[2].set_yticks([0.1, 0.25, 0.33, 0.5, 0.66, 0.75, 0.9])
+ax[2].set_xticks(np.array([-0.5, 0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]) * 2)
+ax[2].set_xlim([-1, 10])
+ax[2].legend(loc="upper right")
+ax[2].grid()
+pl.tight_layout()
+
+# %% [markdown]
+# ## Ozone exploratory plots
+
+# %%
+fig, ax = pl.subplots(3, 2, figsize=(12, 8), sharex=True)
+
+for scenario in f21c:
+    ax[0, 0].fill_between(
+        f.timebounds,
+        (f.forcing.sel(scenario=scenario, specie="Ozone")).quantile(0.05, dim="config"),
+        (f.forcing.sel(scenario=scenario, specie="Ozone")).quantile(0.95, dim="config"),
+        color=colors[scenario],
+        lw=0,
+        alpha=0.1,
+    )
+    ax[0, 0].plot(
+        f.timebounds,
+        (f.forcing.sel(scenario=scenario, specie="Ozone")).median(dim="config"),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+    ax[0, 1].plot(
+        f.timepoints,
+        (f.emissions.sel(scenario=scenario, specie="NOx")).median(dim="config"),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+    ax[1, 0].fill_between(
+        f.timebounds,
+        (f.concentration.sel(scenario=scenario, specie="CH4")).quantile(0.05, dim="config"),
+        (f.concentration.sel(scenario=scenario, specie="CH4")).quantile(0.95, dim="config"),
+        color=colors[scenario],
+        lw=0,
+        alpha=0.1,
+    )
+    ax[1, 0].plot(
+        f.timebounds,
+        (f.concentration.sel(scenario=scenario, specie="CH4")).median(dim="config"),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+    ax[1, 1].plot(
+        f.timepoints,
+        (f.emissions.sel(scenario=scenario, specie="VOC")).median(dim="config"),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+    ax[2, 0].plot(
+        f.timepoints,
+        (f.emissions.sel(scenario=scenario, specie="CO")).median(dim="config"),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+    ax[2, 1].plot(
+        f.timebounds,
+        (f.concentration.sel(scenario=scenario, specie="Equivalent effective stratospheric chlorine")).median(
+            dim="config"
+        ),
+        label=ldict[scenario],
+        color=colors[scenario],
+    )
+
+
+ax[0, 0].set_title("Ozone ERF, W/m2")
+ax[0, 0].set_xlabel("W/m2")
+ax[0, 1].set_title("Emissions NOx")
+ax[0, 1].set_xlabel("MtNOx/yr")
+ax[1, 0].set_title("Methane concentration, ppb")
+ax[1, 0].set_xlabel("ppb")
+ax[1, 1].set_title("Emissions VOC, MtVOC/yr")
+ax[1, 1].set_xlabel("MtVOC/yr")
+ax[2, 0].set_title("Emissions CO, MtCO/yr")
+ax[2, 0].set_xlabel("MtCO/yr")
+ax[2, 1].set_title("Equivalent effective stratospheric chlorine, ?")
+ax[2, 1].set_xlabel("?")
+for i in range(6):
+    ax_now = ax[i // 2, i % 2]
+    ax_now.set_ylabel("Year")
+    ax_now.legend()
+    ax_now.grid()
+pl.tight_layout()
+pl.savefig("ozone_exploration_extensions.png")
