@@ -8,6 +8,8 @@
 
 # %%
 import os
+import sys
+from pathlib import Path
 
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as pl
@@ -17,6 +19,20 @@ import pooch
 from fair import FAIR
 from fair.interface import initialise
 from fair.io import read_properties
+
+# Add src directory to path
+src_dir = Path().resolve().parent / "src"
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+
+from flex.config import load_config
+
+# --- Ensemble configuration ---
+config_name = "scenariomip_default"
+cfg = load_config(config_name)
+OUTPUTS_DIR = cfg.outputs_dir
+print(f"Config: {cfg.name}")
+print(f"Outputs: {OUTPUTS_DIR}")
 
 # %%
 f = FAIR()
@@ -92,7 +108,7 @@ for i, s in enumerate(snames):
 # is generated from 0503_extension_functioality_as_notebook.py
 
 # %%
-df_emis = pd.read_csv("../outputs/continuous_emissions_timeseries_1750_2500.csv")
+df_emis = pd.read_csv(OUTPUTS_DIR / "continuous_emissions_timeseries_1750_2500.csv")
 df_emis.head()
 
 # %% [markdown]
@@ -234,7 +250,7 @@ for scenario in f.scenarios:
     temp_df_list.append(df_temp)
 
 temp_summary = pd.concat(temp_df_list, ignore_index=True)
-temp_summary.to_csv('../outputs/fair_temperature_1750-2500.csv', index=False)
+temp_summary.to_csv(OUTPUTS_DIR / 'fair_temperature_1750-2500.csv', index=False)
 print(f"  Saved temperature data: {len(temp_summary)} rows")
 
 # Export forcing by species (median only to keep file size manageable)
@@ -254,7 +270,7 @@ for scenario in f.scenarios:
         forcing_df_list.append(df_forcing)
 
 forcing_summary = pd.concat(forcing_df_list, ignore_index=True)
-forcing_summary.to_csv('../outputs/fair_forcing_1750-2500.csv', index=False)
+forcing_summary.to_csv(OUTPUTS_DIR / 'fair_forcing_1750-2500.csv', index=False)
 print(f"  Saved forcing data: {len(forcing_summary)} rows")
 
 # Export key GHG concentrations (CO2, CH4, N2O)
@@ -275,7 +291,7 @@ for scenario in f.scenarios:
         conc_df_list.append(df_conc)
 
 conc_summary = pd.concat(conc_df_list, ignore_index=True)
-conc_summary.to_csv('../outputs/fair_concentration_ghgs_1750-2500.csv', index=False)
+conc_summary.to_csv(OUTPUTS_DIR / 'fair_concentration_ghgs_1750-2500.csv', index=False)
 print(f"  Saved concentration data: {len(conc_summary)} rows")
 
 # Export CO2e emissions (already calculated earlier)
@@ -290,7 +306,7 @@ for scenario in f.scenarios:
     co2e_df_list.append(df_co2e)
 
 co2e_summary = pd.concat(co2e_df_list, ignore_index=True)
-co2e_summary.to_csv('../outputs/fair_co2e_emissions_1750-2500.csv', index=False)
+co2e_summary.to_csv(OUTPUTS_DIR / 'fair_co2e_emissions_1750-2500.csv', index=False)
 print(f"  Saved CO2e emissions: {len(co2e_summary)} rows")
 
 # %%
@@ -318,7 +334,7 @@ for scenario in f.scenarios:
         ecdf_df_list.append(df_ecdf)
 
 ecdf_data = pd.concat(ecdf_df_list, ignore_index=True)
-ecdf_data.to_csv('../outputs/fair_temperature_ecdf_data.csv', index=False)
+ecdf_data.to_csv(OUTPUTS_DIR / 'fair_temperature_ecdf_data.csv', index=False)
 print(f"  Saved ECDF data: {len(ecdf_data)} rows ({len(f.configs)} configs × {len(f.scenarios)} scenarios)")
 print(f"  File size estimate: ~{len(ecdf_data) * 80 / 1024:.1f} KB")
 
@@ -339,7 +355,7 @@ for scenario in f.scenarios:
         emis_species_list.append(df_species)
 
 emis_species_df = pd.concat(emis_species_list, ignore_index=True)
-emis_species_df.to_csv('../outputs/fair_emissions_by_species.csv', index=False)
+emis_species_df.to_csv(OUTPUTS_DIR / 'fair_emissions_by_species.csv', index=False)
 print(f"  Saved species emissions: {len(emis_species_df)} rows")
 
 # Export total forcing (forcing_sum)
@@ -357,7 +373,7 @@ for scenario in f.scenarios:
     forcing_sum_list.append(df_forcing_sum)
 
 forcing_sum_df = pd.concat(forcing_sum_list, ignore_index=True)
-forcing_sum_df.to_csv('../outputs/fair_forcing_sum_1750-2500.csv', index=False)
+forcing_sum_df.to_csv(OUTPUTS_DIR / 'fair_forcing_sum_1750-2500.csv', index=False)
 print(f"  Saved total forcing: {len(forcing_sum_df)} rows")
 
 # %%

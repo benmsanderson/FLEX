@@ -1,0 +1,131 @@
+# ScenarioMIP Default Extension Configuration
+# =============================================
+# This is the baseline configuration for the FLEX extension pipeline,
+# reproducing the standard ScenarioMIP marker scenario extensions.
+#
+# To create a custom ensemble, copy this file and modify the parameters.
+
+name: scenariomip_default
+description: >
+  Default ScenarioMIP marker scenario extensions (7 scenarios, VL through HL).
+  Uses standard storyline-driven CO2 extensions and sigmoid non-CO2 targets.
+
+# --- Time range constants ---
+time:
+  historical_start_year: 1900
+  future_start_year: 2023.0
+  scenario_end_year: 2100
+  extensions_end_year: 2500
+
+# --- Flags ---
+flags:
+  make_plots: false
+  dump_csvs: true
+
+# --- Scenario-to-model mapping ---
+# Each marker maps to: [scenario_name, model_name, plot_color]
+scenario_model_match:
+  VL:
+    scenario: "SSP1 - Very Low Emissions"
+    model: "REMIND-MAgPIE 3.5-4.11"
+    color: "tab:blue"
+  LN:
+    scenario: "SSP2 - Low Overshoot_a"
+    model: "AIM 3.0"
+    color: "tab:cyan"
+  L:
+    scenario: "SSP2 - Low Emissions"
+    model: "MESSAGEix-GLOBIOM-GAINS 2.1-M-R12"
+    color: "tab:green"
+  ML:
+    scenario: "SSP2 - Medium-Low Emissions"
+    model: "COFFEE 1.6"
+    color: "tab:pink"
+  M:
+    scenario: "SSP2 - Medium Emissions"
+    model: "IMAGE 3.4"
+    color: "tab:purple"
+  H:
+    scenario: "SSP3 - High Emissions"
+    model: "GCAM 8s"
+    color: "tab:red"
+  HL:
+    scenario: "SSP5 - Medium-Low Emissions_a"
+    model: "WITCH 6.0"
+    color: "tab:brown"
+
+# --- Fossil CO2 storyline parameters ---
+# Storyline types:
+#   CS  (Constant-Sigmoid):  [type, stop_const, end_sig, roll_in, roll_out]
+#   ECS (Exp-Constant-Sigmoid): [type, exp_end, exp_targ, sig_start, sig_end, roll_in, roll_out]
+#   CSCS (Double sigmoid):  [type, stop_const, sig_targ, end_sig1, start_sig2, end_sig2, roll_in, roll_out]
+#
+# exp_targ=null means linear interpolation instead of exponential decay
+fossil_evolution:
+  VL:
+    type: ECS
+    params: [2200, -3500.0, 2450, 2500, 20, 20]
+  LN:
+    type: ECS
+    params: [2120, -24000.0, 2200, 2300, 20, 20]
+  L:
+    type: ECS
+    params: [2160, null, 2160, 2260, 40, 20]
+  ML:
+    type: ECS
+    params: [2150, -13000.0, 2230, 2300, 20, 20]
+  M:
+    type: CS
+    params: [2100, 2240, 20, 20]
+  H:
+    type: ECS
+    params: [2150, null, 2175, 2300, 20, 20]
+  HL:
+    type: ECS
+    params: [2150, -22000.0, 2200, 2300, 20, 20]
+
+# --- Removal strategy ---
+# NEG: [type, decay_timescale, offset] — gross positive decays, CDR as residual
+# POS: [type] — CDR constant, gross positive adjusts to follow fossil
+removal_strategy:
+  VL:
+    type: NEG
+    params: [100, 60]
+  LN:
+    type: NEG
+    params: [50, 100]
+  L:
+    type: NEG
+    params: [50, 50]
+  ML:
+    type: NEG
+    params: [100, 0]
+  M:
+    type: POS
+    params: []
+  H:
+    type: POS
+    params: []
+  HL:
+    type: NEG
+    params: [80, 20]
+
+# --- Non-CO2 global targets (endpoint values at extensions_end_year) ---
+# null means no explicit target (use default decay)
+non_co2_targets:
+  "Emissions|CH4":
+    VL: 95.0
+    LN: 150.0
+    L: 95.0
+    ML: 120.0
+    M: 450.0
+    H: 520.0
+    HL: 110.0
+  "Emissions|Sulfur":
+    VL: 20.0
+    LN: 10.0
+    L: null
+    ML: 20.0
+    M: 20.0
+    H: 50.0
+    HL: 10.0

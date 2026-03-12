@@ -26,6 +26,7 @@ pip = "*"
 openpyxl = "*"
 pytest = "*"
 pooch = ">=1.7"
+pyyaml = ">=6.0"
 
 [pypi-dependencies]
 pandas-indexing = "*"

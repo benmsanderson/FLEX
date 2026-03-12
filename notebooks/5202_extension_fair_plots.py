@@ -27,30 +27,48 @@
 
 # %%
 import os
+import sys
+from pathlib import Path
 
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as pl
 import numpy as np
 import pandas as pd
 
+# Add src directory to path
+src_dir = Path().resolve().parent / "src"
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+
+from flex.config import load_config
+
+# --- Ensemble configuration ---
+config_name = "scenariomip_default"
+cfg = load_config(config_name)
+OUTPUTS_DIR = cfg.outputs_dir
+PLOTS_DIR = cfg.plots_dir
+print(f"Config: {cfg.name}")
+print(f"Reading from: {OUTPUTS_DIR}")
+print(f"Saving to: {PLOTS_DIR}")
+
 # %% [markdown]
 # ## Load Climate Model Outputs
 
 # %%
 # Load temperature data
-temp_df = pd.read_csv('../outputs/fair_temperature_1750-2500.csv')
+temp_df = pd.read_csv(OUTPUTS_DIR / 'fair_temperature_1750-2500.csv')
 print(f"Temperature data: {len(temp_df)} rows")
 
 # Load forcing data
-forcing_df = pd.read_csv('../outputs/fair_forcing_1750-2500.csv')
+forcing_df = pd.read_csv(OUTPUTS_DIR / 'fair_forcing_1750-2500.csv')
 print(f"Forcing data: {len(forcing_df)} rows")
 
 # Load concentration data
-conc_df = pd.read_csv('../outputs/fair_concentration_ghgs_1750-2500.csv')
+conc_df = pd.read_csv(OUTPUTS_DIR / 'fair_concentration_ghgs_1750-2500.csv')
 print(f"Concentration data: {len(conc_df)} rows")
 
 # Load CO2e emissions
-co2e_df = pd.read_csv('../outputs/fair_co2e_emissions_1750-2500.csv')
+co2e_df = pd.read_csv(OUTPUTS_DIR / 'fair_co2e_emissions_1750-2500.csv')
 print(f"CO2e emissions: {len(co2e_df)} rows")
 
 # %% [markdown]
@@ -75,28 +93,13 @@ colors = {
     "VL": "#16188F",  # Very Low
 }
 
-# Create plots directory if needed
-os.makedirs("../plots", exist_ok=True)
-
-# Scenario colors
-colors = {
-    "HL": "#E744F6",  # Very High
-    "H": "#a41212",   # High
-    "M": "#fc7b03",   # Medium
-    "ML": "#dec820",  # Medium-Low
-    "L": "#20A359",   # Low
-    "LN": "#22e5db",  # Low-Norm
-    "VL": "#16188F",  # Very Low
-}
-
-# Create plots directory if needed
-os.makedirs("../plots", exist_ok=True)
+# Plots directory already created by config loader
 
 # %%
 # Load additional data files for plotting
-emis_species_df = pd.read_csv('../outputs/fair_emissions_by_species.csv')
-forcing_sum_df = pd.read_csv('../outputs/fair_forcing_sum_1750-2500.csv')
-ecdf_df = pd.read_csv('../outputs/fair_temperature_ecdf_data.csv')
+emis_species_df = pd.read_csv(OUTPUTS_DIR / 'fair_emissions_by_species.csv')
+forcing_sum_df = pd.read_csv(OUTPUTS_DIR / 'fair_forcing_sum_1750-2500.csv')
+ecdf_df = pd.read_csv(OUTPUTS_DIR / 'fair_temperature_ecdf_data.csv')
 
 print(f"Emissions by species: {len(emis_species_df)} rows")
 print(f"Total forcing: {len(forcing_sum_df)} rows")
@@ -212,8 +215,8 @@ ax[1].legend()
 ax[1].set_title("(b)")
 
 pl.tight_layout()
-pl.savefig("../plots/temperature_emis.png", dpi=600, bbox_inches='tight')
-pl.savefig("../plots/temperature_emis.pdf", format='pdf', bbox_inches='tight')
+pl.savefig(PLOTS_DIR / "temperature_emis.png", dpi=600, bbox_inches='tight')
+pl.savefig(PLOTS_DIR / "temperature_emis.pdf", format='pdf', bbox_inches='tight')
 print("✓ Saved: temperature_emis.png and temperature_emis.pdf")
 
 # %% [markdown]
@@ -389,8 +392,8 @@ ax[3, 1].axhline(0, color='k', lw=0.5, ls=':')
 ax[3, 1].grid()
 
 pl.tight_layout()
-pl.savefig("../plots/extensions.png", dpi=600, bbox_inches='tight')
-pl.savefig("../plots/extensions.pdf", format='pdf', bbox_inches='tight')
+pl.savefig(PLOTS_DIR / "extensions.png", dpi=600, bbox_inches='tight')
+pl.savefig(PLOTS_DIR / "extensions.pdf", format='pdf', bbox_inches='tight')
 print("✓ Saved: extensions.png and extensions.pdf")
 
 # %% [markdown]
@@ -444,6 +447,6 @@ for panel_idx, (column, title, panel_label) in enumerate(zip(column_names, title
 ax[2].legend(loc='lower right', fontsize=9)
 
 pl.tight_layout()
-pl.savefig("../plots/temperature_ecdf.png", dpi=600, bbox_inches='tight')
-pl.savefig("../plots/temperature_ecdf.pdf", format='pdf', bbox_inches='tight')
+pl.savefig(PLOTS_DIR / "temperature_ecdf.png", dpi=600, bbox_inches='tight')
+pl.savefig(PLOTS_DIR / "temperature_ecdf.pdf", format='pdf', bbox_inches='tight')
 print("✓ Saved: temperature_ecdf.png and temperature_ecdf.pdf")
