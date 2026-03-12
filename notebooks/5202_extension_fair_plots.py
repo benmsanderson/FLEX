@@ -78,17 +78,8 @@ print(f"CO2e emissions: {len(co2e_df)} rows")
 # ## Setup: Scenario Names and Colors
 
 # %%
-# Scenario names (from config)
-snames = cfg.markers
-
-# Scenario labels
-ldict = {s: s for s in snames}
-ldict21 = {s: s for s in snames}
-
-# Scenario colors (from config)
-colors = cfg.plot_colors
-
-# Plots directory already created by config loader
+# Scenario names
+scenario_model_match = cfg.scenario_model_match
 
 # %%
 # Load additional data files for plotting
@@ -116,7 +107,7 @@ co2e_h = co2e_df[co2e_df['Scenario'] == 'H'].set_index('Year')['CO2e_emissions']
 unc = np.tanh((co2e_vl - co2e_h) / 1e6 / 10) * 8
 
 # Left panel: CO2e emissions with uncertainty
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = co2e_df[co2e_df['Scenario'] == scenario].set_index('Year')
     years = scenario_data.index.values
     emissions = scenario_data['CO2e_emissions'].values / 1e6
@@ -127,7 +118,7 @@ for scenario in snames:
         years[hist_mask],
         emissions[hist_mask] - unc.values[hist_mask],
         emissions[hist_mask] + unc.values[hist_mask],
-        color=colors[scenario],
+        color=meta[2],
         lw=0,
         alpha=0.3,
     )
@@ -138,7 +129,7 @@ for scenario in snames:
         years[ext_mask],
         emissions[ext_mask] - unc.values[ext_mask],
         emissions[ext_mask] + unc.values[ext_mask],
-        color=colors[scenario],
+        color=meta[2],
         hatch="XXX",
         lw=0,
         alpha=0.1,
@@ -161,7 +152,8 @@ ax[0].grid()
 ax[0].set_title("(a)")
 
 # Right panel: Temperature anomalies
-for i, scenario in enumerate(snames):
+for scenario, meta in scenario_model_match.items():
+    print(meta)
     scenario_temp = temp_df[temp_df['Scenario'] == scenario]
     years = scenario_temp['Year'].values
     
@@ -178,17 +170,17 @@ for i, scenario in enumerate(snames):
         years,
         temp_p05,
         temp_p95, 
-        color=colors[scenario],
+        color=meta[2],
         lw=0,
         alpha=0.3,
-        label=snames[i],
+        label=scenario,
     )
 
 # Add historical overlay (black shading up to 2023)
-hist_scenario = temp_df[temp_df['Scenario'] == snames[0]]
-hist_mask = hist_scenario['Year'] <= 2023
+hist_scenario = temp_df[temp_df['Scenario'] == list(scenario_model_match.keys())[0]]
+hist_mask = hist_scenario['Year'] <= cfg.future_start_year
 hist_years = hist_scenario[hist_mask]['Year'].values
-baseline_mask = (hist_scenario['Year'] >= 1850) & (hist_scenario['Year'] <= 1901)
+baseline_mask = (hist_scenario['Year'] >= 1850) & (hist_scenario['Year'] <= cfg.historical_start_year + 1)
 baseline_mean = hist_scenario[baseline_mask]['Temperature_median'].mean()
 hist_p05 = (hist_scenario[hist_mask]['Temperature_p05'].values - baseline_mean)
 hist_p95 = (hist_scenario[hist_mask]['Temperature_p95'].values - baseline_mean)
@@ -232,7 +224,7 @@ print("✓ Saved: temperature_emis.png and temperature_emis.pdf")
 fig, ax = pl.subplots(4, 2, figsize=(8, 12))
 
 # Panel 0: CO2 FFI emissions
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = emis_species_df[
         (emis_species_df['Scenario'] == scenario) & 
         (emis_species_df['Species'] == 'CO2 FFI')
@@ -240,7 +232,7 @@ for scenario in snames:
     ax[0, 0].plot(
         scenario_data['Year'],
         scenario_data['Emissions'].values / 1e6,
-        color=colors[scenario],
+        color=meta[2],
         label=scenario
     )
 ax[0, 0].set_ylabel("CO$_2$ FFI emissions,\\nGtCO$_2$ yr$^{-1}$")
@@ -250,7 +242,7 @@ ax[0, 0].grid()
 ax[0, 0].legend(fontsize=8)
 
 # Panel 1: CO2 AFOLU emissions  
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = emis_species_df[
         (emis_species_df['Scenario'] == scenario) & 
         (emis_species_df['Species'] == 'CO2 AFOLU')
@@ -258,7 +250,7 @@ for scenario in snames:
     ax[0, 1].plot(
         scenario_data['Year'],
         scenario_data['Emissions'].values / 1e6,
-        color=colors[scenario]
+        color=meta[2]
     )
 ax[0, 1].set_ylabel("CO$_2$ AFOLU emissions,\\nGtCO$_2$ yr$^{-1}$")
 ax[0, 1].set_xlim(1750, 2500)
@@ -266,7 +258,7 @@ ax[0, 1].axhline(0, color='k', lw=0.5, ls=':')
 ax[0, 1].grid()
 
 # Panel 2: CH4 emissions
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = emis_species_df[
         (emis_species_df['Scenario'] == scenario) & 
         (emis_species_df['Species'] == 'CH4')
@@ -274,15 +266,15 @@ for scenario in snames:
     ax[1, 0].plot(
         scenario_data['Year'],
         scenario_data['Emissions'].values,
-        color=colors[scenario]
+        color=meta[2]
     )
 ax[1, 0].set_ylabel("CH$_4$ emissions,\\nMtCH$_4$ yr$^{-1}$")
-ax[1, 0].set_xlim(1750, 2500)
+ax[1, 0].set_xlim(1750, cfg.extensions_end_year)
 ax[1, 0].axhline(0, color='k', lw=0.5, ls=':')
 ax[1, 0].grid()
 
 # Panel 3: Cumulative CO2 emissions (calculate from CO2 FFI + AFOLU)
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     co2_ffi = emis_species_df[
         (emis_species_df['Scenario'] == scenario) & 
         (emis_species_df['Species'] == 'CO2 FFI')
@@ -297,7 +289,7 @@ for scenario in snames:
     ax[1, 1].plot(
         cumulative.index,
         cumulative.values,
-        color=colors[scenario]
+        color=meta[2]
     )
 ax[1, 1].set_ylabel("Cumulative CO$_2$,\\nGtCO$_2$")
 ax[1, 1].set_xlim(1750, 2500)
@@ -305,7 +297,7 @@ ax[1, 1].axhline(0, color='k', lw=0.5, ls=':')
 ax[1, 1].grid()
 
 # Panel 4: Sulfur emissions
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = emis_species_df[
         (emis_species_df['Scenario'] == scenario) & 
         (emis_species_df['Species'] == 'Sulfur')
@@ -313,28 +305,28 @@ for scenario in snames:
     ax[2, 0].plot(
         scenario_data['Year'],
         scenario_data['Emissions'].values,
-        color=colors[scenario]
+        color=meta[2]
     )
 ax[2, 0].set_ylabel("Sulfur emissions,\\nMtS yr$^{-1}$")
-ax[2, 0].set_xlim(1750, 2500)
+ax[2, 0].set_xlim(1750, cfg.extensions_end_year)
 ax[2, 0].axhline(0, color='k', lw=0.5, ls=':')
 ax[2, 0].grid()
 
 # Panel 5: Total CO2e emissions
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = co2e_df[co2e_df['Scenario'] == scenario]
     ax[2, 1].plot(
         scenario_data['Year'],
         scenario_data['CO2e_emissions'].values / 1e6,
-        color=colors[scenario]
+        color=meta[2]
     )
 ax[2, 1].set_ylabel("Total CO$_2$e emissions,\\nGtCO$_2$eq yr$^{-1}$")
-ax[2, 1].set_xlim(1750, 2500)
+ax[2, 1].set_xlim(1750, cfg.extensions_end_year)
 ax[2, 1].axhline(0, color='k', lw=0.5, ls=':')
 ax[2, 1].grid()
 
 # Panel 6: Total forcing
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = forcing_sum_df[forcing_sum_df['Scenario'] == scenario]
     years = scenario_data['Year'].values
     forcing_median = scenario_data['Forcing_sum_median'].values
@@ -345,20 +337,20 @@ for scenario in snames:
         years,
         forcing_p05,
         forcing_p95,
-        color=colors[scenario],
+        color=meta[2],
         alpha=0.3,
         lw=0
     )
-    ax[3, 0].plot(years, forcing_median, color=colors[scenario])
+    ax[3, 0].plot(years, forcing_median, color=meta[2])
 
 ax[3, 0].set_ylabel("Total forcing,\\nW m$^{-2}$")
 ax[3, 0].set_xlabel("Year")
-ax[3, 0].set_xlim(1750, 2500)
+ax[3, 0].set_xlim(1750, cfg.extensions_end_year)
 ax[3, 0].axhline(0, color='k', lw=0.5, ls=':')
 ax[3, 0].grid()
 
 # Panel 7: Temperature anomaly
-for scenario in snames:
+for scenario, meta in scenario_model_match.items():
     scenario_data = temp_df[temp_df['Scenario'] == scenario]
     years = scenario_data['Year'].values
     
@@ -374,11 +366,11 @@ for scenario in snames:
         years,
         temp_p05,
         temp_p95,
-        color=colors[scenario],
+        color=meta[2],
         alpha=0.3,
         lw=0
     )
-    ax[3, 1].plot(years, temp_median, color=colors[scenario])
+    ax[3, 1].plot(years, temp_median, color=meta[2])
 
 ax[3, 1].set_ylabel("Temperature anomaly,\\nK above 1850-1900")
 ax[3, 1].set_xlabel("Year")
@@ -407,7 +399,7 @@ titles = ['2100', '2300', 'Maximum']
 panels = ['(a)', '(b)', '(c)']
 
 for panel_idx, (column, title, panel_label) in enumerate(zip(column_names, titles, panels)):
-    for scenario in snames:
+    for scenario, meta in scenario_model_match.items():
         # Get all ensemble member values for this scenario and metric
         scenario_data = ecdf_df[ecdf_df['Scenario'] == scenario]
         
@@ -422,7 +414,7 @@ for panel_idx, (column, title, panel_label) in enumerate(zip(column_names, title
         ax[panel_idx].plot(
             values,
             probabilities * 100,  # Convert to percentage
-            color=colors[scenario],
+            color=meta[2],
             label=scenario if panel_idx == 2 else None,  # Legend only on last panel
             lw=1.5
         )
