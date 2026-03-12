@@ -102,9 +102,14 @@ print(f"ECDF data: {len(ecdf_df)} rows")
 fig, ax = pl.subplots(1, 2, figsize=(12, 5))
 
 # Calculate uncertainty band (simplified hyperbolic tangent scaling)
-co2e_vl = co2e_df[co2e_df['Scenario'] == 'VL'].set_index('Year')['CO2e_emissions']
-co2e_h = co2e_df[co2e_df['Scenario'] == 'H'].set_index('Year')['CO2e_emissions']
-unc = np.tanh((co2e_vl - co2e_h) / 1e6 / 10) * 8
+# Requires both VL and H scenarios; skip if not available.
+_available = set(co2e_df['Scenario'].unique())
+if 'VL' in _available and 'H' in _available:
+    co2e_vl = co2e_df[co2e_df['Scenario'] == 'VL'].set_index('Year')['CO2e_emissions']
+    co2e_h = co2e_df[co2e_df['Scenario'] == 'H'].set_index('Year')['CO2e_emissions']
+    unc = np.tanh((co2e_vl - co2e_h) / 1e6 / 10) * 8
+else:
+    unc = None
 
 # Left panel: CO2e emissions with uncertainty
 for scenario, meta in scenario_model_match.items():
@@ -114,26 +119,28 @@ for scenario, meta in scenario_model_match.items():
     
     # Historical period (up to year 2100)
     hist_mask = years <= 2100
-    ax[0].fill_between(
-        years[hist_mask],
-        emissions[hist_mask] - unc.values[hist_mask],
-        emissions[hist_mask] + unc.values[hist_mask],
-        color=meta[2],
-        lw=0,
-        alpha=0.3,
-    )
+    if unc is not None:
+        ax[0].fill_between(
+            years[hist_mask],
+            emissions[hist_mask] - unc.values[hist_mask],
+            emissions[hist_mask] + unc.values[hist_mask],
+            color=meta[2],
+            lw=0,
+            alpha=0.3,
+        )
     
     # Extension period (2100+)
     ext_mask = years >= 2100
-    ax[0].fill_between(
-        years[ext_mask],
-        emissions[ext_mask] - unc.values[ext_mask],
-        emissions[ext_mask] + unc.values[ext_mask],
-        color=meta[2],
-        hatch="XXX",
-        lw=0,
-        alpha=0.1,
-    )
+    if unc is not None:
+        ax[0].fill_between(
+            years[ext_mask],
+            emissions[ext_mask] - unc.values[ext_mask],
+            emissions[ext_mask] + unc.values[ext_mask],
+            color=meta[2],
+            hatch="XXX",
+            lw=0,
+            alpha=0.1,
+        )
     
     # Historical line (up to 2024)
     hist_line_mask = years <= 2024
