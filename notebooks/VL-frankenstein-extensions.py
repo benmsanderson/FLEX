@@ -50,6 +50,7 @@ OUTPUTS_DIR = Path().resolve().parent / "outputs" / "vl-extensions-outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
+from flex.config import load_config
 from flex.afolu_extension_functions import (
     get_cumulative_afolu,
     extend_one_scenario_afolu,
@@ -80,25 +81,16 @@ from flex.general_utils_for_extensions import (
     save_continuous_timeseries_to_csv,
 )
 
-# Constants
-FUTURE_START_YEAR = 2023.0
-HISTORICAL_START_YEAR = 1900
-SCENARIO_END_YEAR = 2050
-EXTENSIONS_END_YEAR = 2300
-TUPLE_LENGTH_WITH_STAGE = 6
+# --- Load ensemble configuration ---
+config_name = "vl-frankenstein-configs"
+cfg = load_config(config_name)
+OUTPUTS_DIR = cfg.outputs_dir
+print(f"Loaded config: {cfg.name}")
+print(f"Outputs: {OUTPUTS_DIR}")
+print(f"Plots: {cfg.plots_dir}")
 
 # %% [markdown]
 # ## Loading scenarios
-#
-# for vl_file in glob.glob(str(DATA_DIR / "*.csv")):
-#     print(f"Found VL extension input file: {vl_file}")
-#     test_df = pd.read_csv(vl_file)
-#     print(test_df.head())
-#     print(test_df.shape)
-#     print(test_df.columns[:10])
-#     print(test_df["region"].unique())
-#     print(test_df["scenario"].unique())
-# sys.exit(4)
 # %%
 # Load data from CSV files
 print("Loading scenarios_complete_global from CSV...")
@@ -171,23 +163,7 @@ for i, (model, scenario) in enumerate(unique_model_scenario_pairs, 1):
 # Marker definitions
 
 # %%
-scenario_model_match = {
-    # "VL": [
-    #     "SSP1 - Very Low Emissions",
-    #     "REMIND-MAgPIE 3.5-4.11",
-    #     "tab:blue",
-    # ],  
-    "VL-fossil-frankenstein": [        
-        "SSP1 - Very Low Emissions fossil frankenstein",
-        "REMIND-MAgPIE 3.5-4.11", 
-        "tab:cyan"
-        ], 
-    "VL-fossil-frankenstein-zero-afolu": [        
-        "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero",
-        "REMIND-MAgPIE 3.5-4.11", 
-        "tab:green"
-        ],
-}
+scenario_model_match = cfg.scenario_model_match
 
 # %%
 scenarios_regional = scenarios_regional.sort_index(axis="columns").T.interpolate("index").T
@@ -216,7 +192,7 @@ for model, scen in unique_model_scenario_pairs.to_list():
     tot_co2 = scenarios_complete_global.loc[pix.ismatch(scenario=scen, model=model, variable="Emissions|CO2")]
     scen_here = scenarios_regional.loc[pix.ismatch(scenario=scen, model=model, variable="Emissions|CO2**")]
     print(scen_here)
-    fractions_list = get_2100_compound_composition_co2(scen_here[SCENARIO_END_YEAR])
+    fractions_list = get_2100_compound_composition_co2(scen_here[cfg.scenario_end_year])
     fractions_fossil_total[(model, scen)] = {
         "fractions_tot_fossil": fractions_list[0],
         "fractions_cdr": fractions_list[1],
@@ -258,20 +234,6 @@ def calculate_afolu_extensions(scenarios_complete_global, history, cumulative_hi
 # %% [markdown]
 # First defining some non-zero end-points for certain gases per marker:
 
-# %%
-component_global_targets = {
-    "Emissions|CH4": {
-        "VL": 95.0,
-        "VL-fossil-frankenstein": 95.0,
-        "VL-fossil-frankenstein-zero-afolu": 95.0,
-    },
-    "Emissions|Sulfur": {
-        "VL": 20.0,
-        "VL-fossil-frankenstein": 20,
-        "VL-fossil-frankenstein-zero-afolu": 20.0,
-    },
-}
-
 # %% [markdown]
 # Main functionality for all non-co2 extensions
 
@@ -283,7 +245,6 @@ print(f"Index names: {scenarios_regional.index.names}")
 print(f"Index levels: {scenarios_regional.index.nlevels}")
 print(f"Sample index values:")
 print(scenarios_regional.index[:5])
-
 # %%
 def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0912
     """
@@ -316,8 +277,11 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
         if history.loc[pix.ismatch(variable=f"{variable}")].shape[0] < 1:
             continue
         for s, meta in tqdm.auto.tqdm(scenario_model_match.items()):
-            if variable in component_global_targets.keys():
-                global_target = component_global_targets[variable][s]
+            if s == "VL":
+                continue
+            if variable in cfg.component_global_targets.keys():
+                print(cfg.component_global_targets[variable].keys())
+                global_target = cfg.component_global_targets[variable][s]
             else:
                 global_target = None
             print(f"{s}: {meta}, target: {global_target}")
@@ -329,8 +293,8 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
                 scenarios_complete_global,
                 history,
                 global_target=global_target,
-                end_year=EXTENSIONS_END_YEAR,
-                end_scenario_year=SCENARIO_END_YEAR,
+                end_year=cfg.extensions_end_year,
+                end_scenario_year=cfg.scenario_end_year,
             )
             # if "workflow" in df_comp_scen_model.index.names:
             #     print("Dropping workflow level from index")
@@ -359,9 +323,9 @@ if do_and_write_to_csv:
     #sys.exit(4)
     #(Make AFOLU flat from here?)
     afolu_dfs = calculate_afolu_extensions(
-        scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots
+        scenarios_complete_global, history, cumulative_history_afolu
     )
-    if dump_csvs:
+    if cfg.dump_csvs:
         df_all.to_csv("first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
             afolu_df.to_csv(f"first_draft_extended_afolu_{name}.csv")
@@ -410,16 +374,6 @@ if not do_and_write_to_csv:
 # ["ECS",exp_end,exp_targ,sig_start,sig_end,roll_in,roll_out]
 # ["CSCS",stop_const,sig_targ,end_sig1,start_sig2,end_sig2,roll_in,roll_out]
 
-fossil_evolution_dictionary = {
-    "VL": ["ECS", 2200, -3.5e3, 2450, 2500, 20, 20],
-    "LN": ["ECS", 2120, -24e3, 2200, 2300, 20, 20],
-    "L": ["ECS", 2160, None, 2160, 2260, 40, 20],
-    "ML": ["ECS", 2150, -13e3, 2230, 2300, 20, 20],
-    "M": ["CS", 2100, 2240, 20, 20],
-    "H": ["ECS", 2150, None, 2175, 2300, 20, 20],
-    "HL": ["ECS", 2150, -22e3, 2200, 2300, 20, 20],
-}
-
 
 # %% [markdown]
 # Looping over afolu variants to get CO2
@@ -447,11 +401,11 @@ for s, meta in scenario_model_match.items():
     df_total = process_single_scenario_storyline_wrapper(
         co2_fossil, 
         co2_afolu, 
-        fossil_evolution_dictionary[s],
-        start = int(FUTURE_START_YEAR),
-        end = EXTENSIONS_END_YEAR,
-        scenario_end = int(SCENARIO_END_YEAR),
-        history_start = HISTORICAL_START_YEAR,
+        cfg.fossil_evolution_dictionary[s],
+        start = int(cfg.future_start_year),
+        end = cfg.extensions_end_year,
+        scenario_end = int(cfg.scenario_end_year),
+        history_start = cfg.historical_start_year,
         )
     temp_list_for_new_data.append(df_total)
 
@@ -556,22 +510,11 @@ else:
     co2_gross_positive = None
 
 # %%
-removal_dictionary = {
-    "VL": ["NEG", 100, 60],
-    "LN": ["NEG", 50, 100],
-    "L": ["NEG", 50, 50],
-    "ML": ["NEG", 100, 0],
-    "M": ["POS"],
-    "H": ["POS"],
-    "HL": ["NEG", 80, 20],
-}
-
-# %%
 # --- Extension of co2_gross_positive and global_cdr to 2500 using rule-based logic ---
 
 
 # Extension configuration
-years_extension = np.arange(SCENARIO_END_YEAR + 1, EXTENSIONS_END_YEAR + 1)
+years_extension = np.arange(cfg.scenario_end_year + 1, cfg.extensions_end_year + 1)
 
 # Initialize extension DataFrames with all new columns at once
 # Create empty DataFrames for the extension years with same index
@@ -582,15 +525,15 @@ extension_cols_cdr = pd.DataFrame(np.nan, index=global_cdr.index, columns=years_
 co2_gross_positive_ext = pd.concat([co2_gross_positive, extension_cols_gross_pos], axis=1)
 global_cdr_ext = pd.concat([global_cdr, extension_cols_cdr], axis=1)
 
-print(f"Extension setup complete. Extending from {SCENARIO_END_YEAR + 1} to {EXTENSIONS_END_YEAR}")
+print(f"Extension setup complete. Extending from {cfg.scenario_end_year + 1} to {cfg.extensions_end_year}")
 print(f"Number of extension years: {len(years_extension)}")
 
 # Map removal_dictionary keys to actual scenario names
 removal_strategy_map = {}
 for marker, info in scenario_model_match.items():
     scenario = info[0]  # Get the full scenario name
-    if marker in removal_dictionary:
-        removal_strategy_map[scenario] = removal_dictionary[marker]
+    if marker in cfg.removal_dictionary:
+        removal_strategy_map[scenario] = cfg.removal_dictionary[marker]
 
 print(f"Mapped removal dictionary to {len(removal_strategy_map)} scenarios")
 

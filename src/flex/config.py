@@ -40,9 +40,6 @@ class FlexConfig:
     removal_dictionary: dict[str, list]
     component_global_targets: dict[str, dict]
 
-    # Plot colors per marker
-    plot_colors: dict[str, str]
-
     # Derived paths
     outputs_dir: Path = field(init=False)
     plots_dir: Path = field(init=False)
@@ -132,7 +129,6 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         fossil_evolution_dictionary=_convert_fossil_evolution(raw["fossil_evolution"]),
         removal_dictionary=_convert_removal_strategy(raw["removal_strategy"]),
         component_global_targets=raw["non_co2_targets"],
-        plot_colors=raw.get("plot_colors", {}),
     )
 
 
