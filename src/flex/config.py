@@ -43,6 +43,9 @@ class FlexConfig:
     # Plot colors per marker
     plot_colors: dict[str, str]
 
+    # Optimization settings (empty dict if no optimization configured)
+    optimization: dict[str, dict] = field(default_factory=dict)
+
     # Derived paths
     outputs_dir: Path = field(init=False)
     plots_dir: Path = field(init=False)
@@ -52,6 +55,30 @@ class FlexConfig:
         self.plots_dir = REPO_ROOT / "plots" / self.name
         self.outputs_dir.mkdir(parents=True, exist_ok=True)
         self.plots_dir.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def scenario_mapping(self) -> dict[str, str]:
+        """Map counterfactual markers to their source markers for FaIR forcing.
+
+        Returns a dict like ``{"HL-CF": "HL"}`` for scenarios that share the
+        same underlying SSP scenario + model with another marker.  If no
+        counterfactual scenarios exist the dict is empty.
+        """
+        # Build reverse lookup: (scenario, model) -> first marker that uses it
+        seen: dict[tuple[str, str], str] = {}
+        mapping: dict[str, str] = {}
+        for marker, info in self.scenario_model_match.items():
+            key = (info[0], info[1])
+            if key in seen:
+                mapping[marker] = seen[key]
+            else:
+                seen[key] = marker
+        return mapping
+
+    @property
+    def markers(self) -> list[str]:
+        """Ordered list of all marker names from the config."""
+        return list(self.scenario_model_match.keys())
 
 
 def _convert_scenario_model_match(raw: dict[str, dict]) -> dict[str, list]:
@@ -133,6 +160,7 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         removal_dictionary=_convert_removal_strategy(raw["removal_strategy"]),
         component_global_targets=raw["non_co2_targets"],
         plot_colors=raw.get("plot_colors", {}),
+        optimization=raw.get("optimization", {}),
     )
 
 

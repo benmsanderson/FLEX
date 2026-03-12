@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: tags,-all
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.19.1
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # FaIR Climate Model Simulations with Extended Emissions Scenarios
 #
@@ -28,11 +43,17 @@ if str(src_dir) not in sys.path:
 
 from flex.config import load_config
 
-# --- Ensemble configuration ---
+from flex.config import DATA_DIR
+
+# %% tags=["parameters"]
 config_name = "scenariomip_default"
+
+# --- Ensemble configuration ---
+# %%
 cfg = load_config(config_name)
 OUTPUTS_DIR = cfg.outputs_dir
 print(f"Config: {cfg.name}")
+print(f"Scenarios: {cfg.markers}")
 print(f"Outputs: {OUTPUTS_DIR}")
 
 # %%
@@ -43,13 +64,11 @@ memory_limited = True
 #
 
 # %%
-snames = ["VL", "LN", "L", "ML", "M", "H", "HL"]
-snames_short = ["VL", "LN", "L", "ML", "M", "H", "HL"]
-sname21_short = ["VL", "LN", "L", "ML", "M", "H", "HL"]
+snames = cfg.markers
 
 f.define_time(1750, 2501, 1)
 f.define_scenarios(snames)
-species, properties = read_properties("../data/fair-inputs/species_configs_properties_1.4.1.csv")
+species, properties = read_properties(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
 f.define_species(species, properties)
 f.ch4_method = "Thornhill2021"
 
@@ -71,7 +90,7 @@ if ~memory_limited:
 
     # Create a Pooch instance
     data_pooch = pooch.create(
-        path="../data/fair-inputs",  # Local cache directory
+        path=str(DATA_DIR / "fair-inputs"),  # Local cache directory
         base_url=f"doi:{ZENODO_DOI}",  # Zenodo DOI as base URL
         version="1.5.0",
         registry={FILE_NAME: FILE_HASH},
@@ -84,10 +103,10 @@ if ~memory_limited:
 
 # %%
 if memory_limited:
-    df_configs = pd.read_csv("../data/fair-inputs/1.5.0/calibrated_constrained_parameters_short.csv", index_col=0)
+    df_configs = pd.read_csv(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters_short.csv", index_col=0)
     f.define_configs(df_configs.index)
 else:
-    df_configs = pd.read_csv("../data/fair-inputs/1.5.0/calibrated_constrained_parameters.csv", index_col=0)
+    df_configs = pd.read_csv(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv", index_col=0)
     f.define_configs(df_configs.index)
 
 # %%
@@ -96,19 +115,17 @@ f.allocate()
 # %%
 scens = f.emissions.scenario.values
 
-# %%
-ldict = {}
-ldict21 = {}
-for i, s in enumerate(snames):
-    ldict[s] = snames_short[i]
-    ldict21[s] = sname21_short[i]
-
 
 # %% [markdown]
-# ../data/fair-inputs/emissions_1750-2500.csv
-# is generated from 0503_extension_functioality_as_notebook.py
+# Emissions CSV: use augmented file from 5195 (includes counterfactual scenarios)
+# if it exists, otherwise fall back to the standard 7-scenario file.
 
 # %%
+augmented_csv = OUTPUTS_DIR / "emissions_1750-2500.csv"
+base_csv = DATA_DIR / "fair-inputs" / "emissions_1750-2500.csv"
+emissions_csv = augmented_csv if augmented_csv.exists() else base_csv
+print(f"Using emissions: {emissions_csv}")
+
 df_emis = pd.read_csv(OUTPUTS_DIR / "continuous_emissions_timeseries_1750_2500.csv")
 df_emis.head()
 
@@ -122,12 +139,32 @@ df_emis.head()
 # **FaIR configuration**: Using calibrated parameters from Smith et al. with legacy CH4 lifetime method
 
 # %%
-gwpmat = pd.read_csv("../data/fair-inputs/gwp_mass_adjusted_100y.csv", index_col=0)
+gwpmat = pd.read_csv(DATA_DIR / "fair-inputs" / "gwp_mass_adjusted_100y.csv", index_col=0)
 
 # %%
+# Apply scenario_mapping for counterfactual scenarios (e.g. HL-CF → HL)
+# so they inherit volcanic/solar forcing from their source scenario
+import tempfile
+
+forcing_path = str(DATA_DIR / "fair-inputs" / "volcanic_solar.csv")
+if cfg.scenario_mapping:
+    # Duplicate forcing rows for mapped scenarios
+    df_forcing_raw = pd.read_csv(forcing_path)
+    new_rows = []
+    for new_scen, base_scen in cfg.scenario_mapping.items():
+        base_rows = df_forcing_raw[df_forcing_raw["Scenario"] == base_scen].copy()
+        if not base_rows.empty:
+            base_rows["Scenario"] = new_scen
+            new_rows.append(base_rows)
+    if new_rows:
+        df_forcing_raw = pd.concat([df_forcing_raw] + new_rows, ignore_index=True)
+        _tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False, mode="w")
+        df_forcing_raw.to_csv(_tmp.name, index=False)
+        forcing_path = _tmp.name
+
 f.fill_from_csv(
-    forcing_file="../data/fair-inputs/volcanic_solar.csv",
-    emissions_file="../data/fair-inputs/emissions_1750-2500.csv",
+    forcing_file=forcing_path,
+    emissions_file=str(emissions_csv),
 )
 
 # %%
@@ -154,9 +191,6 @@ ncflr = np.ones(len(scens))
 for i in range(len(scens)):
     ncflr[i] = nonco2.sel(scenario=scens[i])[-1] / 1e6
 ncflr
-
-# %%
-scens_shrt = [ldict[s] for s in scens]
 
 # %% [markdown]
 # ## CO2-Equivalent Emissions Calculation
@@ -207,11 +241,11 @@ co2e = co2eo * 1e6  # -co2eo.loc[dict(timepoints=2019.5)].values+53.e6
 # ## Run FaIR
 
 # %%
-f.fill_species_configs("../data/fair-inputs/species_configs_properties_1.4.1.csv")
+f.fill_species_configs(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
 if memory_limited:
-    f.override_defaults("../data/fair-inputs/1.5.0/calibrated_constrained_parameters_short.csv")
+    f.override_defaults(str(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters_short.csv"))
 else:
-    f.override_defaults("../data/fair-inputs/1.5.0/calibrated_constrained_parameters.csv")
+    f.override_defaults(str(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"))
 initialise(f.concentration, f.species_configs["baseline_concentration"])
 initialise(f.forcing, 0)
 initialise(f.temperature, 0)

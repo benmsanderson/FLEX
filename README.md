@@ -13,16 +13,27 @@ The extension methodology takes CMIP7 ScenarioMIP marker scenarios (pre-2100) an
 
 ```
 .
+├── configs/                        # YAML ensemble configurations
+│   ├── scenariomip_default.yaml    # Standard 7-scenario ScenarioMIP setup
+│   └── WIEMIP.yaml                 # 8-scenario setup with HL-CF counterfactual
 ├── data/                           # Input data (CSV files)
 │   ├── history.csv                 # Historical emissions (global)
 │   ├── history_regional.csv        # Historical emissions (regional)
 │   ├── scenarios_complete_global.csv  # Pre-2100 scenarios (global)
 │   └── scenarios_regional.csv      # Pre-2100 scenarios (regional)
 ├── notebooks/
-│   └── 5191_extension.py          # Main extension notebook (jupytext format)
-├── src/
-│   └── extensions/                 # Extension functions
-├── outputs/                        # Generated output files
+│   ├── 5191_extension.py           # Build extended emissions scenarios
+│   ├── 5195_optimise.py            # Optimise counterfactual scenario parameters
+│   ├── 5201_extension_fair_simulations.py  # Run FaIR climate simulations
+│   └── 5202_extension_fair_plots.py        # Plot FaIR results
+├── scripts/
+│   ├── run_pipeline.py             # Papermill pipeline runner
+│   └── ...
+├── src/flex/                       # Library code
+│   ├── config.py                   # YAML config loader (FlexConfig)
+│   ├── optimise.py                 # Scenario optimisation via differential evolution
+│   └── ...                         # Extension functions
+├── outputs/                        # Generated output files (per-config)
 ├── pixi.toml                       # Pixi environment specification
 └── README.md                       # This file
 ```
@@ -65,17 +76,55 @@ The extension methodology takes CMIP7 ScenarioMIP marker scenarios (pre-2100) an
 
 ### Running the Extension
 
-1. Launch Jupyter Lab:
-   ```bash
-   pixi run notebook
-   ```
+The pipeline is driven by YAML configuration files in `configs/`. Each config defines the set of scenarios, their storyline parameters, and optionally an optimisation step.
 
-2. Open and run `notebooks/5191_extension.py` (it will be displayed as a notebook thanks to jupytext)
+#### Automated pipeline (recommended)
 
-Alternatively, run directly with Python:
+Run the full pipeline for a given configuration:
 ```bash
-pixi run python notebooks/5191_extension.py
+pixi run pipeline scenariomip_default   # standard 7-scenario run
+pixi run pipeline WIEMIP                # includes HL-CF optimisation step
 ```
+
+Resume from a specific step (skips earlier steps):
+```bash
+pixi run pipeline WIEMIP -- --from 5201   # resume from FaIR simulations
+pixi run pipeline WIEMIP -- --only 5202   # re-run just the plots
+```
+
+This executes notebooks in sequence via [papermill](https://papermill.readthedocs.io/):
+
+1. **5191_extension** — Build extended emissions scenarios (1750–2500)
+2. **5195_optimise** *(only if the config defines an `optimization` section)* — Optimise counterfactual scenario parameters against FaIR temperature targets
+3. **5201_extension_fair_simulations** — Run FaIR v2.2 climate simulations on all scenarios
+4. **5202_extension_fair_plots** — Generate diagnostic plots
+
+Rendered output notebooks are saved to `outputs/<config_name>/notebooks/`.
+
+#### Interactive use
+
+You can also run notebooks interactively in Jupyter Lab:
+```bash
+pixi run notebook
+```
+
+Each notebook has a `config_name` parameter cell (tagged `parameters` for papermill). Change the value to switch configurations:
+```python
+# %% tags=["parameters"]
+config_name = "WIEMIP"     # or "scenariomip_default"
+```
+
+### Configuration
+
+Configs live in `configs/<name>.yaml` and specify:
+- **scenario_model_match** — mapping of marker names to (scenario, model) pairs
+- **storylines** — CO2 storyline parameters per scenario
+- **non_co2** — sigmoid targets for non-CO2 species
+- **optimization** *(optional)* — parameters to optimise via `scipy.optimize.differential_evolution`, including bounds, fixed parameters, and FaIR temperature targets
+
+When no `optimization` section is present, the pipeline skips `5195_optimise`.
+
+See `configs/scenariomip_default.yaml` for a minimal example and `configs/WIEMIP.yaml` for a config with optimisation.
 
 ## Input Data
 
@@ -89,9 +138,12 @@ The `data/` folder contains pre-processed CSV files (~488 MB total, managed by G
 
 ## Output Data
 
-Generated files are saved to `outputs/`:
-- **extended_scenarios_1750_2500.csv**: Final extended scenarios
+Generated files are saved to `outputs/<config_name>/`:
+- **emissions_1750-2500.csv**: Extended emissions for all scenarios
 - **continuous_emissions_timeseries_1750_2500.csv**: Continuous historical-future merge
+- **fair_output_*.csv**: FaIR simulation results (temperature, forcing, concentrations, etc.)
+- **notebooks/**: Rendered pipeline notebooks with full outputs
+- **plots/**: Diagnostic plots from FaIR results
 - Per-model CSV files for individual scenarios
 
 ## Extension Methodology

@@ -10,6 +10,7 @@ platforms = ["osx-arm64", "osx-64", "linux-64"]
 notebook = "jupyter lab"
 test = "python -m pytest tests"
 test-cov = "pytest --cov=src"
+pipeline = "python scripts/run_pipeline.py"
 
 [dependencies]
 python = ">=3.10,<3.13"
@@ -27,6 +28,8 @@ openpyxl = "*"
 pytest = "*"
 pooch = ">=1.7"
 pyyaml = ">=6.0"
+scipy = ">=1.10"
+papermill = ">=2.4"
 
 [pypi-dependencies]
 pandas-indexing = "*"

@@ -5,9 +5,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.0
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: default
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -42,8 +42,11 @@ if str(src_dir) not in sys.path:
 
 from flex.config import load_config
 
-# --- Ensemble configuration ---
+# %% tags=["parameters"]
 config_name = "scenariomip_default"
+
+# --- Ensemble configuration ---
+# %%
 cfg = load_config(config_name)
 OUTPUTS_DIR = cfg.outputs_dir
 PLOTS_DIR = cfg.plots_dir
@@ -75,8 +78,8 @@ print(f"CO2e emissions: {len(co2e_df)} rows")
 # ## Setup: Scenario Names and Colors
 
 # %%
-# Scenario names
-snames = ["VL", "LN", "L", "ML", "M", "H", "HL"]
+# Scenario names (from config)
+snames = cfg.markers
 
 # Scenario labels
 ldict = {s: s for s in snames}

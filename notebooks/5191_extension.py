@@ -5,9 +5,9 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.0
+#       jupytext_version: 1.19.1
 #   kernelspec:
-#     display_name: default
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -78,8 +78,11 @@ from flex.general_utils_for_extensions import (
     save_continuous_timeseries_to_csv,
 )
 
-# --- Load ensemble configuration ---
+# %% tags=["parameters"]
 config_name = "scenariomip_default"
+
+# --- Load ensemble configuration ---
+# %%
 cfg = load_config(config_name)
 OUTPUTS_DIR = cfg.outputs_dir
 print(f"Loaded config: {cfg.name}")
@@ -174,7 +177,11 @@ for i, (model, scenario) in enumerate(unique_model_scenario_pairs, 1):
 # Marker definitions
 
 # %%
-scenario_model_match = cfg.scenario_model_match
+scenario_model_match = {
+    k: v for k, v in cfg.scenario_model_match.items()
+    if k not in cfg.optimization
+}
+print(f"Processing {len(scenario_model_match)} markers (excluding optimized: {list(cfg.optimization.keys())})")
 
 # %%
 scenarios_regional = scenarios_regional.sort_index(axis="columns").T.interpolate("index").T
