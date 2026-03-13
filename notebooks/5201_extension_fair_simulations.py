@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.0
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -40,6 +40,11 @@ from flex.config import load_config, DATA_DIR
 # %% tags=["parameters"]
 config_name = "scenariomip_default"
 
+# Set True to run the full ~1000-member calibrated ensemble
+# (gives proper uncertainty bands but is much slower).
+# When False, uses the same n_configs as the optimiser (from YAML config).
+full_ensemble = False
+
 # --- Ensemble configuration ---
 # %%
 cfg = load_config(config_name)
@@ -50,10 +55,18 @@ print(f"Outputs: {OUTPUTS_DIR}")
 
 # %%
 f = FAIR()
-memory_limited = True
 
-# %% [markdown]
-#
+# Determine ensemble size: match the optimiser by default
+params_file = DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
+if not full_ensemble:
+    _opt_cfgs = cfg.optimization or {}
+    n_fair_configs = max(
+        (v.get("n_configs", 1) for v in _opt_cfgs.values()),
+        default=1,
+    )
+else:
+    n_fair_configs = None  # use all
+print(f"Ensemble: {'full' if full_ensemble else f'{n_fair_configs} config(s)'}")
 
 # %%
 snames = cfg.markers
@@ -66,40 +79,29 @@ f.ch4_method = "Thornhill2021"
 
 
 # %% [markdown]
-# 'memory_limited' is for testing, runs only 5 ensemble members.
-#
-# If running full AR6 ensemble, need to
-# - set 'memory_limited' to False
-# - config file will be pulled from zenodo
-#
+# Download full parameter file from Zenodo if it is not available locally.
 
 # %%
-if not memory_limited:
-    # Define the Zenodo record DOI and the specific file you want
-    ZENODO_DOI = "10.5281/zenodo.7112539"  # Replace with your Zenodo DOI
-    FILE_NAME = "calibrated_constrained_parameters.csv"  # Replace with your file name on Zenodo
-    FILE_HASH = "md5:8a70a3fb05d0e0cf35e136de382582a5"  # Replace with the actual SHA256 hash of your file
-
-    # Create a Pooch instance
+if not params_file.exists():
+    ZENODO_DOI = "10.5281/zenodo.7112539"
+    FILE_NAME = "calibrated_constrained_parameters.csv"
+    FILE_HASH = "md5:8a70a3fb05d0e0cf35e136de382582a5"
     data_pooch = pooch.create(
-        path=str(DATA_DIR / "fair-inputs"),  # Local cache directory
-        base_url=f"doi:{ZENODO_DOI}",  # Zenodo DOI as base URL
+        path=str(DATA_DIR / "fair-inputs"),
+        base_url=f"doi:{ZENODO_DOI}",
         version="1.5.0",
         registry={FILE_NAME: FILE_HASH},
     )
-
-    # Fetch the file
     local_file_path = data_pooch.fetch(FILE_NAME)
-
-    print(f"Config file downloaded to: {local_file_path}")
+    print(f"Downloaded parameters to: {local_file_path}")
 
 # %%
-if memory_limited:
-    df_configs = pd.read_csv(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters_short.csv", index_col=0)
-    f.define_configs(df_configs.index)
-else:
-    df_configs = pd.read_csv(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv", index_col=0)
-    f.define_configs(df_configs.index)
+df_configs = pd.read_csv(params_file, index_col=0)
+if n_fair_configs is not None and n_fair_configs < len(df_configs):
+    indices = np.linspace(0, len(df_configs) - 1, n_fair_configs, dtype=int)
+    df_configs = df_configs.iloc[indices]
+f.define_configs(df_configs.index)
+print(f"Using {len(df_configs)} ensemble member(s)")
 
 # %%
 f.allocate()
@@ -234,10 +236,7 @@ co2e = co2eo * 1e6  # -co2eo.loc[dict(timepoints=2019.5)].values+53.e6
 
 # %%
 f.fill_species_configs(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
-if memory_limited:
-    f.override_defaults(str(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters_short.csv"))
-else:
-    f.override_defaults(str(DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"))
+f.override_defaults(str(params_file))
 initialise(f.concentration, f.species_configs["baseline_concentration"])
 initialise(f.forcing, 0)
 initialise(f.temperature, 0)

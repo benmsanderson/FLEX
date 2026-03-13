@@ -266,42 +266,6 @@ def build_co2_trajectory_from_ecs_params(
     return base_values, year_cols
 
 
-def build_ch4_plateau_trajectory(
-    base_emissions_csv: str,
-    scenario: str,
-    ch4_target: float,
-    departure_year: int = 2080,
-    transition_years: int = 20,
-) -> np.ndarray:
-    """Build a CH4 trajectory that transitions to a constant level.
-
-    From departure_year, linearly transitions to ch4_target over
-    transition_years, then holds constant.
-
-    Returns
-    -------
-    Full trajectory array (752 timepoints).
-    """
-    df = pd.read_csv(base_emissions_csv)
-    source = df[(df["scenario"] == scenario) & (df["variable"] == "CH4")]
-    year_cols = [c for c in df.columns if c.replace(".", "").replace("-", "").isdigit()]
-    years = np.array([float(c) for c in year_cols])
-    values = source[year_cols].values.flatten().copy()
-
-    dep_idx = np.searchsorted(years, departure_year + 0.5)
-    dep_value = values[dep_idx]
-
-    # Linear transition then constant
-    for i in range(dep_idx, len(values)):
-        yr = years[i] - departure_year
-        if yr <= transition_years:
-            values[i] = dep_value + (ch4_target - dep_value) * yr / transition_years
-        else:
-            values[i] = ch4_target
-
-    return values
-
-
 def _build_co2_trajectory(
     base_co2: np.ndarray,
     years: np.ndarray,
@@ -343,7 +307,6 @@ def _objective_plateau(
     base_emissions_csv: str,
     base_scenario: str,
     new_scenario: str,
-    ch4_trajectory: np.ndarray,
     departure_year: int,
     target_temp: float,
     temp_csv_path: str,
@@ -403,13 +366,12 @@ def _objective_plateau(
         else:
             co2_values[i] = 0.0
 
-    # Write modified CSV
+    # Write modified CSV (only CO2 FFI modified, all other species from source)
     modified_csv = modify_emissions_csv(
         base_emissions_csv,
         base_scenario,
         new_scenario,
         co2_ffi_trajectory=co2_values,
-        ch4_trajectory=ch4_trajectory,
         departure_year=departure_year,
         output_path=temp_csv_path,
     )
@@ -443,7 +405,6 @@ def _batch_objective_plateau(
     optimize_params: list[str],
     fixed_params: dict[str, float],
     base_scenario: str,
-    ch4_trajectory: np.ndarray,
     departure_year: int,
     target_temp: float,
     temp_csv_path: str,
@@ -468,7 +429,6 @@ def _batch_objective_plateau(
                 optimize_params=optimize_params,
                 fixed_params=fixed_params,
                 base_scenario=base_scenario,
-                ch4_trajectory=ch4_trajectory,
                 departure_year=departure_year,
                 target_temp=target_temp,
                 temp_csv_path=temp_csv_path,
@@ -502,12 +462,12 @@ def _batch_objective_plateau(
         return costs
 
     # Assemble one emissions DataFrame with all candidate scenarios
+    # Only CO2 FFI is modified; all other species (CH4, N2O, etc.) come
+    # from the source scenario as set up by the 5191 extensions.
     source_rows = base_df[base_df["scenario"] == base_scenario]
     dep_idx = int(np.searchsorted(years, departure_year + 0.5))
     post_dep_cols = year_cols[dep_idx:]
     co2_row_mask = source_rows["variable"] == "CO2 FFI"
-    ch4_row_mask = source_rows["variable"] == "CH4"
-    ch4_post_dep = ch4_trajectory[dep_idx:]
 
     new_blocks: list[pd.DataFrame] = []
     scenario_names: list[str] = []
@@ -515,7 +475,6 @@ def _batch_objective_plateau(
         rows = source_rows.copy()
         rows["scenario"] = scen_name
         rows.loc[co2_row_mask, post_dep_cols] = co2_traj[dep_idx:]
-        rows.loc[ch4_row_mask, post_dep_cols] = ch4_post_dep
         new_blocks.append(rows)
         scenario_names.append(scen_name)
 
@@ -620,17 +579,9 @@ def optimize_scenario(
     target_temp = temp_baseline[dep_idx]
     print(f"Target temperature at {departure_year}: {target_temp:.4f} K")
 
-    # Step 2: Build CH4 plateau trajectory (fixed, not optimized)
-    ch4_target = cfg.component_global_targets.get("Emissions|CH4", {}).get(marker, 200.0)
-    ch4_traj = build_ch4_plateau_trajectory(
-        base_emissions_csv,
-        source_marker,
-        ch4_target=ch4_target,
-        departure_year=departure_year,
-    )
-    print(f"CH4 target: {ch4_target} Mt/yr")
-
-    # Step 3: Optimize CO2 params
+    # Step 2: Optimize CO2 params
+    # Non-CO2 species (CH4, sulfur, etc.) are already set by the 5191
+    # extension step and are taken as-is from the base emissions CSV.
     temp_csv = str(cfg.outputs_dir / "_temp_optimization_emissions.csv")
     optimize_params = opt_settings.get("optimize_params", ["exp_targ", "sig_start", "sig_end"])
     fixed_params = opt_settings.get("fixed_params", {})
@@ -655,7 +606,6 @@ def optimize_scenario(
             optimize_params=optimize_params,
             fixed_params=fixed_params,
             base_scenario=source_marker,
-            ch4_trajectory=ch4_traj,
             departure_year=departure_year,
             target_temp=target_temp,
             temp_csv_path=temp_csv,
@@ -689,8 +639,6 @@ def optimize_scenario(
         "success": result.success,
         "message": result.message,
         "departure_year": departure_year,
-        "ch4_target": ch4_target,
-        "ch4_trajectory": ch4_traj,
     }
 
     print(f"\nOptimization {'succeeded' if result.success else 'did not converge'}:")

@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.0
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -297,11 +297,26 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
         if history.loc[pix.ismatch(variable=f"{variable}")].shape[0] < 1:
             continue
         for s, meta in tqdm.auto.tqdm(scenario_model_match.items()):
-            if variable in component_global_targets.keys():
-                global_target = component_global_targets[variable][s]
+            # Parse the normalized non_co2_targets entry.
+            # If the variable is configured and this scenario is NOT listed,
+            # skip it (keep source data).  If the variable is not configured
+            # at all, every scenario gets the default auto-decay extension.
+            var_targets = component_global_targets.get(variable)
+            if var_targets is not None and s not in var_targets:
+                print(f"{s}: {meta}, SKIP (not configured for {variable})")
+                continue
+            if var_targets is not None:
+                target_entry = var_targets[s]
+                global_target = target_entry.get("target")
+                sig_shift = target_entry.get("sigmoid_shift", 40)
+                sig_len = target_entry.get("sigmoid_len", 50)
+                branch_year = target_entry.get("branch_year", int(SCENARIO_END_YEAR))
             else:
                 global_target = None
-            print(f"{s}: {meta}, target: {global_target}")
+                sig_shift = 40
+                sig_len = 50
+                branch_year = int(SCENARIO_END_YEAR)
+            print(f"{s}: {meta}, target: {global_target}, branch: {branch_year}")
             df_comp_scen_model = do_single_component_for_scenario_model_regionally(
                 meta[0],
                 meta[1],
@@ -311,7 +326,9 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
                 history,
                 global_target=global_target,
                 end_year=EXTENSIONS_END_YEAR,
-                end_scenario_year=int(SCENARIO_END_YEAR),
+                end_scenario_year=branch_year,
+                sigmoid_shift=sig_shift,
+                sigmoid_len=sig_len,
             )
             # if "workflow" in df_comp_scen_model.index.names:
             #     print("Dropping workflow level from index")

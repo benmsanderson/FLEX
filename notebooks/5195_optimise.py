@@ -35,7 +35,6 @@ from flex.optimise import (
     optimize_scenario,
     run_fair_single_scenario,
     modify_emissions_csv,
-    build_ch4_plateau_trajectory,
     setup_fair,
 )
 
@@ -108,7 +107,6 @@ for marker, opt_settings in cfg.optimization.items():
 
     # --- Build the optimized CO2 trajectory and append to CSV ---
     departure_year = opt_settings["departure_year"]
-    ch4_traj = result["ch4_trajectory"]
 
     # Find the source marker (first non-optimized marker sharing scenario+model)
     source_marker = None
@@ -150,7 +148,6 @@ for marker, opt_settings in cfg.optimization.items():
     modify_emissions_csv(
         current_csv, source_marker, marker,
         co2_ffi_trajectory=co2_opt,
-        ch4_trajectory=ch4_traj,
         departure_year=departure_year,
         output_path=final_csv,
     )

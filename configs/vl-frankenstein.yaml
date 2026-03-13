@@ -89,19 +89,20 @@ removal_strategy:
     type: NEG
     params: [100, 60]
 
-# --- Non-CO2 global targets (endpoint values at extensions_end_year) ---
-# null means no explicit target (use default decay)
+# --- Non-CO2 global targets ---
+# Bare number = target with default sigmoid (shift=40, len=50, branch at scenario_end_year)
+# Dict = full control: {target, sigmoid_shift, sigmoid_len, branch_year}
+# null = auto-calculate target from data (original ScenarioMIP behavior)
+# Scenario not listed = skip extension, follow source scenario
 non_co2_targets:
   "Emissions|CH4":
     VL-fossil-frankenstein: 95.0
     VL-fossil-frankenstein-zero-afolu: 95.0
-    VL-fossil-frankenstein-hold: 95.0
-    VL-fossil-frankenstein-zero-afolu-hold: 95.0
+    # -hold variants not listed: they follow the source scenario's CH4
   "Emissions|Sulfur":
     VL-fossil-frankenstein: 20.0
     VL-fossil-frankenstein-zero-afolu: 20.0
-    VL-fossil-frankenstein-hold: 20.0
-    VL-fossil-frankenstein-zero-afolu-hold: 20.0
+    # -hold variants not listed: they follow the source scenario's sulfur
 
 # --- Data sources (paths relative to data/) ---
 # Overrides the default CSVs when loading input data.
@@ -130,7 +131,7 @@ optimization:
   VL-fossil-frankenstein-hold:
     enabled: true
     departure_year: 2030
-    n_configs: 1
+    n_configs: 10
     optimize_params: [exp_targ, sig_start]
     fixed_params:
       sig_end: 2450
@@ -140,7 +141,7 @@ optimization:
   VL-fossil-frankenstein-zero-afolu-hold:
     enabled: true
     departure_year: 2030
-    n_configs: 1
+    n_configs: 10
     optimize_params: [exp_targ, sig_start]
     fixed_params:
       sig_end: 2450

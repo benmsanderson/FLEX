@@ -123,6 +123,9 @@ removal_strategy:
     params: [80, 20]
 
 # --- Non-CO2 global targets ---
+# Bare number = target only (default sigmoid_shift=40, sigmoid_len=50, branch at scenario_end_year)
+# Dict = full control: {target, sigmoid_shift, sigmoid_len, branch_year}
+# null = follow source scenario (no extension override)
 non_co2_targets:
   "Emissions|CH4":
     VL: 95.0
@@ -132,7 +135,9 @@ non_co2_targets:
     M: 450.0
     H: 520.0
     HL: 110.0
-    HL-CF: 200.0
+    HL-CF:
+      target: 200.0
+      branch_year: 2080
   "Emissions|Sulfur":
     VL: 20.0
     LN: 10.0
@@ -141,7 +146,9 @@ non_co2_targets:
     M: 20.0
     H: 50.0
     HL: 10.0
-    HL-CF: 10.0
+    HL-CF:
+      target: 10.0
+      branch_year: 2080
 
 # --- Optimization settings ---
 # Scenarios with optimize: true will have their fossil_evolution params
