@@ -107,6 +107,7 @@ def setup_fair(
     # Fill species configs and calibrated parameters
     f.fill_species_configs(str(fair_inputs / "species_configs_properties_1.4.1.csv"))
     f.override_defaults(str(params_file))
+    f.stochastic_run[:] = False
 
     initialise(f.concentration, f.species_configs["baseline_concentration"])
     initialise(f.forcing, 0)
@@ -267,36 +268,44 @@ def build_co2_trajectory_from_ecs_params(
 
 
 def _build_co2_trajectory(
-    base_co2: np.ndarray,
+    base_co2_ffi: np.ndarray,
+    base_co2_afolu: np.ndarray,
     years: np.ndarray,
     departure_year: int,
     exp_targ: float,
     sig_start: float,
     sig_end: float,
 ) -> np.ndarray:
-    """Build CO2 FFI trajectory: linear ramp -> hold -> smoothstep -> zero."""
-    co2 = base_co2.copy()
+    """Build CO2 FFI trajectory from a total-CO2 target profile.
+
+    Defines total CO2 (FFI + AFOLU) as: linear ramp -> hold -> smoothstep -> zero,
+    then derives FFI = total - AFOLU.
+    """
+    total = (base_co2_ffi + base_co2_afolu).copy()
     dep_idx = np.searchsorted(years, departure_year + 0.5)
-    dep_value = co2[dep_idx]
+    dep_value = total[dep_idx]
     exp_end = int(sig_start)
 
-    for i in range(dep_idx, len(co2)):
+    for i in range(dep_idx, len(total)):
         yr = years[i] - departure_year
         yr_total = exp_end - departure_year
         if years[i] <= exp_end + 0.5 and yr_total > 0:
             frac = yr / yr_total
-            co2[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
+            total[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
         elif years[i] <= sig_start + 0.5:
-            co2[i] = exp_targ
+            total[i] = exp_targ
         elif years[i] <= sig_end + 0.5:
             frac = (years[i] - sig_start) / (sig_end - sig_start)
             t = np.clip(frac, 0, 1)
             s = 3 * t**2 - 2 * t**3
-            co2[i] = exp_targ * (1 - s)
+            total[i] = exp_targ * (1 - s)
         else:
-            co2[i] = 0.0
+            total[i] = 0.0
 
-    return co2
+    # Derive FFI = total - AFOLU
+    ffi = base_co2_ffi.copy()
+    ffi[dep_idx:] = total[dep_idx:] - base_co2_afolu[dep_idx:]
+    return ffi
 
 
 def _objective_plateau(
@@ -335,36 +344,19 @@ def _objective_plateau(
     if sig_start >= sig_end:
         return 1e6
 
-    # Build modified CO2 FFI trajectory
-    # Read base emissions, modify from departure_year using simple interpolation
+    # Build modified CO2 FFI trajectory via total CO2 target
     df = pd.read_csv(base_emissions_csv)
-    source = df[(df["scenario"] == base_scenario) & (df["variable"] == "CO2 FFI")]
+    source_ffi = df[(df["scenario"] == base_scenario) & (df["variable"] == "CO2 FFI")]
+    source_afolu = df[(df["scenario"] == base_scenario) & (df["variable"] == "CO2 AFOLU")]
     year_cols = [c for c in df.columns if c.replace(".", "").replace("-", "").isdigit()]
     years = np.array([float(c) for c in year_cols])
-    co2_values = source[year_cols].values.flatten().copy()
+    co2_ffi = source_ffi[year_cols].values.flatten().copy()
+    co2_afolu = source_afolu[year_cols].values.flatten().copy() if len(source_afolu) else np.zeros_like(co2_ffi)
 
-    dep_idx = np.searchsorted(years, departure_year + 0.5)
-    dep_value = co2_values[dep_idx]
-
-    # Phase 1: linear from departure_value to exp_targ by exp_end (= sig_start for simplicity)
-    exp_end = int(sig_start)
-    for i in range(dep_idx, len(co2_values)):
-        yr = years[i] - departure_year
-        yr_total = exp_end - departure_year
-        if years[i] <= exp_end + 0.5 and yr_total > 0:
-            frac = yr / yr_total
-            co2_values[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
-        elif years[i] <= sig_start + 0.5:
-            co2_values[i] = exp_targ
-        elif years[i] <= sig_end + 0.5:
-            # Sigmoid to zero
-            frac = (years[i] - sig_start) / (sig_end - sig_start)
-            # Smooth sigmoid
-            t = np.clip(frac, 0, 1)
-            s = 3 * t**2 - 2 * t**3  # smoothstep
-            co2_values[i] = exp_targ * (1 - s)
-        else:
-            co2_values[i] = 0.0
+    co2_values = _build_co2_trajectory(
+        co2_ffi, co2_afolu, years, departure_year,
+        exp_targ, sig_start, sig_end,
+    )
 
     # Write modified CSV (only CO2 FFI modified, all other species from source)
     modified_csv = modify_emissions_csv(
@@ -412,7 +404,8 @@ def _batch_objective_plateau(
     forcing_scenario: str | None,
     n_configs: int | None,
     base_df: pd.DataFrame,
-    base_co2: np.ndarray,
+    base_co2_ffi: np.ndarray,
+    base_co2_afolu: np.ndarray,
     years: np.ndarray,
     year_cols: list[str],
 ) -> np.ndarray | float:
@@ -436,7 +429,8 @@ def _batch_objective_plateau(
                 forcing_scenario=forcing_scenario,
                 n_configs=n_configs,
                 base_df=base_df,
-                base_co2=base_co2,
+                base_co2_ffi=base_co2_ffi,
+                base_co2_afolu=base_co2_afolu,
                 years=years,
                 year_cols=year_cols,
             )[0]
@@ -453,7 +447,7 @@ def _batch_objective_plateau(
         if all_p["sig_start"] >= all_p["sig_end"]:
             continue
         co2 = _build_co2_trajectory(
-            base_co2, years, departure_year,
+            base_co2_ffi, base_co2_afolu, years, departure_year,
             all_p["exp_targ"], all_p["sig_start"], all_p["sig_end"],
         )
         valid.append((j, f"_opt_{j}", co2))
@@ -593,12 +587,19 @@ def optimize_scenario(
 
     # Pre-load base emissions once for the vectorized objective
     base_df = pd.read_csv(base_emissions_csv)
-    source_co2 = base_df[
+    source_co2_ffi = base_df[
         (base_df["scenario"] == source_marker) & (base_df["variable"] == "CO2 FFI")
+    ]
+    source_co2_afolu = base_df[
+        (base_df["scenario"] == source_marker) & (base_df["variable"] == "CO2 AFOLU")
     ]
     year_cols = [c for c in base_df.columns if c.replace(".", "").replace("-", "").isdigit()]
     years_arr = np.array([float(c) for c in year_cols])
-    base_co2_vals = source_co2[year_cols].values.flatten().copy()
+    base_co2_ffi_vals = source_co2_ffi[year_cols].values.flatten().copy()
+    base_co2_afolu_vals = (
+        source_co2_afolu[year_cols].values.flatten().copy()
+        if len(source_co2_afolu) else np.zeros_like(base_co2_ffi_vals)
+    )
 
     result = differential_evolution(
         lambda x: _batch_objective_plateau(
@@ -613,7 +614,8 @@ def optimize_scenario(
             forcing_scenario=forcing_scen,
             n_configs=n_configs,
             base_df=base_df,
-            base_co2=base_co2_vals,
+            base_co2_ffi=base_co2_ffi_vals,
+            base_co2_afolu=base_co2_afolu_vals,
             years=years_arr,
             year_cols=year_cols,
         ),
