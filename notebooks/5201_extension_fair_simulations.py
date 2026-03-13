@@ -237,7 +237,7 @@ co2e = co2eo * 1e6  # -co2eo.loc[dict(timepoints=2019.5)].values+53.e6
 # %%
 f.fill_species_configs(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
 f.override_defaults(str(params_file))
-f.stochastic_run[:] = False
+f.climate_configs["stochastic_run"][:] = False
 initialise(f.concentration, f.species_configs["baseline_concentration"])
 initialise(f.forcing, 0)
 initialise(f.temperature, 0)

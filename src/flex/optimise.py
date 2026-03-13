@@ -107,7 +107,7 @@ def setup_fair(
     # Fill species configs and calibrated parameters
     f.fill_species_configs(str(fair_inputs / "species_configs_properties_1.4.1.csv"))
     f.override_defaults(str(params_file))
-    f.stochastic_run[:] = False
+    f.climate_configs["stochastic_run"][:] = False
 
     initialise(f.concentration, f.species_configs["baseline_concentration"])
     initialise(f.forcing, 0)
