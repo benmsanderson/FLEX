@@ -24,7 +24,6 @@
 # %%
 import glob
 import re
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -36,18 +35,7 @@ import pandas_openscm
 import seaborn as sns
 import tqdm.auto
 
-# Add src directory to path for extensions imports
-src_dir = (Path(__file__).parent.parent / "src" if "__file__" in globals() 
-           else Path().resolve().parent / "src")
-
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
-
-# Data directories
-DATA_DIR = Path().resolve().parent / "data"
-
-# Package imports
-from flex.config import load_config
+from flex.config import load_config, DATA_DIR
 from flex.afolu_extension_functions import (
     get_cumulative_afolu,
     extend_one_scenario_afolu,
@@ -309,11 +297,26 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
         if history.loc[pix.ismatch(variable=f"{variable}")].shape[0] < 1:
             continue
         for s, meta in tqdm.auto.tqdm(scenario_model_match.items()):
-            if variable in component_global_targets.keys():
-                global_target = component_global_targets[variable][s]
+            # Parse the normalized non_co2_targets entry.
+            # If the variable is configured and this scenario is NOT listed,
+            # skip it (keep source data).  If the variable is not configured
+            # at all, every scenario gets the default auto-decay extension.
+            var_targets = component_global_targets.get(variable)
+            if var_targets is not None and s not in var_targets:
+                print(f"{s}: {meta}, SKIP (not configured for {variable})")
+                continue
+            if var_targets is not None:
+                target_entry = var_targets[s]
+                global_target = target_entry.get("target")
+                sig_shift = target_entry.get("sigmoid_shift", 40)
+                sig_len = target_entry.get("sigmoid_len", 50)
+                branch_year = target_entry.get("branch_year", int(SCENARIO_END_YEAR))
             else:
                 global_target = None
-            print(f"{s}: {meta}, target: {global_target}")
+                sig_shift = 40
+                sig_len = 50
+                branch_year = int(SCENARIO_END_YEAR)
+            print(f"{s}: {meta}, target: {global_target}, branch: {branch_year}")
             df_comp_scen_model = do_single_component_for_scenario_model_regionally(
                 meta[0],
                 meta[1],
@@ -323,7 +326,9 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
                 history,
                 global_target=global_target,
                 end_year=EXTENSIONS_END_YEAR,
-                end_scenario_year=int(SCENARIO_END_YEAR),
+                end_scenario_year=branch_year,
+                sigmoid_shift=sig_shift,
+                sigmoid_len=sig_len,
             )
             # if "workflow" in df_comp_scen_model.index.names:
             #     print("Dropping workflow level from index")
@@ -353,9 +358,9 @@ if do_and_write_to_csv:
         scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots
     )
     if dump_csvs:
-        df_all.to_csv("first_draft_extended_nonCO2_all.csv")
+        df_all.to_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
-            afolu_df.to_csv(f"first_draft_extended_afolu_{name}.csv")
+            afolu_df.to_csv(OUTPUTS_DIR / f"first_draft_extended_afolu_{name}.csv")
 
 
 # %%
@@ -440,7 +445,7 @@ for s, meta in scenario_model_match.items():
 
 fossil_extension_df = pd.concat(temp_list_for_new_data)
 if dump_csvs:
-    fossil_extension_df.to_csv(f"co2_fossil_fuel_extenstions_{name}.csv")
+    fossil_extension_df.to_csv(OUTPUTS_DIR / f"co2_fossil_fuel_extenstions_{name}.csv")
 
 # %% [markdown]
 # # Dataframe cleanup
@@ -768,7 +773,7 @@ if make_plots and co2_gross_positive_ext is not None:
     )
 
     plt.tight_layout()
-    plt.savefig("gross_positive_vs_cdr_vs_ffi_by_scenario.png")
+    plt.savefig(cfg.plots_dir / "gross_positive_vs_cdr_vs_ffi_by_scenario.png")
 
 
 # %% [markdown]

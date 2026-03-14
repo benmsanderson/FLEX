@@ -24,24 +24,17 @@
 # includes the optimized counterfactual scenarios alongside the originals.
 
 # %%
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# Add src directory to path
-src_dir = Path().resolve().parent / "src"
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
-
 from flex.config import load_config, DATA_DIR
 from flex.optimise import (
     optimize_scenario,
     run_fair_single_scenario,
     modify_emissions_csv,
-    build_ch4_plateau_trajectory,
     setup_fair,
 )
 
@@ -106,7 +99,7 @@ for marker, opt_settings in cfg.optimization.items():
     opt_results[marker] = result
 
     print(f"\nOptimized ECS params for {marker}:")
-    print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr")
+    print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr (total CO2)")
     print(f"  sig_start = {result['sig_start']:.0f}")
     print(f"  sig_end   = {result['sig_end']:.0f}")
     print(f"  Target T  = {result['target_temp']:.4f} K")
@@ -114,7 +107,6 @@ for marker, opt_settings in cfg.optimization.items():
 
     # --- Build the optimized CO2 trajectory and append to CSV ---
     departure_year = opt_settings["departure_year"]
-    ch4_traj = result["ch4_trajectory"]
 
     # Find the source marker (first non-optimized marker sharing scenario+model)
     source_marker = None
@@ -125,38 +117,45 @@ for marker, opt_settings in cfg.optimization.items():
             break
 
     df_emis = pd.read_csv(current_csv)
-    source = df_emis[(df_emis["scenario"] == source_marker) & (df_emis["variable"] == "CO2 FFI")]
+    source_ffi = df_emis[(df_emis["scenario"] == source_marker) & (df_emis["variable"] == "CO2 FFI")]
+    source_afolu = df_emis[(df_emis["scenario"] == source_marker) & (df_emis["variable"] == "CO2 AFOLU")]
     year_cols = [c for c in df_emis.columns if c.replace(".", "").replace("-", "").isdigit()]
     years = np.array([float(c) for c in year_cols])
-    co2_opt = source[year_cols].values.flatten().copy()
+    co2_ffi = source_ffi[year_cols].values.flatten().copy()
+    co2_afolu = source_afolu[year_cols].values.flatten().copy() if len(source_afolu) else np.zeros_like(co2_ffi)
 
     dep_idx_emis = np.searchsorted(years, departure_year + 0.5)
-    dep_value = co2_opt[dep_idx_emis]
     exp_targ = result["exp_targ"]
     sig_start = result["sig_start"]
     sig_end = result["sig_end"]
     exp_end = int(sig_start)
 
-    for i in range(dep_idx_emis, len(co2_opt)):
+    # Build total CO2 trajectory, derive FFI = total - AFOLU
+    total_co2 = (co2_ffi + co2_afolu).copy()
+    dep_value = total_co2[dep_idx_emis]
+
+    for i in range(dep_idx_emis, len(total_co2)):
         yr_total = exp_end - departure_year
         if years[i] <= exp_end + 0.5 and yr_total > 0:
             frac = (years[i] - departure_year) / yr_total
-            co2_opt[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
+            total_co2[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
         elif years[i] <= sig_start + 0.5:
-            co2_opt[i] = exp_targ
+            total_co2[i] = exp_targ
         elif years[i] <= sig_end + 0.5:
             frac = (years[i] - sig_start) / (sig_end - sig_start)
             t = np.clip(frac, 0, 1)
             s = 3 * t**2 - 2 * t**3
-            co2_opt[i] = exp_targ * (1 - s)
+            total_co2[i] = exp_targ * (1 - s)
         else:
-            co2_opt[i] = 0.0
+            total_co2[i] = 0.0
+
+    co2_opt = co2_ffi.copy()
+    co2_opt[dep_idx_emis:] = total_co2[dep_idx_emis:] - co2_afolu[dep_idx_emis:]
 
     final_csv = str(OUTPUTS_DIR / "emissions_1750-2500.csv")
     modify_emissions_csv(
         current_csv, source_marker, marker,
         co2_ffi_trajectory=co2_opt,
-        ch4_trajectory=ch4_traj,
         departure_year=departure_year,
         output_path=final_csv,
     )
