@@ -103,10 +103,11 @@ for marker, opt_settings in cfg.optimization.items():
     print(f"  sig_start = {result['sig_start']:.0f}")
     print(f"  sig_end   = {result['sig_end']:.0f}")
     print(f"  Target T  = {result['target_temp']:.4f} K")
+    print(f"  Departure = {result['departure_year']}")
     print(f"  Final cost = {result['final_cost']:.6f}")
 
     # --- Build the optimized CO2 trajectory and append to CSV ---
-    departure_year = opt_settings["departure_year"]
+    departure_year = result["departure_year"]
 
     # Find the source marker (first non-optimized marker sharing scenario+model)
     source_marker = None

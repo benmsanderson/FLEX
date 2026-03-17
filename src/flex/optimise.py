@@ -540,7 +540,9 @@ def optimize_scenario(
     opt_settings = cfg.optimization[marker]
     if n_configs is None:
         n_configs = opt_settings.get("n_configs", 1)
-    departure_year = opt_settings["departure_year"]
+    departure_year_cfg = opt_settings.get("departure_year", "peak")
+    target_year_cfg = opt_settings.get("target_year", "peak")
+    departure_offset = opt_settings.get("departure_offset", 0)
     bounds_cfg = opt_settings["bounds"]
 
     base_scenario = cfg.scenario_model_match[marker][0]
@@ -557,11 +559,9 @@ def optimize_scenario(
         raise ValueError(msg)
 
     forcing_scen = cfg.forcing_scenario.get(source_marker, source_marker)
-    print(f"Optimizing {marker} based on {source_marker} (departure {departure_year}, forcing={forcing_scen})")
+    print(f"Optimizing {marker} based on {source_marker} (forcing={forcing_scen})")
 
-    # Step 1: Get target temperature from source scenario at departure year
-    # Use the same n_configs as the optimization loop so the target is
-    # consistent with the objective function.
+    # Step 1: Run baseline FaIR to determine target temperature
     print(f"Running baseline FaIR ({n_configs} config(s)) to get target temperature...")
     temp_baseline = run_fair_single_scenario(
         base_emissions_csv, source_marker, memory_limited=memory_limited,
@@ -569,9 +569,24 @@ def optimize_scenario(
         n_configs=n_configs,
     )
     timebounds = np.arange(1750, 2501, 1.0)
-    dep_idx = np.searchsorted(timebounds, departure_year)
-    target_temp = temp_baseline[dep_idx]
-    print(f"Target temperature at {departure_year}: {target_temp:.4f} K")
+
+    # Determine target year / peak year
+    peak_idx = int(np.argmax(temp_baseline))
+    peak_year = int(timebounds[peak_idx])
+    if target_year_cfg == "peak":
+        target_year = peak_year
+    else:
+        target_year = int(target_year_cfg)
+    target_temp = temp_baseline[np.searchsorted(timebounds, target_year)]
+    print(f"Peak temperature year: {peak_year}")
+    print(f"Target year: {target_year}, target temperature: {target_temp:.4f} K")
+
+    # Determine departure year (when trajectory diverges from source)
+    if departure_year_cfg == "peak":
+        departure_year = peak_year + departure_offset
+    else:
+        departure_year = int(departure_year_cfg) + departure_offset
+    print(f"Departure year: {departure_year}")
 
     # Step 2: Optimize CO2 params
     # Non-CO2 species (CH4, sulfur, etc.) are already set by the 5191
@@ -600,6 +615,16 @@ def optimize_scenario(
         source_co2_afolu[year_cols].values.flatten().copy()
         if len(source_co2_afolu) else np.zeros_like(base_co2_ffi_vals)
     )
+
+    # Clamp exp_targ upper bound to departure-year total CO2
+    # so the trajectory can never jump *up* at the departure point.
+    dep_idx_emis = np.searchsorted(years_arr, departure_year + 0.5)
+    dep_total_co2 = (base_co2_ffi_vals + base_co2_afolu_vals)[dep_idx_emis]
+    if "exp_targ" in optimize_params:
+        et_pos = optimize_params.index("exp_targ")
+        lo, hi = bounds[et_pos]
+        bounds[et_pos] = (lo, min(hi, dep_total_co2))
+        print(f"Clamped exp_targ upper bound to departure-year total CO2: {dep_total_co2:.0f}")
 
     result = differential_evolution(
         lambda x: _batch_objective_plateau(
