@@ -623,8 +623,17 @@ def optimize_scenario(
     if "exp_targ" in optimize_params:
         et_pos = optimize_params.index("exp_targ")
         lo, hi = bounds[et_pos]
-        bounds[et_pos] = (lo, min(hi, dep_total_co2))
-        print(f"Clamped exp_targ upper bound to departure-year total CO2: {dep_total_co2:.0f}")
+        clamped_hi = min(hi, dep_total_co2)
+        if lo > clamped_hi:
+            # Departure-year CO2 is below configured lower bound (e.g. net-negative);
+            # shift the whole search window down, preserving its width.
+            width = hi - lo
+            clamped_lo = clamped_hi - width
+        else:
+            clamped_lo = lo
+        bounds[et_pos] = (clamped_lo, clamped_hi)
+        print(f"Clamped exp_targ bounds to ({clamped_lo:.0f}, {clamped_hi:.0f}) "
+              f"[departure-year total CO2: {dep_total_co2:.0f}]")
 
     result = differential_evolution(
         lambda x: _batch_objective_plateau(
