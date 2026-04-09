@@ -18,9 +18,16 @@ ALL_STEPS = [
 ]
 
 
-def run_notebook(notebook_name: str, config_name: str, output_dir: Path) -> None:
+def run_notebook(notebook_name: str, config_name: str, output_dir: Path, n_jobs: int = 1) -> None:
     """Execute a notebook with papermill, injecting config_name."""
-    input_path = NOTEBOOKS_DIR / f"{notebook_name}.py"
+    # Use parallel version if requested and the notebook supports it
+    if n_jobs != 1 and notebook_name == "5195_optimise":
+        actual_notebook = "5195_optimise_parallel"
+        print(f"  -> Using parallel version with n_jobs={n_jobs}")
+    else:
+        actual_notebook = notebook_name
+    
+    input_path = NOTEBOOKS_DIR / f"{actual_notebook}.py"
     output_path = output_dir / f"{notebook_name}.ipynb"
 
     notebook_jupytext = jupytext.read(input_path)
@@ -34,10 +41,15 @@ def run_notebook(notebook_name: str, config_name: str, output_dir: Path) -> None
     print(f"Running {notebook_name} with config={config_name}")
     print(f"{'='*60}")
 
+    # Inject both config_name and n_jobs (for parallel notebook)
+    parameters = {"config_name": config_name}
+    if actual_notebook == "5195_optimise_parallel":
+        parameters["n_jobs"] = n_jobs
+
     pm.execute_notebook(
         str(in_notebook),
         str(output_path),
-        parameters={"config_name": config_name},
+        parameters=parameters,
         kernel_name="python3",
     )
     print(f"  -> Saved to {output_path}")
@@ -73,6 +85,12 @@ def main() -> None:
     parser.add_argument(
         "--only", metavar="STEP",
         help="Run only this single step.",
+    )
+    parser.add_argument(
+        "--parallel", "--n-jobs", dest="n_jobs", type=int, metavar="N",
+        help="Run optimization in parallel with N jobs. Use -1 for all cores (capped at 20). "
+             "Explicitly specify >20 to override the cap. Only affects the optimization step (5195_optimise).",
+        default=1,
     )
     args = parser.parse_args()
 
@@ -121,9 +139,18 @@ def main() -> None:
     print(f"Pipeline for '{config_name}': {' -> '.join(steps)}")
     if has_optimization:
         print(f"Optimization enabled for: {list(cfg.optimization.keys())}")
+        if args.n_jobs != 1:
+            import os
+            if args.n_jobs == -1:
+                n_jobs_display = f"{min(os.cpu_count() or 1, 20)} jobs (capped at 20)"
+            elif args.n_jobs > 20:
+                n_jobs_display = f"{args.n_jobs} jobs (explicit override)"
+            else:
+                n_jobs_display = f"{args.n_jobs} jobs"
+            print(f"Parallel optimization: {n_jobs_display}")
 
     for notebook_name in steps:
-        run_notebook(notebook_name, config_name, output_dir)
+        run_notebook(notebook_name, config_name, output_dir, n_jobs=args.n_jobs)
 
     print(f"\nPipeline complete. Rendered notebooks in {output_dir}")
 
