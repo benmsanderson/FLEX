@@ -1,0 +1,815 @@
+LETTER • OPEN ACCESS
+
+Earth system responses under a global 2 °C-target
+scenario aligned with China’s carbon neutrality
+pledge
+To cite this article: Yixiong Lu et al 2025 Environ. Res. Lett. 20 104049
+
+You may also like
+- Permafrost vulnerability to climate change:
+understanding thaw dynamics and climate
+feedback of permafrost degradation
+Jing Tao, Anna K Liljedahl, Christopher R
+Burn et al.
+- A review of open data for studying global
+groundwater in social–ecological systems
+Xander Huggins, Tom Gleeson, James S
+Famiglietti et al.
+- Global energy and carbon emissions of
+irrigation and fertilizers management for
+closing crop yield gaps
+Chenchen Ren and Lorenzo Rosa
+
+View the article online for updates and enhancements.
+
+This content was downloaded from IP address 151.252.14.93 on 14/04/2026 at 16:12
+
+Environ. Res. Lett. 20 (2025) 104049
+
+https://doi.org/10.1088/1748-9326/adfbfb
+
+LETTER
+
+OPEN ACCESS
+
+Earth system responses under a global 2 ◦C-target scenario
+aligned with China’s carbon neutrality pledge
+
+RECEIVED
+
+7 April 2025
+REVISED
+
+10 July 2025
+ACCEPTED FOR PUBLICATION
+
+15 August 2025
+PUBLISHED
+
+19 September 2025
+
+Original content from
+this work may be used
+under the terms of the
+Creative Commons
+Attribution 4.0 licence.
+
+Yixiong Lu1,4,6, Lei Jin1,6, Junting Zhong2,3, Xiaoye Zhang2,3,∗, Yanwu Zhang1,4, Fanghua Wu1,4,
+Fang Zhang1,4, Zhili Wang2,3, Jie Zhang1,4, Xiaoge Xin1,4, Tongwen Wu1,4, Deying Wang2,3, Da Zhang5,
+Tianpeng Wang5 and Wei Hua6
+1
+
+State Key Laboratory of Severe Weather Meteorological Science and Technology, Earth System Modeling and Prediction Centre, China
+Meteorological Administration, Beijing 100081, People’s Republic of China
+2
+State Key Laboratory of Severe Weather Meteorological Science and Technology, Chinese Academy of Meteorological Sciences, Beijing
+100081, People’s Republic of China
+3
+Monitoring and Assessment Center for Greenhouse Gases and Carbon Neutrality, China Meteorological Administration, Beijing
+100081, People’s Republic of China
+4
+Key Laboratory of Earth System Modeling and Prediction, China Meteorological Administration, Beijing 100081, People’s Republic of
+China
+5
+Institute of Energy, Environment and Economy, Tsinghua University, Beijing 100084, People’s Republic of China
+6
+School of Atmospheric Sciences, Chengdu University of Information Technology, Chengdu 610225, People’s Republic of China
+∗
+Author to whom any correspondence should be addressed.
+
+Any further distribution
+of this work must
+maintain attribution to
+the author(s) and the title
+E-mail: xiaoye@cma.gov.cn
+of the work, journal
+citation and DOI.
+
+Keywords: climate projection, plausible emissions scenario, Earth system model, global warming level, China’s carbon neutrality
+Supplementary material for this article is available online
+
+Abstract
+Achieving the Paris Agreement’s 2 ◦ C target demands regionally tailored climate policies and
+proven negative emission strategies. Here, we use a novel SSP2-com scenario that integrates
+updated emissions trajectories, China’s carbon neutrality pledge, and mid-to-late 21st century
+carbon dioxide removal (CDR) deployment to assess Earth system responses under a 2 ◦ C-aligned
+pathway. Employing a state-of-the-art Earth system model, we demonstrate that SSP2-com limits
+end-of-century warming to 1.87 ◦ C (below 2 ◦ C), 0.51 ◦ C and 1.47 ◦ C lower than SSP2-4.5 and
+SSP3-7.0, respectively. Despite a reduction in global carbon sinks, SSP2-com’s stringent mitigation
+avoids 0.08 ◦ C and 0.29 ◦ C of warming relative to SSP2-4.5 and SSP3-7.0, respectively, attributed to
+China’s accelerated decarbonization. Our findings suggest that combining ambitious regional
+action (e.g. China’s 2060 net-zero goal) with global CDR deployment provides a critical pathway to
+stabilize below 2 ◦ C, yet underscores unresolved risks from uneven cooling efficacy and ecosystem
+feedbacks. This work advances scenario design by reconciling national climate pledges with global
+targets, offering actionable insights for policymakers to prioritize equity-driven mitigation.
+
+1. Introduction
+Since the pre-industrial era (1750 baseline of
+∼278 ppm), anthropogenic carbon dioxide (CO2 )
+emissions have driven a 144.45 ppm increase in atmospheric CO2 concentration as of 2024, representing
+a 52% cumulative growth (Friedlingstein et al 2025).
+The unprecedented CO2 growth over the past decade
+has triggered a 1.19 ◦ C global surface air temperature (GSAT) rise for the 2014–2023 average relative to
+1850–1900 (Forster et al 2024), destabilizing Earth
+system components through Arctic amplification
+
+© 2025 The Author(s). Published by IOP Publishing Ltd
+
+and ocean heat content accumulation (Screen 2014,
+Cheng et al 2024, Oziel et al 2025). Emerging evidence
+suggests that global warming is leading to more frequent and more severe heatwaves, drought and rainfall extremes (Knutson et al 2019, Perkins-Kirkpatrick
+and Lewis 2020, Fowler et al 2021, Seneviratne et al
+2021), underscoring the unexpected risks of delayed
+mitigation.
+The Paris Agreement’s global temperature control targets (2 ◦ C with 1.5 ◦ C aspiration) necessitate
+enhanced mitigation strategies (IPCC 2023), including acceleration in renewable energy expansion,
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+improvement in energy efficiency, and implementation of carbon dioxide removal (CDR) technologies (Brunner et al 2024, Lamb et al 2024) to actively
+reduce atmospheric CO2 concentrations. Nationally
+Determined Contributions are also required to be
+submitted to facilitate global emissions reductions
+(Meinshausen et al 2022). China’s carbon neutrality pledge-peaking anthropogenic CO2 emissions by
+2030 and achieving net-zero by 2060—has significant
+implications for the global carbon budget and temperature stabilization (Li et al 2022, Zhang et al 2025).
+Despite the urgent need for reliable climate
+projections to inform mitigation and adaptation
+strategies, existing climate models often fall short
+in accurately representing the complexities of
+regional climate actions and their global implications
+(Zickfeld et al 2023, Eyring et al 2024, van Vuuren et al
+2025). The shared socioeconomic pathways (SSPs),
+while providing a framework for exploring future
+socioeconomic and emissions scenarios, frequently
+deviate from actual emissions trends (Hausfather
+and Peters 2020) and inadequately account for specific regional commitments, such as China’s carbon
+neutrality pledge. This gap highlights the necessity
+for scenarios that more faithfully integrate national
+climate polices with global mitigation targets, thereby
+enhancing the accuracy and relevance of climate
+projections.
+To reduce climate projection uncertainties, the
+SSP2-com scenario–an integrated scenario derived
+from SSP2 and combining diverse tools, methodologies, and national-regional-global emission data–
+is developed to assess the feasibility of future emission pathways for achieving the 2 ◦ C target (Zhong
+et al 2025a). This scenario addresses the limitations
+of existing SSP pathways in representing plausible climate policies. Under this scenario, global anthropogenic CO2 emissions will decline to achieve net-zero
+by 2080, followed by net-negative emissions throughout the rest of the century (figure S1). China’s carbon
+neutrality trajectory includes the implementation of
+renewable energy and phase-out of fossil fuel use,
+accelerated electrification, and deployment of CDR
+technologies such as bioenergy with carbon capture
+and storage after the 2070s. These policy measures
+provide a renewed and urgent need to reassess global
+CO2 mitigation pathways and their effects on climate.
+This study employs a fully coupled Earth system
+model Beijing Climate Center Earth System Model
+version 1 (BCC-ESM1) (Wu et al 2020) that includes
+interactive carbon cycles to quantify the changes in
+GSAT and carbon uptakes under the SSP2-com scenario, and explores the contribution of China’s carbon neutrality and global CDR in the mid-to-late
+21st century towards achieving the 2 ◦ C target of
+the Paris Agreement. The findings from this study
+could provide policymarkers with critical insights
+
+2
+
+into the potential impact of regional climate actions
+on global climate outcomes, emphasizing the importance of equitable, globally coordinated policies to
+address uneven climate impacts and ensure ecosystem
+resilience.
+
+2. Methods
+2.1. The BCC-ESM1 model
+The BCC-ESM1 is a state-of-the-art Earth system model developed by China Meteorological
+Administration for advancing climate research and
+projections (Wu et al 2020). This model has demonstrated robust carbon cycle feedback simulations
+in recent intercomparisons. As a key contributor
+to the Coupled Model Intercomparison Project
+Phase 6 (CMIP6), this fully coupled model integrates atmospheric, oceanic, terrestrial, and cryospheric components with biogeochemical cycles to
+simulate complex Earth system interactions. It features a modular design incorporating atmospheric
+dynamics, ocean physics, land surface processes,
+and interactive carbon cycle modeling. The atmospheric component has a horizontal resolution of
+approximately 2.8◦ latitude by 2.8◦ longitude and
+is able to simulate global atmospheric composition and aerosols from anthropogenic emissions.
+The model can reproduce reasonably the historical
+global warming trend (figure S2). BCC-ESM1 excels
+in projecting long-term climate trends under various
+emission scenarios (SSPs), assessing climate-carbon
+feedback mechanisms, and quantifying anthropogenic impacts on global systems. The model’s outputs support IPCC sixth assessment report (AR6)
+and provide critical insights for climate mitigation
+policymaking.
+
+2.2. Scenario and simulation description
+Table 1 summaries the scenarios and the variants
+for sensitivity analysis. Three traditional SSP scenarios were used as reference in this study, namely
+SSP1-2.6, SSP2-4.5 and SSP3-7.0 (O’Neill et al 2016).
+SSP1-2.6 represents a low-emission scenario combining sustainable development with strong climate mitigation. It requires net-negative CO2 emissions post
+2050 and represents rapid renewable energy adoption
+and global cooperation. SSP2-4.5 represents a moderate emissions pathway blending gradual development
+with incomplete climate action. It is characterized by
+uneven regional progress and delayed decarbonization. SSP3-7.0 represents a high-emission future featuring regional rivalry and limited climate efforts. It
+is driven by fossil-fuel dependency and population
+growth, with amplified climate extremes and ecosystem stress.
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+Table 1. Summary of scenarios used in this study.
+
+Scenario
+
+Emissions pathway
+
+Objectives
+
+SSP1-2.6
+
+This scenario represents an ambitious low-emissions
+pathway characterized by rapid renewable energy
+deployment and deep decarbonization efforts.
+
+SSP2-4.5
+
+This scenario reflects a moderate mitigation pathway
+combining fossil fuel use with gradual adoption of
+clean energy technologies.
+This scenario represents a high emission future
+featuring regional rivalry and limited climate efforts,
+driven by fossil-fuel dependency and population
+growth.
+This novel scenario integrates recent national climate
+commitments, including China’s carbon neutrality
+pledge, and reflects more plausible near-term policy
+developments.
+Based on the SSP2-com scenario, replacing the CO2
+emissions pathway only for China with that from the
+SSP2-4.5 scenario, while keeping all other emissions
+unchanged.
+Based on the SSP2-com scenario, replacing the CO2
+emissions pathway only for China with that from the
+SSP3-7.0 scenario, while keeping all other emissions
+unchanged.
+Based on the SSP2-com scenario, cancelling the
+mid-to-late 21st century CDR implementation for all
+regions. Specifically, negative emissions from AFOLU
+after 2040 and negative emissions from the energy
+sector after 2065 are excluded.
+
+Low emission scenario providing a
+reference for the climate response
+under stringent global mitigation
+efforts
+Medium emission scenario to
+represent a business-as-usual
+trajectory with partial mitigation
+High emission scenario to assess
+potential high-end impacts
+
+SSP3-7.0
+
+SSP2-com
+
+SSP2-com
+(CN245)
+
+SSP2-com
+(CN370)
+
+SSP2-com
+(no CDR)
+
+The SSP2-com scenario is constructed within an
+interdisciplinary and multi-model framework specifically designed to bridge the gap between existing emissions scenarios and the evolving reality of
+global decarbonization efforts, particularly focusing on China’s ambitious carbon neutrality commitment (Zhang et al 2025, Zhong et al 2025a).
+Unlike traditional SSP scenarios, which are based on
+broader socio-economic narratives, SSP2-com is fundamentally grounded in a bottom-up, sector-specific
+approach. It integrates the latest emissions inventories and a projected pathway for China to achieve
+net-zero CO2 emissions from energy combustion and
+industrial processes by 2060, taking into account natural carbon sinks, subsequently scaling this national
+ambition to global and regional levels while maintaining consistency across national, provincial, and highresolution grid scales. This granular data integration,
+sourced from both the AR6 scenario database and
+China-specific models, ensures robust departmental
+and regional emission trajectory alignment.
+Key assumptions underlying SSP2-com diverge
+significantly from both SSP2-4.5 and SSP1-2.6. While
+SSP2-4.5 assumes a moderate socio-economic development pathway with radiative forcing reaching
+4.5 W m−2 by 2100, and SSP1-2.6 represents a sustainable development pathway with stringent mitigation leading to 2.6 W m−2 , SSP2-com operates within the broader SSP2 ‘middle-of-the-road’
+3
+
+Assess the Earth system responses
+under plausible emissions pathways,
+serving as a baseline case for future
+mitigation actions
+Evaluate the role of China’s CO2
+mitigation in global warming
+compared to moderate emissions
+Evaluate the role of China’s CO2
+mitigation in global warming
+compared to high emissions
+Evaluate the impact of global
+mid-to-late 21st century CDR
+deployment.
+
+socio-economic context but incorporates a critical,
+reality-anchored constraint: China’s explicit pledge
+to achieve carbon neutrality by 2060. This commitment fundamentally shapes China’s emission pathway within SSP2-com, with the energy and industrial sectors identified as primary drivers of emission
+reductions, particularly in the Asia-Pacific region.
+Furthermore, SSP2-com explicitly incorporates carbon capture and storage technology, enabling the
+energy sector to achieve net-negative emissions by
+2065. SSP2-com distinguishes itself from SSP2-4.5
+and SSP1-2.6 through its resulting emission pathways
+that, while more ambitious than SSP2-4.5, represent
+a more incremental transition compared to the rapid
+decarbonization of SSP1-2.6, yet still contribute significantly to global climate mitigation efforts.
+SSP2-com also explicitly incorporates harmonized trajectories for all major green house gases
+(GHGs) other than CO2 and air pollutants. NonCO2 GHGs (CH4 , N2 O, F-gases) and aerosol emissions (SO2 , NOx , BC, OC, etc) are projected using the
+latest dataset from the Community Emissions Data
+System (CEDS, Hoesly et al 2018) and the Emissions
+Database for Global Atmospheric Research (EDGAR,
+Crippa et al 2018) historical inventories, extended
+via quantile rolling window techniques applied to
+SSP2-based global scenarios and the multi-resolution
+emission inventory for China (MEIC, Zheng et al
+2021). CO2 emissions from the Agriculture, Forestry,
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+and Other Land Use (AFOLU) utilize the Global Fire
+Emissions Database (GFED, Chen et al 2023) and
+the Global Carbon Budget report (Friedlingstein et al
+2023), and transitions to net-negative emissions after
+the 2050s, with bioenergy carbon removal spatially
+allocated using CMIP6-compliant productivity maps.
+In contrast to the static nature of traditional
+SSP scenarios, SSP2-com introduces a dynamic and
+iteratively improving framework, which allows for
+semi-annual updates of regional and national emission pathways. This adaptability ensures the scenario
+remains relevant and reflective of the rapidly evolving
+global energy transition landscape, providing a more
+responsive and policy-relevant tool for climate modeling and impact assessments than the comparatively
+less frequently updated SSP2-4.5 and SSP1-2.6 scenarios. In this study, SSP2-com version 202 506 is used.
+In addition, three variations of the SSP2-com
+scenario are assessed in the context of sensitivity analysis to evaluate the impact of China’s carbon neutrality pathway and global mid-to-late 21st century CDR
+deployment (table 1). SSP2-com (CN245) and SSP2com (CN370) are designed to evaluate the contribution of China’s carbon neutrality pledge on global
+warming mitigation. Both build upon SSP2-com but
+incorporate distinct carbon emission trajectories for
+China: SSP2-com (CN245) aligns with the emission
+pathway of SSP2-4.5, while SSP2-com (CN370) follows that of SSP3-7.0. Outside of China, emission trajectories remain consistent with the SSP2-com framework. SSP2-com (no CDR) is derived from SSP2-com
+without negative emissions for all regions. The emission trajectories of the two remain nearly identical
+until 2065. However, due to the absence of CDR
+measures, SSP2-com (no CDR) exhibits persistently
+higher emissions than SSP2-com in the latter half of
+the century (figure S1).
+All future climate projections presented in this
+study are generated using the BCC-ESM1 model, simulating the climate from 2021 to 2100. Future land use
+data are from the Scenario Model Intercomparison
+Project for CMIP6. SSP2-com and its variants use the
+same land use data as SSP2-4.5. To account for the
+inherent variability and uncertainty in climate simulations, we conducted three model runs for each scenario with slightly differing initial conditions. The results reported in this study for all climate variables are
+derived from the average of these three model runs.
+This helps to reduce the influence of internal climate
+variability and provides a more robust and representative estimate of the projected climate changes.
+
+3. Results
+3.1. Projected global warming levels
+The global mean CO2 concentrations simulated
+by BCC-ESM1 vary significantly among scenarios
+
+4
+
+(figure 1(a)). Under the SSP3-7.0 scenario, CO2
+concentrations continue to rise at an accelerating
+rate, reaching approximately 750 ppm by the end
+of the century. The SSP2-4.5 scenario presents a
+much slower increase rate of CO2 levels, which stabilize with an average of 542 ppm in the long-term
+period (2081–2100). Under the low-emission scenarios SSP1-2.6 and SSP2-com, CO2 concentrations
+peak around mid-century and then decline, reaching
+long-term averages of 436 ppm and 444 ppm, respectively. Although SSP2-com has a mid-century CO2
+concentration that is about 13 ppm higher than SSP12.6, it declines more sharply in the second half of the
+century, with the difference between the two scenarios narrowing to just 2 ppm by 2100. Furthermore,
+SSP2-com reduces atmospheric CO2 by 98 ppm and
+325 ppm by the end of the century compared to SSP24.5 and SSP3-7.0, respectively.
+In this study, GSAT continues to rise before 2050
+under all four scenarios, albeit at different rates
+(figure 1(b)). After 2050, the temperature stabilizes or
+even slightly decreases under the low-emission SSP12.6 and SSP2-com scenarios, while SSP2-4.5 maintains a gradual warming trend. In contrast, SSP37.0 continues to present a rapid warming trajectory,
+indicating an increased climate risks from prolonged
+high emissions. The close correspondence between
+the CO2 trajectory and the temperature response
+once again confirms the dominant role of CO2 in
+driving global warming through the radiative forcing
+mechanism (Shine 2000).
+According to Lee et al (2021), the mean GSAT
+for the period 2081–2100 is very likely to be 1.3 ◦ C–
+2.4 ◦ C, 2.1 ◦ C–3.5 ◦ C, and 2.8 ◦ C–4.6 ◦ C higher than
+that for the period 1850–1900 under the SSP1-2.6,
+SSP2-4.5, and SSP3-7.0 scenarios, respectively. In our
+study, the projected GSAT rise for the period 2081–
+2100 is 1.59 ◦ C, 2.38 ◦ C, and 3.34 ◦ C under SSP1-2.6,
+SSP2-4.5, and SSP3-7.0 scenarios, respectively. These
+results are consistent with those of Lee et al (2021).
+Notably, SSP2-com achieves a global warming level of
+1.87 ◦ C in the long term, which lies in between SSP24.5 and SSP1-2.6, and below 2 ◦ C.
+The spatial distribution of warming in 2081–
+2100 relative to 1850–1900 also differs significantly
+between scenarios (figure 2). The comparative analysis clearly shows that higher CO2 emissions lead
+to significantly greater global warming. Under the
+SSP1-2.6 scenario (figure 2(a)), the most pronounced
+warming (exceeding 3 ◦ C) occurs in the high latitudes
+of the Northern Hemisphere. Most low- and midlatitude land areas are projected to warm by 1 ◦ C–
+3 ◦ C, while ocean warming remains mild (0 ◦ C–
+1 ◦ C), with the exception of a cooling anomaly in the
+southern Greenland Sea-known as the North Atlantic
+warming hole (Chemke et al 2020, Keil et al 2020,
+Qasmi 2023)—where sea surface temperatures cool
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+Figure 1. Comparison of (a) atmospheric CO2 concentration and (b) surface air temperature change from the BCC-ESM1 model
+under the SSP1-2.6, SSP2-4.5, SSP3-7.0 and SSP2-com scenarios in emissions-driven configurations.
+
+Figure 2. Projected spatial patterns of surface air temperature change (2081–2100 relative to 1850–1900) for (a) SSP1-2.6, (b)
+SSP2-com, (c) SSP2-4.5 and (d) SSP3-7.0. The global 20 year average is indicated in the top right of each panel. Diagonal lines
+denote statistically insignificant differences at the 90% confidence level, as determined by the student’s t test.
+
+by 0 ◦ C–1 ◦ C compared to pre-industrial levels. SSP24.5 shows larger Arctic region with warming exceeding 3 ◦ C compared to SSP1-2.6, mainly due to the
+Arctic amplification process (Rantanen et al 2022,
+figure 2(c)). Warming intensifies over land, exceeding
+2 ◦ C in most areas and mainly exceeding 1 ◦ C in ocean
+areas. Under the SSP3-7.0 scenario (figure 2(d)),
+
+5
+
+warming exceeds 6 ◦ C over land areas in the midand high-latitudes in the Northern Hemisphere. The
+study found that the warming pattern of SSP2com is closer to SSP1-2.6, with similar characteristics such as Arctic amplification, lower ocean warming, and North Atlantic cold anomalies (figure 2(b)).
+Compared with the SSP2-4.5 and SSP3-7.0 scenarios,
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+Figure 3. Projected carbon uptake. (a) Atmosphere to ocean carbon flux (PgC yr−1 ). (b) Atmosphere to land carbon flux
+(PgC yr−1 ).
+
+the global temperature rise decreases overall in the
+SSP2-com scenario (figure S3).
+3.2. Future changes in land and ocean carbon
+uptakes
+Since carbon uptake by land and ocean is driven
+primarily by increases in atmospheric CO2 , the evolution of land and ocean carbon sinks varies significantly across scenarios (figure 3). The absolute value
+of the carbon sink is larger under scenarios with
+greater increases in atmospheric CO2 (e.g. SSP3-7.0
+and SSP2-4.5), while it is smaller under scenarios
+with reduced CO2 in the 21st century (e.g. SSP1-2.6
+and SSP2-com). The land and ocean carbon sinks are
+quantitatively similar, but the interannual variability
+of land carbon uptake is much larger (figure 3(b)).
+Under the SSP2-com scenario, the atmosphereocean carbon exchange is very close to SSP1-2.6,
+slightly above SSP1-2.6 levels from 2021 to 2075, but
+drops below SSP1-2.6 by 2100, with a net exchange
+of less than 1 PgC yr−1 (figure 3(a)). In 2021, global
+terrestrial ecosystems act as carbon sinks, uptaking
+∼3 PgC yr−1 . The decadal trends show that under
+SSP2-4.5 and SSP3-7.0, the terrestrial carbon sink
+increases, reaching 4 PgC yr−1 by the end of the 21st
+century (figure 3(b)). The SSP2-com terrestrial carbon sink closely matches SSP1-2.6, slightly exceeding it before 2060, but then falling below it and
+approaching zero net exchange by 2100. This divergence stems from the lower global warming under
+SSP2-com and SSP1-2.6 compared to higher emission
+scenarios, which reduce vegetation net primary productivity and weakens carbon sequestration.
+Presently, global carbon sources and sinks exhibit
+distinct spatial patterns shaped by natural processes (figure 4(a)). In BCC-ESM1, CO2 fluxes from
+
+6
+
+land/ocean to atmosphere indicate that low-latitude
+continental regions function as major carbon sinks,
+with fluxes of approximately 50–250 gC m−2 yr−1 ,
+whereas mid- to high-latitude continental regions act
+as moderate to strong carbon sources, with fluxes ranging from 25 to 100 gC m−2 yr−1 . In contrast, oceanic
+regions display the opposite distribution: low-latitude
+oceans function as carbon sources, while mid- to
+high-latitude oceans serve as carbon sinks.
+Figures 4(b)–(e) illustrate the projected geographical patterns of future changes in CO2 fluxes
+compared to the present-day baseline. The SSP12.6 and SSP2-com scenarios demonstrate comparable patterns: carbon sinks are expected to intensify
+in Western Europe, while low-latitude tropical
+regions—particularly the Amazon Basin and West
+Africa—show a decline in carbon sink strength.
+Concurrently, northern mid- to high-latitude continental areas are expected to experience an increase
+in carbon sources. Compared to SSP1-2.6, the SSP2com scenario indicates a greater reduction in carbon
+sequestration capacity. This shift may be attributed to
+increased plant respiration induced by global warming. Under low emission scenarios, relatively low
+atmospheric CO2 concentrations provide insufficient
+stimulation for photosynthesis, resulting in a decline
+in net primary productivity and, consequently, a
+diminished carbon uptake capacity (Schimel et al
+2014, Keenan et al 2023).
+Under high emission scenarios (SSP2-4.5 and
+SSP3-7.0), carbon sink strength is expected to
+increase in North America, Western Europe, and
+low-latitude continental regions. This enhancement is primarily driven by CO2 fertilization and
+temperature-induced increases in photosynthesis,
+which together enhance terrestrial carbon sinks.
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+Figure 4. (a) The spatial distribution of present-day (1981–2010) mean CO2 fluxes simulated by the BCC-ESM1 model (positive
+values for carbon sources and negative values for carbon sinks), and projected spatial patterns of change in CO2 fluxes
+(2081–2100 relative to 1981–2010) under (b) SSP1-2.6, (c) SSP2-com, (d) SSP2-4.5 and (e) SSP3-7.0. Diagonal lines denote
+statistically insignificant differences at the 90% confidence level, as determined by the student’s t test.
+
+Meanwhile, high-latitude regions—particularly
+northern Eurasia and northern North America—
+are projected to experience intensified carbon source
+activity. This is likely due to accelerated soil respiration caused by warming (McGuire et al 2018).
+3.3. Implications of China’s carbon neutrality
+To quantify the contribution of China’s carbon
+neutrality to global warming mitigation, based on
+the SSP2-com scenario, China’s emissions were
+replaced by SSP2-4.5 and SSP3-7.0, namely SSP2com (CN245) and SSP2-com (CN370), respectively
+(figure 5). GSAT under SSP2-com (CN245) exhibits a fluctuating upward trend in the first half of the
+21st century, followed by stabilization around 2060.
+By 2081–2100, the GSAT increase reaches 1.95 ◦ C,
+0.08 ◦ C higher than the SSP2-com scenario. In
+
+7
+
+contrast, GSAT under SSP2-com (CN370) shows a
+continuous rise. Although the warming rate slows
+down slightly in the middle of the 21st century, by
+2081–2100, GSAT still reaches 2.16 ◦ C, 0.29 ◦ C higher
+than SSP2-com (figure 5(a)). These results indicate
+that the steady implementation of China’s carbon
+neutrality helps slow global warming and contribute to the achievement of the Paris Agreement’s 2 ◦ C
+target.
+Further analysis of the spatial distribution of
+temperature differences shows that China’s carbon neutrality pathway effectively reduces warming in most parts of the world, especially compared with SSP2-com (CN370) (figures 5(c) and (d)).
+Compared with SSP2-com (CN245) (figure 5(c)),
+implementation of China’s carbon neutrality can
+reduce warming in high-latitude regions of the
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+Figure 5. (a) Temporal evolution of global mean surface temperature increase relative to 1850–1900. Long-term mean
+(2081–2100) surface temperature differences between (b) the SSP2-com scenarios with and without CDR, (c) SSP2-com and
+SSP2-com (CN245), and (d) SSP2-com and SSP2-com (CN370). Diagonal lines denote statistically insignificant differences at the
+90% confidence level, as determined by the student’s t test.
+
+Figure 6. Projected differences in ocean and land carbon uptake between SSP2-com and SSP2-com (no CDR).
+
+Northern Hemisphere (except southern Greenland)
+by 0.5 ◦ C–1.1 ◦ C. However, the Antarctic continent and its surrounding oceans show an intensified
+warming trend, with temperatures 0.3 ◦ C–1.1 ◦ C
+higher than SSP2-com (CN245). Relative to SSP2com (CN370) (figure 5(d)), SSP2-com shows widespread negative temperature anomalies, which significantly alleviates warming in mid- and high-latitude
+regions of the Northern Hemisphere, where temperatures drop by about 0.5 ◦ C–1.1 ◦ C. These findings
+suggest that a substantial reduction in China’s carbon
+emissions could not only help mitigate global warming, but could also help mitigate the Arctic amplification effect to some extent.
+8
+
+3.4. GSAT responses to CDR
+In the case of no global adoption of CDR technology in the mid-to-late 21st century, i.e. SSP2-com
+(no CDR), the average GSAT increase from 2081 to
+2100 is 1.94 ◦ C, which is 0.07 ◦ C higher than the
+SSP2-com scenario (figure 5(a)). This result indicates that the implementation of CDR is beneficial to
+mitigate global warming. Further comparison of the
+spatial distribution of temperature anomalies under
+the SSP2-com and SSP2-com (no CDR) scenarios
+(figure 5(b)) shows that CDR significantly mitigates warming in most regions, especially in northern
+North America, eastern Siberia, and the polar regions,
+where the temperature reduction is about 0.1 ◦ C to
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+1.1 ◦ C. However, in the mid- to low-latitude oceans,
+the cooling effect of CDR is less obvious. In some
+regions, such as parts of the South Pacific and south of
+Greenland, a slight warming trend is projected. These
+findings suggest that CDR contributes to an overall reduction in global warming and that its impacts
+show regional heterogeneity, with stronger cooling at
+high latitudes than at low latitudes and larger effects
+over land than over then ocean. Futhermore, after
+implementing CDR in the mid-to-late 21st century,
+the global average ocean and land carbon uptakes
+show a significant response (figure 6). Compared with
+the SSP2-com (no CDR) scenario, the CO2 fluxes
+from land/ocean into the atmosphere are reduced in
+the SSP2-com scenario. By the end of the 21st century,
+the land and ocean carbon absorption in the SSP2com scenario is about 1 PgC yr−1 and 0.5 PgC yr−1
+lower than that in the SSP2-com (no CDR) scenario,
+respectively.
+
+reaffirms that achieving the Paris Agreement’s goals
+demands not only technical feasibility but also political and social commitment to transformative, inclusive climate governance.
+
+Data availability statement
+The data that support the findings of this study are
+openly available at the following URL/DOI: https://
+zenodo.org/uploads/14906555 (Zhong et al 2025b).
+
+Acknowledgment
+This study was supported by the National Natural
+Science Foundation of China (42341202). The
+authors thank the anonymous reviewers and the
+editor for their valuable and constructive comments
+that helped to improve the manuscript.
+
+4. Conclusions
+
+Conflict of interest
+
+This study demonstrates that the SSP2-com scenario, integrating China’s carbon neutrality pledge
+and mid-to-late 21st century global CDR deployment, provides a viable pathway to stabilize global
+warming below 2 ◦ C. By 2081–2100, SSP2-com limits end-of-century warming to 1.87 ◦ C–0.51 ◦ C and
+1.47 ◦ C lower than SSP2-4.5 and SSP3-7.0, respectively. The scenario’s effectiveness stems from stringent regional mitigation, particularly China’s accelerated decarbonization, which reduces global temperature rise by 0.08 ◦ C and 0.29 ◦ C compared to
+the SSP2-4.5 and SSP3-7.0 scenarios with delayed
+action, respectively. Furthermore, CDR implementation contributes an additional 0.07 ◦ C cooling, with
+pronounced efficacy at high latitudes, partially mitigating Arctic amplification.
+Despite these advancements, SSP2-com reveals
+critical unresolved risks. While terrestrial and ocean
+carbon sinks decline under low-emission pathways
+due to reduced CO2 fertilization and warmingdriven ecosystem feedbacks, regional disparities in
+cooling efficacy persist. For instance, mid- to lowlatitude oceans exhibit weaker responses to CDR,
+and Antarctic regions paradoxically warm under
+stringent mitigation. These findings underscore the
+need for equitable, globally coordinated policies to
+address uneven climate impacts and ensure ecosystem
+resilience.
+Our work advances scenario design by harmonizing national commitments with global targets,
+emphasizing the dual necessity of immediate regional
+action and scalable CDR technologies. Policymakers
+must prioritize equity-driven strategies to bridge the
+gap between mitigation ambition and implementation, while addressing uncertainties in carbon cycle
+feedbacks and regional climate responses. This study
+
+The authors declare no competing interests.
+
+9
+
+Code availability statement
+The source codes of BCC-ESM1 have been archived
+and made publicly available at: https://doi.org/10.
+5281/zenodo.3609337.
+
+Author contributions
+Lu Y and Zhang X conceived the study. Lu Y conducted model simulations and generated the figures.
+Zhong J, Zhang F and Jin L prepared emissions data
+for the BCC-ESM1 model from the SSP2-com scenario. Lu Y, Jin L, Zhang Y, Wu F, Wang Z, Zhang J
+and Xin X drafted the manuscript, and valuable comments from Wu T, Wang D, Zhang D, Wang T and
+Hua W.
+
+ORCID iDs
+Yixiong Lu  0000-0001-9823-9367
+Lei Jin  0009-0009-9323-815X
+Xiaoye Zhang  0000-0003-2853-9596
+Yanwu Zhang  0000-0001-5391-0014
+Fanghua Wu  0000-0003-1066-6538
+Zhili Wang  0000-0002-4392-3230
+Jie Zhang  0000-0002-8925-1011
+Tianpeng Wang  0000-0001-7470-2409
+Wei Hua  0000-0003-2496-3592
+
+References
+Brunner C, Hausfather Z and Knutti R 2024 Durability of carbon
+dioxide removal is critical for Paris climate goals Commun.
+Earth Environ. 5 645
+
+Environ. Res. Lett. 20 (2025) 104049
+
+Y Lu et al
+
+Chemke R, Zanna L and Polvani L M 2020 Identifying a human
+signal in the North Atlantic warming hole Nat. Commun.
+11 1540
+Chen Y, Hall J, van Wees D, Andela N, Hantson S, Giglio L, van
+der Werf G R, Morton D C and Randerson J T 2023
+Multi-decadal trends and variability in burned area
+from the fifth version of the Global Fire Emissions Database
+(GFED5) Earth Syst. Sci. Data
+15 5227–59
+Cheng L, von Schuckmann K, Minière A, Hakuba M Z, Purkey S,
+Schmidt G A and Pan Y 2024 Ocean heat content in 2023
+Nat. Rev. Earth Environ. 5 232–4
+Crippa M et al 2018 Gridded emissions of air pollutants for the
+period 1970–2012 within EDGAR v4.3.2 Earth Syst. Sci.
+Data 10 1987–2013
+Eyring V, Gentine P, Camps-Valls G, Lawrence D M and
+Reichstein M 2024 AI-empowered next-generation
+multiscale climate modelling for mitigation and adaptation
+Nat. Geosci. 17 963–71
+Forster P M et al 2024 Indicators of global climate change 2023:
+annual update of key indicators of the state of the climate
+system and human influence Earth Syst. Sci. Data
+16 2625–58
+Fowler H J et al 2021 Anthropogenic intensification of
+short-duration rainfall extremes Nat. Rev. Earth Environ.
+2 107–22
+Friedlingstein P et al 2023 Global carbon budget 2023 Earth Syst.
+Sci. Data 15 5301–69
+Friedlingstein P et al 2025 Global carbon budget 2024 Earth Syst.
+Sci. Data 17 965–1039
+Hausfather Z and Peters G P 2020 Emissions—the ‘business as
+usual’ story is misleading Nature 577 618–20
+Hoesly R M et al 2018 Historical (1750−2014) anthropogenic
+emissions of reactive gases and aerosols from the
+Community Emissions Data System (CEDS) Geosci. Model
+Dev. 11 369–408
+IPCC 2023 Climate change 2023: synthesis report
+Keenan T F et al 2023 A constraint on historic growth in global
+photosynthesis due to rising CO2 Nat. Clim. Change
+13 1376–81
+Keil P, Mauritsen T, Jungclaus J, Hedemann C, Olonscheck D and
+Ghosh R 2020 Multiple drivers of the North Atlantic
+warming hole Nat. Clim. Change 10 667–71
+Knutson T et al 2019 Tropical cyclones and climate change
+assessment: part I: detection and attribution Bull. Am.
+Meteorol. Soc. 100 1987–2007
+Lamb W F et al 2024 The carbon dioxide removal gap Nat. Clim.
+Change 14 644–51
+Lee J Y et al 2021 Climate change 2021: the physical science basis
+Contribution of Working Group I to the Sixth Assessment
+Report of the Intergovernmental Panel on Climate Change ed
+V Masson-Delmotte et al (Cambridge University Press) ch 4
+Li L, Zhang Y, Zhou T, Wang K, Wang C, Wang T, Yuan L, An K,
+Zhou C and Lü G 2022 Mitigation of China’s carbon
+neutrality to global warming Nat. Commun. 13 5315
+McGuire A D et al 2018 Dependence of the evolution of carbon
+dynamics in the northern permafrost region on the
+trajectory of climate change Proc. Natl. Acad. Sci. USA 115
+3882–7
+
+10
+
+Meinshausen M, Lewis J, McGlade C, Gütschow J, Nicholls Z,
+Burdon R, Cozzi L and Hackmann B 2022 Realization of
+Paris Agreement pledges may limit warming just below 2 ◦ C
+Nature 604 304–9
+O’Neill B C et al 2016 The scenario model intercomparison
+project (ScenarioMIP) for CMIP6 Geosci. Model Dev.
+9 3461–82
+Oziel L et al 2025 Climate change and terrigenous inputs decrease
+the efficiency of the future arctic ocean’s biological carbon
+pump Nat. Clim. Change 15 171–9
+Perkins-Kirkpatrick S E and Lewis S C 2020 Increasing trends in
+regional heatwaves Nat. Commun. 11 3357
+Qasmi S 2023 Past and future response of the North Atlantic
+warming hole to anthropogenic forcing Earth Syst. Dyn.
+14 685–95
+Rantanen M, Karpechko A Y, Lipponen A, Nordling K,
+Hyvärinen O, Ruosteenoja K, Vihma T and Laaksonen A
+2022 The arctic has warmed nearly four times faster
+than the globe since 1979 Commun. Earth Environ.
+3 168
+Schimel D, Stephens B B and Fisher J B 2014 Effect of increasing
+CO2 on the terrestrial carbon cycle Proc. Natl Acad. Sci. USA
+112 436–41
+Screen J A 2014 Arctic amplification decreases temperature
+variance in northern mid- to high- latitudes Nat. Clim.
+Change 4 577–82
+Seneviratne S I et al 2021 Climate change 2021: the physical
+science basis Contribution of Working Group I to the Sixth
+Assessment Report of the Intergovernmental Panel on Climate
+Change ed V Masson-Delmotte et al (Cambridge University
+Press) ch 11
+Shine K P 2000 Radiative forcing of climate change Space Sci. Rev.
+94 363–73
+van Vuuren D et al 2025 The scenario model intercomparison
+project for CMIP7 (scenariomip- CMIP7) Preprint
+(EGUsphere) (available at : https://doi.org/10.5194/
+egusphere-2024-3765) (posted online 30 January 2025,
+accessed 5 September 2025)
+Wu T et al 2020 Beijing climate center earth system model version
+1 (BCC-ESM1): model description and evaluation of aerosol
+simulations Geosci. Model Dev. 13 977–1005
+Zhang X, Zhong J, Zhang X, Zhang D, Miao C, Wang D and
+Guo L 2025 China can achieve carbon neutrality in line with
+the Paris Agreement’s 2 ◦ C target: navigating global
+emissions scenarios, warming levels, and extreme event
+projections Engineering 44 207–14
+Zheng B, Cheng J, Geng G, Wang X, Li M, Shi Q, Qi J, Lei Y,
+Zhang Q and He K 2021 Mapping anthropogenic emissions
+in China at 1 km spatial resolution and its application in air
+quality modeling Sci. Bull. 66 612–20
+Zhong J et al 2025a Plausible global emissions scenario for 2 ◦ C
+aligned with China’s net-zero pathway Nat. Commun. 16
+8102
+Zhong J et al 2025b Plausible global emissions scenario for the
+2◦ C-target aligned with China’s net-zero pathway [Data set]
+Zenodo (https://doi.org/10.5281/zenodo.14906555)
+Zickfeld K et al 2023 Net-zero approaches must consider earth
+system impacts to achieve climate goals Nat. Clim. Change
+13 1298–305
+
+
