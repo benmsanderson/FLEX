@@ -25,6 +25,7 @@
 
 # %%
 from pathlib import Path
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -40,10 +41,26 @@ from flex.optimise import (
 
 # %% tags=["parameters"]
 config_name = "WIEMIP"
+n_jobs = 1  # Number of parallel jobs: 1=sequential, >1=parallel, -1=all cores (capped at 20)
 
 # %%
 cfg = load_config(config_name)
 OUTPUTS_DIR = cfg.outputs_dir
+
+# Cap n_jobs at 20 when using -1, but allow explicit overrides
+if n_jobs == -1:
+    n_jobs_effective = min(os.cpu_count() or 1, 20)
+    print(f"Auto-detected {os.cpu_count()} cores, capping at {n_jobs_effective} workers")
+elif n_jobs > 1:
+    n_jobs_effective = n_jobs
+    if n_jobs > 20:
+        print(f"Using {n_jobs} workers (explicit override of 20-worker default cap)")
+    else:
+        print(f"Using {n_jobs} parallel workers")
+else:
+    n_jobs_effective = 1
+    print("Sequential mode (1 worker)")
+
 print(f"Config: {cfg.name}")
 print(f"Scenarios: {list(cfg.scenario_model_match.keys())}")
 print(f"Optimization targets: {list(cfg.optimization.keys())}")
@@ -68,7 +85,7 @@ print(f"Scenarios in CSV: {sorted(df_check['scenario'].unique())}")
 # %% [markdown]
 # ## Optimise each target scenario
 #
-# Loop over every entry in `cfg.optimization`. For each one we:
+# Loop over (or parallelize) every entry in `cfg.optimization`. For each one we:
 # 1. Identify the source (non-optimized) marker
 # 2. Run baseline FaIR to get the target temperature at the departure year
 # 3. Optimise CO2 FFI parameters via `optimize_scenario`
@@ -77,104 +94,144 @@ print(f"Scenarios in CSV: {sorted(df_check['scenario'].unique())}")
 # %%
 timebounds = np.arange(1750, 2501, 1.0)
 
-# We'll accumulate results and progressively augment the CSV
-current_csv = base_emissions_csv
+# Collect markers to optimize
+markers_to_optimize = []
+for marker, opt_settings in cfg.optimization.items():
+    if opt_settings.get("enabled", True):
+        markers_to_optimize.append(marker)
+    else:
+        print(f"Skipping {marker} (disabled)")
+
+print(f"\nWill optimize {len(markers_to_optimize)} marker(s): {markers_to_optimize}")
+
+# Run optimizations in parallel or serial mode
 opt_results: dict[str, dict] = {}
 
-for marker, opt_settings in cfg.optimization.items():
-    if not opt_settings.get("enabled", True):
-        print(f"Skipping {marker} (disabled)")
-        continue
-
+if n_jobs_effective > 1 and len(markers_to_optimize) > 1:
+    # PARALLEL MODE
     print(f"\n{'='*60}")
-    print(f"Optimizing: {marker}")
+    print(f"Running optimizations in PARALLEL with {n_jobs_effective} workers")
     print(f"{'='*60}")
-
-    result = optimize_scenario(
-        cfg,
-        marker=marker,
-        base_emissions_csv=current_csv,
-        memory_limited=True,
+    
+    from joblib import Parallel, delayed
+    
+    def optimize_single_marker(marker, cfg, base_emissions_csv):
+        """Wrapper function for parallel execution."""
+        print(f"\n{'='*60}")
+        print(f"[PARALLEL] Starting optimization: {marker}")
+        print(f"{'='*60}")
+        
+        result = optimize_scenario(
+            cfg,
+            marker=marker,
+            base_emissions_csv=base_emissions_csv,
+            memory_limited=True,
+        )
+        
+        print(f"\n[PARALLEL] Completed {marker}:")
+        print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr (total CO2)")
+        print(f"  sig_start = {result['sig_start']:.0f}")
+        print(f"  sig_end   = {result['sig_end']:.0f}")
+        print(f"  Target T  = {result['target_temp']:.4f} K")
+        print(f"  Departure = {result['departure_year']}")
+        print(f"  Final cost = {result['final_cost']:.6f}")
+        
+        return marker, result
+    
+    parallel_results = Parallel(n_jobs=n_jobs_effective, verbose=10)(
+        delayed(optimize_single_marker)(marker, cfg, base_emissions_csv)
+        for marker in markers_to_optimize
     )
-    opt_results[marker] = result
+    
+    opt_results = {marker: result for marker, result in parallel_results}
+    
+    print(f"\n{'='*60}")
+    print(f"All {len(opt_results)} optimizations complete!")
+    print(f"{'='*60}")
+    
+else:
+    # SEQUENTIAL MODE
+    if n_jobs_effective > 1:
+        print(f"\nNote: Only {len(markers_to_optimize)} scenario(s) to optimize - running sequentially")
+    
+    for marker in markers_to_optimize:
+        print(f"\n{'='*60}")
+        print(f"Optimizing: {marker}")
+        print(f"{'='*60}")
 
-    print(f"\nOptimized ECS params for {marker}:")
-    print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr (total CO2)")
-    print(f"  sig_start = {result['sig_start']:.0f}")
-    print(f"  sig_end   = {result['sig_end']:.0f}")
-    print(f"  Target T  = {result['target_temp']:.4f} K")
-    print(f"  Departure = {result['departure_year']}")
-    print(f"  Final cost = {result['final_cost']:.6f}")
-
-    # --- Build the optimized CO2 trajectory and append to CSV ---
-    departure_year = result["departure_year"]
-
-    # Find the source marker (first non-optimized marker sharing scenario+model)
-    source_marker = None
-    base_scenario = cfg.scenario_model_match[marker][0]
-    for m, info in cfg.scenario_model_match.items():
-        if m != marker and info[0] == base_scenario and info[1] == cfg.scenario_model_match[marker][1]:
-            source_marker = m
-            break
-
-    df_emis = pd.read_csv(current_csv)
-    source_ffi = df_emis[(df_emis["scenario"] == source_marker) & (df_emis["variable"] == "CO2 FFI")]
-    source_afolu = df_emis[(df_emis["scenario"] == source_marker) & (df_emis["variable"] == "CO2 AFOLU")]
-    year_cols = [c for c in df_emis.columns if c.replace(".", "").replace("-", "").isdigit()]
-    years = np.array([float(c) for c in year_cols])
-    co2_ffi = source_ffi[year_cols].values.flatten().copy()
-    co2_afolu = source_afolu[year_cols].values.flatten().copy() if len(source_afolu) else np.zeros_like(co2_ffi)
-
-    dep_idx_emis = np.searchsorted(years, departure_year + 0.5)
-    exp_targ = result["exp_targ"]
-    sig_start = result["sig_start"]
-    sig_end = result["sig_end"]
-    exp_end = int(sig_start)
-
-    # Build total CO2 trajectory, derive FFI = total - AFOLU
-    total_co2 = (co2_ffi + co2_afolu).copy()
-    dep_value = total_co2[dep_idx_emis]
-
-    for i in range(dep_idx_emis, len(total_co2)):
-        yr_total = exp_end - departure_year
-        if years[i] <= exp_end + 0.5 and yr_total > 0:
-            frac = (years[i] - departure_year) / yr_total
-            total_co2[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
-        elif years[i] <= sig_start + 0.5:
-            total_co2[i] = exp_targ
-        elif years[i] <= sig_end + 0.5:
-            frac = (years[i] - sig_start) / (sig_end - sig_start)
-            t = np.clip(frac, 0, 1)
-            s = 3 * t**2 - 2 * t**3
-            total_co2[i] = exp_targ * (1 - s)
-        else:
-            total_co2[i] = 0.0
-
-    co2_opt = co2_ffi.copy()
-    co2_opt[dep_idx_emis:] = total_co2[dep_idx_emis:] - co2_afolu[dep_idx_emis:]
-
-    final_csv = str(OUTPUTS_DIR / "emissions_1750-2500.csv")
-    modify_emissions_csv(
-        current_csv, source_marker, marker,
-        co2_ffi_trajectory=co2_opt,
-        departure_year=departure_year,
-        output_path=final_csv,
-    )
-    current_csv = final_csv
-
-print(f"\nAll optimizations complete. Augmented CSV: {current_csv}")
+        result = optimize_scenario(
+            cfg,
+            marker=marker,
+            base_emissions_csv=base_emissions_csv,
+            memory_limited=True,
+        )
+        opt_results[marker] = result
+        
+        print(f"\nOptimized ECS params for {marker}:")
+        print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr (total CO2)")
+        print(f"  sig_start = {result['sig_start']:.0f}")
+        print(f"  sig_end   = {result['sig_end']:.0f}")
+        print(f"  Target T  = {result['target_temp']:.4f} K")
+        print(f"  Departure = {result['departure_year']}")
+        print(f"  Final cost = {result['final_cost']:.6f}")
 
 # %% [markdown]
-# ## Verification: run all optimized scenarios through FaIR
+# ## Save optimization results
+#
+# Write the optimized parameters to JSON for use in the next step (5196_apply_optimised)
 
 # %%
-# Build list of all scenarios for the verification run
-all_scenarios = sorted(pd.read_csv(current_csv, usecols=["scenario"])["scenario"].unique())
-print(f"Verifying scenarios: {all_scenarios}")
+import json
 
-f = setup_fair(
-    current_csv, all_scenarios,
-    memory_limited=True,
-    scenario_mapping={**cfg.scenario_mapping, **cfg.forcing_scenario},
-)
-f.run()
+results_file = OUTPUTS_DIR / "optimization_results.json"
+
+# Convert results to serializable format
+results_data = {
+    "config": config_name,
+    "optimization_results": {}
+}
+
+for marker, result in opt_results.items():
+    results_data["optimization_results"][marker] = {
+        "exp_targ": float(result["exp_targ"]),
+        "sig_start": float(result["sig_start"]),
+        "sig_end": float(result["sig_end"]),
+        "target_temp": float(result["target_temp"]),
+        "departure_year": int(result["departure_year"]),
+        "final_cost": float(result["final_cost"]),
+        "success": bool(result["success"]),
+        "message": str(result.get("message", "")),
+    }
+
+with open(results_file, "w") as f:
+    json.dump(results_data, f, indent=2)
+
+print(f"\nOptimization results saved to: {results_file}")
+
+# %% [markdown]
+# ## Summary
+#
+# Print a summary table of the optimization results
+
+# %%
+print(f"\n{'='*80}")
+print("OPTIMIZATION SUMMARY")
+print(f"{'='*80}")
+summary_data = []
+for marker, result in opt_results.items():
+    summary_data.append({
+        'Marker': marker,
+        'Departure': result['departure_year'],
+        'Target T (K)': f"{result['target_temp']:.4f}",
+        'exp_targ': f"{result['exp_targ']:.0f}",
+        'sig_start': f"{result['sig_start']:.0f}",
+        'sig_end': f"{result['sig_end']:.0f}",
+        'Cost': f"{result['final_cost']:.6f}",
+        'Success': result['success'],
+    })
+
+df_summary = pd.DataFrame(summary_data)
+print(df_summary.to_string(index=False))
+print(f"{'='*80}")
+print(f"\nNext step: Run 5196_apply_optimised to generate emissions files with these parameters")
+

@@ -1,6 +1,6 @@
 """Optimization of extension parameters to meet FaIR temperature targets.
 
-Adjusts fossil CO2 storyline parameters so that FaIR mean temperature
+Adjusts fossil CO2 storyline parameters so that FaIR median temperature
 holds steady at a specified level (e.g., the departure-year peak).
 """
 
@@ -126,7 +126,7 @@ def run_fair_single_scenario(
     base_scenario: str | None = None,
     n_configs: int | None = None,
 ) -> np.ndarray:
-    """Run FaIR for a single scenario and return mean temperature.
+    """Run FaIR for a single scenario and return median temperature.
 
     Parameters
     ----------
@@ -138,7 +138,7 @@ def run_fair_single_scenario(
 
     Returns
     -------
-    1D array of mean surface temperature (751 timebounds, 1750-2500).
+    1D array of median surface temperature (751 timebounds, 1750-2500).
     """
     mapping = None
     if base_scenario:
@@ -151,7 +151,7 @@ def run_fair_single_scenario(
     )
     f.run()
     temp = f.temperature.sel(scenario=scenario, layer=0)
-    return temp.mean(dim="config").values
+    return temp.median(dim="config").values
 
 
 def modify_emissions_csv(
@@ -495,7 +495,7 @@ def _batch_objective_plateau(
     timebounds = np.arange(1750, 2501, 1.0)
     dep_bound_idx = int(np.searchsorted(timebounds, departure_year))
     for j, scen_name, _ in valid:
-        temp = f.temperature.sel(scenario=scen_name, layer=0).mean(dim="config").values
+        temp = f.temperature.sel(scenario=scen_name, layer=0).median(dim="config").values
         post_dep = temp[dep_bound_idx:]
         costs[j] = np.sum((post_dep - target_temp) ** 2)
 

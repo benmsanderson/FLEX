@@ -1,17 +1,26 @@
-# Parallel Optimization Guide
+# Parallel Optimization and Workflow Guide
 
 ## Overview
 
-We've integrated parallel optimization into your existing pixi/papermill workflow. The optimization runs 3 independent scenarios (HL-CF, ML-CF, VL-CF) that can be computed simultaneously on your cluster.
+The optimization workflow is split into two notebooks for flexibility and efficiency:
 
-## Integration with Existing Workflow
+1. **5195_optimise.py** - Runs expensive optimization, saves parameters to JSON
+2. **5196_apply_optimised.py** - Applies saved parameters to generate emissions files
 
-The parallel optimization is **seamlessly integrated** into your existing pipeline command. Simply add the `--parallel` flag:
+This separation allows you to:
+- Re-generate emissions without re-running optimization
+- Experiment with different emission generation approaches using the same optimized parameters
+- Share optimized parameters across configs
+- Resume the pipeline from the apply step if needed
+
+The optimization notebook supports both serial and parallel execution automatically.
 
 ### Standard Sequential Run (Original)
 ```bash
 pixi run pipeline WIEMIP
 ```
+
+This runs the full pipeline including optimization (if enabled in config).
 
 ### Parallel Run (New!)
 ```bash
@@ -27,6 +36,18 @@ pixi run pipeline WIEMIP -- --parallel 50
 
 **Note:** The `--` is required to pass arguments through pixi to the underlying script.
 
+### Skip Optimization, Only Apply Saved Parameters
+```bash
+# If you've already run optimization and just want to regenerate emissions
+pixi run pipeline WIEMIP -- --from 5196
+```
+
+### Re-run Only Optimization (Use Latest Emissions)
+```bash
+# If you've updated the base emissions and want to re-optimize
+pixi run pipeline WIEMIP -- --only 5195 --parallel 3
+```
+
 ### Worker Cap Behavior
 
 - `--parallel -1`: Auto-detects cores but **caps at 20 workers** (prevents accidental resource overuse)
@@ -35,13 +56,13 @@ pixi run pipeline WIEMIP -- --parallel 50
 
 ## How It Works
 
-1. **Automatic Selection**: When you use `--parallel N` (where N ≠ 1), the pipeline automatically uses `5195_optimise_parallel.py` instead of `5195_optimise.py`
+The `5195_optimise.py` notebook has built-in logic to detect the `n_jobs` parameter:
 
-2. **Parameter Injection**: Papermill injects both `config_name` and `n_jobs` parameters into the parallel notebook
+- **`n_jobs = 1`** (default): Runs optimizations sequentially
+- **`n_jobs > 1`**: Automatically uses `joblib.Parallel` to run scenarios simultaneously
+- **`n_jobs = -1`**: Auto-detects CPU cores and caps at 20 workers
 
-3. **Transparent Execution**: The output notebook is still saved as `5195_optimise.ipynb` (same name as sequential), maintaining consistency in your outputs
-
-4. **Full Pipeline**: All other steps (5191, 5201, 5202) run normally—only the optimization step is parallelized
+The same notebook handles both modes - no separate files needed!
 
 ## Complete Workflow Examples
 
@@ -103,15 +124,40 @@ cd /div/no-backup-nac/users/bensan/FLEX
 pixi run pipeline WIEMIP -- --parallel 3
 ```
 
-## Files Created/Modified
+## Files Modified
 
-### New Files
-- `notebooks/5195_optimise_parallel.py` - Parallel version of optimization notebook
-- `scripts/run_optimization_parallel.py` - Standalone script (alternative to pipeline)
-
-### Modified Files
-- `scripts/run_pipeline.py` - Added `--parallel` flag and automatic notebook selection
+### Updated Files
+- `notebooks/5195_optimise.py` - Enhanced to support serial/parallel modes, now saves results to JSON
+- `notebooks/5196_apply_optimised.py` - **NEW** - Applies optimization results to generate emissions
+- `scripts/run_pipeline.py` - Added `--parallel` flag and new pipeline step
+- `pixi.toml` - Added `joblib` dependency
 - `README.md` - Updated documentation
+
+### Output Files
+
+The optimization workflow creates:
+- `outputs/<config>/optimization_results.json` - Optimized parameters (created by 5195)
+- `outputs/<config>/emissions_1750-2500.csv` - Emissions with counterfactuals (updated by 5196)
+- `outputs/<config>/optimization_*_verification.png` - Diagnostic plots (created by 5196)
+
+The JSON file contains:
+```json
+{
+  "config": "WIEMIP",
+  "optimization_results": {
+    "HL-CF": {
+      "exp_targ": 8234.5,
+      "sig_start": 2150.0,
+      "sig_end": 2300.0,
+      "target_temp": 1.6543,
+      "departure_year": 2080,
+      "final_cost": 0.000234,
+      "success": true
+    },
+    ...
+  }
+}
+```
 
 ## Existing Parallel Optimization Levels
 
@@ -131,16 +177,16 @@ Your code already has **nested parallelization**:
 - During optimization: `n_configs=1` for speed
 - During verification: full ensemble
 
-## Alternative: Standalone Script
+## Alternative: Standalone Script (Optional)
 
-If you prefer not to use the pipeline, you can run optimization directly:
+If you prefer running optimization separately from the full pipeline, there's also a standalone script:
 
 ```bash
 cd /div/no-backup-nac/users/bensan/FLEX
 pixi run python scripts/run_optimization_parallel.py WIEMIP --n-jobs 3
 ```
 
-This runs **only** the optimization step (not the full pipeline).
+This runs **only** the optimization step (not the full pipeline). However, the integrated pipeline approach is recommended for most users.
 
 ## Output
 

@@ -13,6 +13,7 @@ NOTEBOOKS_DIR = REPO_ROOT / "notebooks"
 ALL_STEPS = [
     "5191_extension",
     "5195_optimise",
+    "5196_apply_optimised",
     "5201_extension_fair_simulations",
     "5202_extension_fair_plots",
 ]
@@ -20,14 +21,7 @@ ALL_STEPS = [
 
 def run_notebook(notebook_name: str, config_name: str, output_dir: Path, n_jobs: int = 1) -> None:
     """Execute a notebook with papermill, injecting config_name."""
-    # Use parallel version if requested and the notebook supports it
-    if n_jobs != 1 and notebook_name == "5195_optimise":
-        actual_notebook = "5195_optimise_parallel"
-        print(f"  -> Using parallel version with n_jobs={n_jobs}")
-    else:
-        actual_notebook = notebook_name
-    
-    input_path = NOTEBOOKS_DIR / f"{actual_notebook}.py"
+    input_path = NOTEBOOKS_DIR / f"{notebook_name}.py"
     output_path = output_dir / f"{notebook_name}.ipynb"
 
     notebook_jupytext = jupytext.read(input_path)
@@ -39,11 +33,13 @@ def run_notebook(notebook_name: str, config_name: str, output_dir: Path, n_jobs:
 
     print(f"\n{'='*60}")
     print(f"Running {notebook_name} with config={config_name}")
+    if n_jobs != 1 and notebook_name == "5195_optimise":
+        print(f"  (parallel mode: n_jobs={n_jobs})")
     print(f"{'='*60}")
 
-    # Inject both config_name and n_jobs (for parallel notebook)
+    # Inject config_name and n_jobs parameters
     parameters = {"config_name": config_name}
-    if actual_notebook == "5195_optimise_parallel":
+    if notebook_name == "5195_optimise":
         parameters["n_jobs"] = n_jobs
 
     pm.execute_notebook(
@@ -112,7 +108,7 @@ def main() -> None:
     # Build full pipeline sequence
     steps = ["5191_extension"]
     if has_optimization:
-        steps.append("5195_optimise")
+        steps.extend(["5195_optimise", "5196_apply_optimised"])
     steps.extend(["5201_extension_fair_simulations", "5202_extension_fair_plots"])
 
     # Apply --only

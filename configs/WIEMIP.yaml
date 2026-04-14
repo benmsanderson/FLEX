@@ -43,11 +43,11 @@ scenario_model_match:
   ML:
     scenario: "SSP2 - Medium-Low Emissions"
     model: "COFFEE 1.6"
-    color: "#dec820"
+    color: "#916326"
   ML-CF:
     scenario: "SSP2 - Medium-Low Emissions"
     model: "COFFEE 1.6"
-    color: "#dec820"
+    color: "#916326"
   M:
     scenario: "SSP2 - Medium Emissions"
     model: "IMAGE 3.4"
@@ -72,7 +72,7 @@ fossil_evolution:
     params: [2200, -3500.0, 2450, 2500, 20, 20]
   VL-CF:
     type: ECS
-    params: [2050, 0, 2100, 2300, 20, 20] 
+    params: [2048, 3300, 2048, 2450, 20, 20]
   LN:
     type: ECS
     params: [2120, -24000.0, 2200, 2300, 20, 20]
@@ -84,7 +84,7 @@ fossil_evolution:
     params: [2150, -13000.0, 2230, 2300, 20, 20]
   ML-CF:
     type: ECS
-    params: [2100, 0, 2100, 2300, 20, 20] 
+    params: [2092, 2000, 2092, 3200, 20, 20] 
   M:
     type: CS
     params: [2100, 2240, 20, 20]
@@ -96,7 +96,7 @@ fossil_evolution:
     params: [2150, -22000.0, 2200, 2300, 20, 20]
   HL-CF:
     type: ECS
-    params: [2100, 0, 2100, 2300, 20, 20]  # initial guess; exp_targ & sig_start optimized, sig_end fixed at 2300
+    params: [2125, 6200, 2125, 2290, 20, 20]  # initial guess; exp_targ & sig_start optimized, sig_end fixed at 2300
 
 # --- Removal strategy ---
 removal_strategy:
@@ -166,9 +166,9 @@ optimization:
   HL-CF:
     enabled: true
     target_year: peak
-    departure_year: peak
+    departure_year: 2073
     departure_offset: -15
-    n_configs: 10
+    n_configs: 50
     optimize_params: [exp_targ, sig_start, sig_end]
     fixed_params: {}
     bounds:
@@ -178,9 +178,9 @@ optimization:
   ML-CF:
     enabled: true
     target_year: peak
-    departure_year: peak
+    departure_year: 2060
     departure_offset: -15
-    n_configs: 10
+    n_configs: 50
     optimize_params: [exp_targ, sig_start, sig_end]
     fixed_params: {}
     bounds:
@@ -192,7 +192,7 @@ optimization:
     target_year: peak
     departure_year: peak
     departure_offset: -15
-    n_configs: 10
+    n_configs: 50
     optimize_params: [exp_targ, sig_start, sig_end]
     fixed_params: {}
     bounds:

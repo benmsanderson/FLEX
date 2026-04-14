@@ -23,8 +23,8 @@ The extension methodology takes CMIP7 ScenarioMIP marker scenarios (pre-2100) an
 │   └── scenarios_regional.csv      # Pre-2100 scenarios (regional)
 ├── notebooks/
 │   ├── 5191_extension.py           # Build extended emissions scenarios
-│   ├── 5195_optimise.py            # Optimise counterfactual scenario parameters
-│   ├── 5195_optimise_parallel.py   # Parallel version of optimization (auto-selected)
+│   ├── 5195_optimise.py            # Optimize counterfactual parameters (serial/parallel)
+│   ├── 5196_apply_optimised.py     # Apply optimized parameters to generate emissions
 │   ├── 5201_extension_fair_simulations.py  # Run FaIR climate simulations
 │   └── 5202_extension_fair_plots.py        # Plot FaIR results
 ├── scripts/
@@ -114,11 +114,17 @@ For configs like WIEMIP with multiple optimization targets (e.g., HL-CF, ML-CF, 
 This executes notebooks in sequence via [papermill](https://papermill.readthedocs.io/):
 
 1. **5191_extension** — Build extended emissions scenarios (1750–2500)
-2. **5195_optimise** *(only if the config defines an `optimization` section)* — Optimise counterfactual scenario parameters against FaIR temperature targets
-3. **5201_extension_fair_simulations** — Run FaIR v2.2 climate simulations on all scenarios
-4. **5202_extension_fair_plots** — Generate diagnostic plots
+2. **5195_optimise** *(only if the config defines an `optimization` section)* — Run optimization to find best-fit parameters for counterfactual scenarios, save results to JSON
+3. **5196_apply_optimised** *(only if optimization enabled)* — Apply the optimized parameters to generate counterfactual emissions and verify with FaIR
+4. **5201_extension_fair_simulations** — Run FaIR v2.2 climate simulations on all scenarios
+5. **5202_extension_fair_plots** — Generate diagnostic plots
 
 Rendered output notebooks are saved to `outputs/<config_name>/notebooks/`.
+
+**Note on optimization workflow**: The optimization is split into two steps (5195 and 5196) for flexibility:
+- **5195** runs the computationally expensive optimization and saves parameters to `optimization_results.json`
+- **5196** applies those parameters to generate emissions files
+- This allows re-generating emissions without re-running optimization, or using optimized parameters from one config in another
 
 #### Interactive use
 

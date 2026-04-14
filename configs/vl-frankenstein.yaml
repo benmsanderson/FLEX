@@ -75,10 +75,10 @@ removal_strategy:
   VL-fossil-frankenstein-zero-afolu:
     type: NEG
     params: [100, 60]
-  VL-fossil-frankenstein-hold:
+  VL-fossil-frankenstein-CF:
     type: NEG
     params: [100, 60]
-  VL-fossil-frankenstein-zero-afolu-hold:
+  VL-fossil-frankenstein-zero-afolu-CF:
     type: NEG
     params: [100, 60]
 
@@ -129,7 +129,7 @@ optimization:
     target_year: peak
     departure_year: peak
     departure_offset: -15
-    n_configs: 10
+    n_configs: 50
     optimize_params: [exp_targ, sig_start, sig_end]
     fixed_params: {}
     bounds:
@@ -141,7 +141,7 @@ optimization:
     target_year: peak
     departure_year: peak
     departure_offset: -15
-    n_configs: 10
+    n_configs: 50
     optimize_params: [exp_targ, sig_start, sig_end]
     fixed_params: {}
     bounds:

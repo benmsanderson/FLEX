@@ -5,7 +5,7 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.19.0
+#       jupytext_version: 1.19.1
 #   kernelspec:
 #     display_name: Python 3 (ipykernel)
 #     language: python
@@ -438,3 +438,97 @@ pl.tight_layout()
 pl.savefig(PLOTS_DIR / "temperature_ecdf.png", dpi=600, bbox_inches='tight')
 pl.savefig(PLOTS_DIR / "temperature_ecdf.pdf", format='pdf', bbox_inches='tight')
 print("✓ Saved: temperature_ecdf.png and temperature_ecdf.pdf")
+
+# %% [markdown]
+# ## Plot 4: Optimized scenarios — emissions & temperature (cf_scenarios.png)
+#
+# Two-panel summary for the counterfactual (-CF) scenarios only:
+# - **Left:** Total CO2 emissions (FFI + AFOLU), source and CF pairs
+# - **Right:** Median temperature with full-ensemble p05/p95 range; target temperatures shown as dashed reference lines
+
+# %%
+import json as _json
+
+# Load target temperatures from the hand-tuned (or standard) optimization results
+_handtuned = OUTPUTS_DIR / "optimization_results_handtuned.json"
+_standard  = OUTPUTS_DIR / "optimization_results.json"
+_results_file = _handtuned if _handtuned.exists() else (_standard if _standard.exists() else None)
+
+if _results_file is None:
+    print("No optimization results found — skipping cf_scenarios plot.")
+    opt_results_plot = {}
+else:
+    with open(_results_file) as _fh:
+        _opt_data = _json.load(_fh)
+    opt_results_plot = _opt_data["optimization_results"]
+
+cf_pairs = [(s.replace("-CF", ""), s) for s in opt_results_plot if s.endswith("-CF")]
+
+if not cf_pairs:
+    print("No CF scenario pairs found — skipping cf_scenarios plot.")
+else:
+    def ls_for(scenario):
+        return "--" if scenario.endswith("-CF") else "-"
+
+    def color_for(scenario):
+        src = scenario.replace("-CF", "")
+        return scenario_model_match[src][2]
+
+    fig, axes = pl.subplots(1, 2, figsize=(14, 5))
+
+    # --- Left: total CO2 emissions ---
+    ax = axes[0]
+    for src, cf in cf_pairs:
+        for scenario in (src, cf):
+            ffi = emis_species_df[
+                (emis_species_df["Scenario"] == scenario) & (emis_species_df["Species"] == "CO2 FFI")
+            ].set_index("Year")["Emissions"]
+            afolu = emis_species_df[
+                (emis_species_df["Scenario"] == scenario) & (emis_species_df["Species"] == "CO2 AFOLU")
+            ].set_index("Year")["Emissions"]
+            total = (ffi + afolu) / 1e6
+            ax.plot(total.index, total.values, color=color_for(scenario), ls=ls_for(scenario),
+                    lw=1.8, label=scenario)
+
+    ax.set_xlim(1900, 2300)
+    ax.axhline(0, color="k", lw=0.5, ls=":")
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Total CO$_2$ (FFI + AFOLU), GtCO$_2$ yr$^{-1}$")
+    ax.set_title("(a) CO$_2$ emissions")
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.3)
+
+    # --- Right: median temperature with ensemble range ---
+    ax = axes[1]
+    for src, cf in cf_pairs:
+        target_temp = opt_results_plot[cf]["target_temp"]
+        color = color_for(cf)
+
+        for scenario in (src, cf):
+            d = temp_df[temp_df["Scenario"] == scenario]
+            baseline_mean = d[(d["Year"] >= 1850) & (d["Year"] <= 1901)]["Temperature_median"].mean()
+            t_med = d["Temperature_median"].values - baseline_mean
+            t_p05 = d["Temperature_p05"].values - baseline_mean
+            t_p95 = d["Temperature_p95"].values - baseline_mean
+            ax.fill_between(d["Year"], t_p05, t_p95, color=color, alpha=0.12, lw=0)
+            ax.plot(d["Year"], t_med, color=color, ls=ls_for(scenario), lw=1.8, label=scenario)
+
+        # temperature target reference line
+        # baseline offset: use the source scenario's 1850-1900 baseline
+        src_d = temp_df[temp_df["Scenario"] == src]
+        src_baseline = src_d[(src_d["Year"] >= 1850) & (src_d["Year"] <= 1901)]["Temperature_median"].mean()
+        ax.axhline(target_temp - src_baseline, color=color, ls=":", lw=1.2, alpha=0.8,
+                   label=f"{cf} target ({target_temp - src_baseline:.2f} K)")
+
+    ax.set_xlim(1900, 2300)
+    ax.axhline(0, color="k", lw=0.5, ls=":")
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Temperature anomaly, K above 1850–1900")
+    ax.set_title("(b) Temperature (median ± 5–95%)")
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.3)
+
+    pl.tight_layout()
+    pl.savefig(PLOTS_DIR / "cf_scenarios.png", dpi=600, bbox_inches="tight")
+    pl.savefig(PLOTS_DIR / "cf_scenarios.pdf", format="pdf", bbox_inches="tight")
+    print("✓ Saved: cf_scenarios.png and cf_scenarios.pdf")
