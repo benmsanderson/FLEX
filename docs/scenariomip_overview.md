@@ -1,47 +1,77 @@
 ---
 marp: true
-theme: default
+theme: newton
 paginate: true
-backgroundColor: white
+#backgroundColor: white
 style: |
   section {
-    font-family: 'Helvetica Neue', Arial, sans-serif;
-    font-size: 22px;
-    padding: 40px 50px;
+    font-size: 21px;
+    padding: 38px 52px 38px 52px;
+    color: #222;
   }
-  h1 { font-size: 40px; color: #1a2e5a; }
-  h2 { font-size: 30px; color: #1a2e5a; border-bottom: 2px solid #1a2e5a; padding-bottom: 6px; }
-  h3 { font-size: 24px; color: #2c5282; }
-  .title-slide h1 { font-size: 44px; }
-  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
-  .columns3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
-  .highlight { background: #eef2ff; border-left: 4px solid #1a2e5a; padding: 12px 16px; border-radius: 4px; }
-  .scenario-vl  { color: #16188F; font-weight: bold; }
-  .scenario-ln  { color: #0ea5a0; font-weight: bold; }
-  .scenario-l   { color: #20A359; font-weight: bold; }
-  .scenario-ml  { color: #a89000; font-weight: bold; }
-  .scenario-m   { color: #fc7b03; font-weight: bold; }
-  .scenario-h   { color: #a41212; font-weight: bold; }
-  .scenario-hl  { color: #9b15b3; font-weight: bold; }
-  .small { font-size: 16px; color: #555; }
-  .fig-placeholder {
+  h1 { font-size: 38px; color: #1a2e5a; margin-bottom: 10px; }
+  h2 { font-size: 28px; color: #1a2e5a; border-bottom: 2px solid #c8d4ee; padding-bottom: 5px; margin-bottom: 16px; }
+  h3 { font-size: 22px; color: #2c4a7a; margin-bottom: 8px; }
+  section.title h1 { font-size: 42px; border: none; }
+  section.title h2 { border: none; color: #3a5a8a; font-size: 24px; font-weight: normal; }
+  section.divider { background: #1a2e5a; color: white; display: flex; flex-direction: column; justify-content: center; }
+  section.divider h1 { color: white; font-size: 44px; border: none; }
+  section.divider h2 { color: #aac4ee; border: none; font-weight: normal; }
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .columns-wf { display: grid; grid-template-columns: 2fr 3fr; gap: 28px; }
+  .columns-swf { display: grid; grid-template-columns: 2fr 4fr; gap: 28px; }  
+  .columns3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+  .col { }
+  .highlight {
+    background: #eef2ff;
+    border-left: 4px solid #3a5a8a;
+    padding: 10px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 10px 0;
+    font-size: 19px;
+  }
+  .highlight-warm {
+    background: #fff8ee;
+    border-left: 4px solid #e07020;
+    padding: 10px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 10px 0;
+  }
+  .fig {
     background: #f0f4ff;
     border: 2px dashed #8899cc;
     border-radius: 8px;
-    padding: 20px;
+    padding: 16px;
     text-align: center;
-    color: #445;
+    color: #445577;
     font-style: italic;
-    min-height: 180px;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 160px;
   }
-  img { max-width: 100%; max-height: 380px; object-fit: contain; }
-  footer { font-size: 14px; color: #888; }
+  .fig-tall { min-height: 340px; }
+  .fig-short { min-height: 100px; }
+  .small { font-size: 16px; color: #556; }
+  .vsmall { font-size: 14px; color: #778; }
+  .scen-vl  { color: #16188F; font-weight: bold; }
+  .scen-ln  { color: #0097a0; font-weight: bold; }
+  .scen-l   { color: #208050; font-weight: bold; }
+  .scen-ml  { color: #907000; font-weight: bold; }
+  .scen-m   { color: #e06000; font-weight: bold; }
+  .scen-h   { color: #a41212; font-weight: bold; }
+  .scen-hl  { color: #8a10a8; font-weight: bold; }
+  .scen-com { color: #555555; font-weight: bold; }
+  table { font-size: 17px; width: 100%; border-collapse: collapse; }
+  th { background: #1a2e5a; color: white; padding: 6px 10px; }
+  td { padding: 5px 10px; border-bottom: 1px solid #dde; }
+  tr:nth-child(even) td { background: #f4f6fb; }
+  footer { font-size: 13px; color: #999; }
+  img { max-width: 100%; max-height: 420px; object-fit: contain; display: block; margin: 0 auto; }
+  .fig img { max-height: 380px; }
 ---
 
-<!-- _class: title-slide -->
+<!-- _class: title -->
 <!-- _paginate: false -->
 
 # Overview of Global Scenarios and ScenarioMIP CMIP7
@@ -49,69 +79,122 @@ style: |
 **Benjamin Sanderson**
 CICERO Center for International Climate Research, Oslo
 
-*Geoscientific Model Development, 2024–2026*
+*Prepared for WG1 AR7 authors*
 
 ---
 
 ## Outline
 
-1. **Why scenarios?** — role in climate science, history of scenario frameworks
-2. **CMIP7 context** — the coupled model intercomparison project, Fast Track
-3. **The case for emissions-driven projections**
-4. **flat10MIP** — diagnosing carbon cycle responses
-5. **ScenarioMIP-CMIP7** — the seven marker scenarios and their narratives
-6. **Extensions beyond 2100** — the FLEX methodology
-   - CO₂ storylines, non-CO₂ gases, CDR disaggregation
-7. **Counterfactuals with FLEX** — WIEMIP and beyond
-8. **Summary**
+<div class="columns">
+<div>
+
+**1. Why scenarios?**
+— role in climate science, history, Paris framing
+
+**2. CMIP7 and emissions-driven projections**
+— Fast Track, the case for emissions-driven, flat10MIP
+
+**3. ScenarioMIP-CMIP7**
+— the 7 marker scenarios, narratives, SSP2-com comparison, global outputs
+
+</div>
+<div>
+
+**4. Extensions beyond 2100: FLEX**
+— CO₂ storylines, CDR, AFOLU/LUH3, non-CO₂, long-term climate outcomes
+
+**5. FLEX counterfactuals: WIEMIP**
+— overshoot vs. maintain-peak-warming; optimisation for target temperatures
+
+**6. Summary and outlook**
+
+</div>
+</div>
 
 ---
 
 ## The Role of Scenarios in Climate Science
 
-Scenarios bridge **human choices** and **physical climate outcomes**
+Scenarios translate **human choices** into **physical climate forcing** — the bridge between policy and Earth system response.
 
-<div class="columns">
+<div class="columns-swf">
 <div>
 
-**What scenarios do:**
-- Translate socioeconomic/policy assumptions into emissions trajectories
-- Force Earth system models to generate consistent climate projections
-- Enable risk assessment and impact research
-- Inform IPCC assessment cycles
+**What a scenario must do:**
+- Convert socioeconomic assumptions into consistent emissions trajectories
+- Force ESMs to produce comparable, multi-model projections
+- Span the range of plausible futures — from aggressive action to limited ambition
 
-**Who uses them:**
-- Climate modelling centres (CMIP)
-- Impact assessment researchers (ISIMIP)
-- Policy advisors (IPCC AR6/AR7)
-
-</div>
-<div class="fig-placeholder">
-
-[FIG: Schematic of scenario workflow: IAM → emissions → ESM → impacts]
-*(to be generated)*
+**What AR7 needs:**
+- Coverage of the post-Paris warming range (1.5–4°C)
+- Long-term forcing for slow processes (ice sheets, permafrost, sea level)
+- Consistency across gases, sectors, and spatial scales
 
 </div>
+<div class="fig">
+
+![center w:1200](external_figures/meinshausen2024_f02_reps.png)
+
+</div>
+</div>
+
+<div class="small">
+
+*(Meinshausen et al. 2024, Fig. 2)* — Representative Emission Pathways: the scenario space CMIP7 must cover, from immediate action (IA2015) to fossil-fuel-intensive worlds (TEWA).
+
 </div>
 
 ---
 
 ## A Brief History of Scenario Frameworks
 
-| Era | Scenario set | Driving metric | CMIP phase |
-|-----|-------------|---------------|-----------|
-| 1990s | SRES | Emissions | CMIP3 |
-| 2010s | RCPs | Radiative forcing | CMIP5 |
-| 2020s | SSPs + RCPs | Emissions + forcing | CMIP6 |
-| 2025+ | SSPs (revised) | **Emissions** | **CMIP7** |
+| Generation | Scenario set | Primary metric | CMIP phase | Key advance |
+|------------|-------------|----------------|------------|-------------|
+| 1990s | SRES | Emissions | CMIP3 | Structured narratives |
+| 2010s | RCPs | Radiative forcing | CMIP5 | Forcing-level design; model parallelism |
+| 2010s | SSPs + RCPs | Emissions + forcing | CMIP6 | Shared socioeconomic pathways; scenario matrix |
+| 2025+ | CMIP7 | **Emissions** | **CMIP7** | Emissions-driven as primary protocol |
 
-**Key shift in CMIP7:** move toward emissions-driven simulations as the primary protocol — enabling interactive carbon cycle feedbacks
+**The CMIP7 shift:** moving from concentration- or forcing-driven to **emissions-driven** as the standard — placing carbon cycle feedbacks inside the simulation rather than outside it.
 
 <div class="highlight">
 
-"Previous phases of CMIP have primarily focused on simulations driven by atmospheric concentrations of greenhouse gases. We argue that although concentration-driven simulations have advantages, emissions-driven simulations better represent the policy-relevant question."
-*(Sanderson et al., 2024, GMD)*
+Each generation has expanded coverage of the relevant uncertainty space while tightening consistency requirements across modelling groups.
 
+</div>
+
+---
+
+## What the Paris Agreement Asks of Scenarios
+
+The Paris Agreement targets (well below 2°C, pursuing 1.5°C) require scenarios that:
+
+<div class="columns">
+<div>
+
+**Span the relevant space:**
+- Deep mitigation consistent with 1.5°C (VL, LN)
+- Current-policy trajectories (ML, M)
+- High-end futures for impact research (H, HL)
+- Overshoot and CDR-reliant pathways (LN, HL)
+
+**Expose key uncertainties:**
+- Net-zero timing and technology mix
+- CDR deployment scale and permanence
+- Non-CO₂ mitigation (CH₄, aerosols)
+- Carbon cycle feedbacks under net-negative emissions
+
+</div>
+<div>
+
+**Limitations of IAM-only ensembles:**
+- Ad-hoc sampling of the future space — scenarios cluster around common thresholds
+- Hard to isolate effects of individual policy levers
+- No systematic coverage of intermediate warming levels
+
+→ This motivates **FLEX**: a toolkit to extend and augment the standard scenario set
+
+</div>
 </div>
 
 ---
@@ -120,375 +203,324 @@ Scenarios bridge **human choices** and **physical climate outcomes**
 
 **Dunne et al. (2025)** — *An evolving CMIP7 and Fast Track in support of future climate assessment*
 
-<div class="columns">
+<div class="columns-wf">
 <div>
 
-**CMIP7 goals:**
-- Inform IPCC AR7 (2029)
-- Prioritise policy-relevant questions
-- Improve accessibility and reproducibility
-- Reduce barriers for Global South participation
+**CMIP7 objectives:**
+- Inform IPCC AR7 (target: 2029)
+- Prioritise policy-relevant experiments
+- Reduce participation barriers for the Global South
+- Improve data standards and reproducibility
 
 **Fast Track:**
-- Smaller, targeted set of priority experiments
-- Results available for AR7
-- Includes DECK + ScenarioMIP
+- A targeted subset of high-priority experiments designed to be available for AR7
+- Includes DECK (piControl, abrupt-4xCO₂, 1pctCO₂, amip) plus **ScenarioMIP**
+- Modelling groups commit to Fast Track first; broader MIPs follow
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: CMIP7 experiment hierarchy / Fast Track schematic]
-*(from gmd-18-6671-2025, Fig. 1 or similar)*
+![center w:900](external_figures/dunne2025_f02_cmip7_fast_track.png)
+*(Dunne et al. 2025, Fig. 2)*
 
 </div>
 </div>
 
 ---
 
-## Why Emissions-Driven Simulations?
+## The Case for Emissions-Driven Simulations
 
-**Sanderson et al. (2024)** — *The need for carbon-emissions-driven climate projections in CMIP7*
+**Sanderson et al. (2024)** — *The need for carbon-emissions-driven climate projections in CMIP7*, GMD 17, 8141
 
-<div class="columns">
+<div class="columns-wf">
 <div>
 
-**Problem with concentration-driven:**
-- Locks in CO₂ pathway regardless of carbon cycle
-- Different models have different carbon budgets for same concentrations
-- Cannot assess feedbacks that alter the emissions–concentration relationship
-- Misrepresents policy question: *we control emissions, not concentrations*
+**The problem with concentration-driven:**
+- CO₂ pathway is fixed — carbon cycle cannot diverge
+- Different models have different compatible emissions for the same concentrations → cross-model comparisons conflate forcing and feedback
+- Misrepresents the policy question: **we control emissions, not concentrations**
 
-**Benefits of emissions-driven:**
-- Carbon cycle uncertainty propagates correctly
-- Cross-model comparison is fair (same emissions → different concentrations)
-- Compatible with carbon budget frameworks
+**What emissions-driven adds:**
+- Carbon cycle feedbacks propagate correctly into temperature uncertainty
+- Fair cross-model comparison: same emissions, different outcomes
+- Direct link to carbon budget frameworks
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: Schematic contrasting concentration-driven vs emissions-driven pathways; carbon cycle feedback loop]
-*(from gmd-17-8141-2024)*
+![center w:900](external_figures/sanderson2024_f01_uncertainty_propagation.png)
+*(Sanderson et al. 2024, Fig. 1)*
 
 </div>
 </div>
 
 ---
 
-## flat10MIP: Diagnosing Carbon Cycle Responses
+## flat10MIP: Diagnosing Carbon Cycle Response
 
-**Sanderson et al. (2025)** — *flat10MIP: an emissions-driven experiment to diagnose the climate response to positive, zero and negative CO₂ emissions*
+**Sanderson et al. (2025)** — *flat10MIP: an emissions-driven experiment …*, GMD 18, 5699
 
-<div class="columns">
+<div class="columns-wf">
 <div>
 
 **Motivation:**
-- The proportionality between temperature and cumulative CO₂ (TCRE) underpins carbon budgets
-- Deviations could affect net-zero timing estimates
-- Carbon cycle asymmetry: is the response to negative emissions reversible?
+- The proportionality between temperature and cumulative CO₂ (TCRE) is the foundation of carbon budgeting
+- But is TCRE symmetric under negative emissions? Do models agree?
+- Crucial for interpreting overshoot scenarios (LN, HL) in ScenarioMIP
 
 **Experiment design:**
-- Flat-10 Gt CO₂/yr emissions for 50 years, then ramp to zero, then negative
-- All ESMs run with identical emissions forcing
-- Isolates TCRE, reversibility, and asymmetry
+- Prescribed global CO₂ emissions: sustained flat +10 Gt CO₂/yr for 50 years, then linear ramp to zero, then negative
+- All ESMs forced identically — isolates model differences in TCRE and reversibility
+- Part of CMIP7 Fast Track
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: flat10MIP prescribed emissions trajectory]
-*(from gmd-18-5699-2025, Fig. 1)*
+![center w:900](external_figures/sanderson2025_f01_flat10mip_design.png)
+*(Sanderson et al. 2025, Fig. 1)*
 
 </div>
 </div>
+
 
 ---
 
-## flat10MIP: Key Science Questions
+## ScenarioMIP-CMIP7: Design Objectives
 
-<div class="columns">
-<div>
+**Van Vuuren et al. (2026)** — Seven marker scenarios spanning aggressive mitigation to high emissions, grounded in SSP storylines. Primary protocol: **emissions-driven** with FLEX extensions to 2500.
 
-**Questions addressed:**
-1. How does temperature respond symmetrically to positive vs. negative emissions?
-2. What is the spread in TCRE across CMIP7 ESMs?
-3. Does the ocean/land carbon sink behave differently under net-negative emissions?
-4. How long does the climate system take to recover?
+![center w:1000](external_figures/vanvuuren2026_f01_scenariomip_design.png)
 
-**Relevance for ScenarioMIP:**
-- Informs interpretation of overshoot scenarios (LN)
-- Constrains post-peak temperature behaviour in extensions
+<div class="small">
+
+*(Van Vuuren et al. 2026, Fig. 1)* — GHG emissions and temperature outcomes for the seven CMIP7 ScenarioMIP markers.
 
 </div>
-<div class="fig-placeholder">
-
-[FIG: Multi-model temperature response to flat10 emissions — positive and negative phases]
-*(from gmd-18-5699-2025)*
-
-</div>
-</div>
-
----
-
-<!-- _class: section-header -->
-
-## Part II: ScenarioMIP-CMIP7
-
----
-
-## ScenarioMIP-CMIP7 Overview
-
-**Van Vuuren et al. (2026)** — *The Scenario Model Intercomparison Project for CMIP7 (ScenarioMIP-CMIP7)*
-
-<div class="highlight">
-
-Scenarios serve as a critical tool in climate change analysis, enabling exploration of future evolution of the climate system, climate impacts, and the human system (including mitigation and adaptation actions).
-
-</div>
-
-**Seven marker scenarios** from Integrated Assessment Models (IAMs):
-- Span a range from aggressive mitigation to high-emissions futures
-- Each grounded in a consistent socioeconomic narrative (SSP storyline)
-- Selected from IAM ensembles to span key uncertainties
-- Provide boundary conditions for CMIP7 Earth system models
 
 ---
 
 ## The Seven Marker Scenarios
 
-| Label | SSP | Pathway | IAM model | Peak warming |
-|-------|-----|---------|-----------|-------------|
-| <span class="scenario-vl">VL</span> | SSP1 | Very Low Emissions | REMIND-MAgPIE 3.5 | ~1.5°C |
-| <span class="scenario-ln">LN</span> | SSP2 | Low Overshoot | AIM 3.0 | ~1.6°C (overshoot) |
-| <span class="scenario-l">L</span>  | SSP2 | Low Emissions | MESSAGEix-GLOBIOM | ~2°C |
-| <span class="scenario-ml">ML</span> | SSP2 | Medium-Low Emissions | COFFEE 1.6 | ~2.5°C |
-| <span class="scenario-m">M</span>  | SSP2 | Medium Emissions | IMAGE 3.4 | ~3°C |
-| <span class="scenario-h">H</span>  | SSP3 | High Emissions | GCAM 8s | ~4°C |
-| <span class="scenario-hl">HL</span> | SSP5 | High → Low (CDR) | WITCH 6.0 | ~2.5°C |
+<br>
+
+| &nbsp; | SSP | Pathway | IAM model | ~2100 warming |
+|--------|-----|---------|-----------|:---:|
+| <span class="scen-vl">VL</span> | SSP1 | Very Low Emissions | REMIND-MAgPIE 3.5-4.11 | ~1.5°C |
+| <span class="scen-ln">LN</span> | SSP2 | Low Overshoot | AIM 3.0 | ~1.6°C (peak ~1.8°C) |
+| <span class="scen-l">L</span>   | SSP2 | Low Emissions | MESSAGEix-GLOBIOM-GAINS 2.1 | ~2°C |
+| <span class="scen-ml">ML</span> | SSP2 | Medium-Low Emissions | COFFEE 1.6 | ~2.5°C |
+| <span class="scen-m">M</span>  | SSP2 | Medium Emissions | IMAGE 3.4 | ~3°C |
+| <span class="scen-h">H</span>  | SSP3 | High Emissions | GCAM 8s | ~4°C |
+| <span class="scen-hl">HL</span> | SSP5 | Very High → CDR | WITCH 6.0 | ~2.5°C |
 
 <div class="small">
 
-Colors used consistently throughout this presentation
+Colours used consistently throughout this presentation. Warming levels are approximate FaIR medians relative to 1850–1900.
 
 </div>
 
 ---
 
-## Scenario Narratives: SSP1 — Sustainability
+## Narrative: SSP1-VL — Sustainability
 
-<div class="columns">
+<div class="columns-swf">
 <div>
 
-**<span class="scenario-vl">VL — SSP1 "Very Low Emissions"</span>**
-*Model: REMIND-MAgPIE 3.5-4.11*
+**<span class="scen-vl">SSP1-VL "Very Low Emissions"</span>**
+*REMIND-MAgPIE 3.5-4.11*
 
-- Strong global cooperation on sustainability
-- Rapid decarbonisation of energy and land use
-- High penetration of renewables by 2050
-- Net-negative CO₂ by mid-century via BECCS/AFOLU
-- Low population growth, high human development
-- Methane and aerosol reductions track CO₂
+Strong global cooperation, rapid sustainability transition. Net-zero CO₂ by ~2060; net-negative thereafter. Strong AFOLU sink, aggressive CH₄ mitigation, rapid sulfur decline (early aerosol unmasking).
 
-**Warming target:** Below 1.5°C with high confidence
+Well below 1.5°C with high probability. The most ambitious marker and key reference for 1.5°C-compatible pathways.
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: VL scenario CO₂ emissions and key drivers 2020–2100]
-*(to be generated from scenariomip_default outputs)*
+![center w:900](../outputs/presentation/F01_vl_narrative.png)
 
 </div>
 </div>
 
 ---
 
-## Scenario Narratives: SSP2 — Middle of the Road
+## Narrative: SSP2-L and SSP2-LN — Mitigation and Overshoot
 
-<div class="columns">
+<div class="columns-swf">
 <div>
 
-**<span class="scenario-l">L — SSP2 "Low Emissions"</span>**
-*Model: MESSAGEix-GLOBIOM-GAINS 2.1-M-R12*
+**<span class="scen-l">SSP2-L "Low Emissions"</span>**
+*MESSAGEix-GLOBIOM-GAINS 2.1-M-R12*
 
-- Moderate ambition, consistent with 2°C
-- Net-zero CO₂ around 2060–2070
-- Significant CDR deployment post-2060
+Middle-of-the-road socioeconomics with strong mitigation. Net-zero CO₂ ~2060–2070. Moderate CDR (BECCS, reforestation). Consistent with well-below-2°C.
 
-**<span class="scenario-ml">ML — SSP2 "Medium-Low"</span>**
-*Model: COFFEE 1.6*
+<br>
 
-- Policies consistent with current NDC+ ambition
-- Net-zero CO₂ around 2075
-- Moderate CDR reliance
+**<span class="scen-ln">SSP2-LN "Low Overshoot"</span>**
+*AIM 3.0*
 
-**<span class="scenario-m">M — SSP2 "Medium"</span>**
-*Model: IMAGE 3.4*
-
-- Limited additional policy beyond current trends
-- CO₂ continues rising beyond 2050
-- ~3°C by 2100
+Temporarily exceeds 1.5°C before returning via deep CDR. Tests climate reversibility — high negative emissions by 2070–2100. Connects directly to flat10MIP science questions.
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: L, ML, M CO₂ emissions 2020–2100 on same axes]
-*(to be generated)*
+![center w:900](../outputs/presentation/F02_l_ln_narrative.png)
 
 </div>
 </div>
 
 ---
 
-## Scenario Narratives: Overshoot and High Fossil
+## Narrative: SSP2-ML and SSP2-M — Current-Policy Range
 
-<div class="columns">
+<div class="columns-swf">
 <div>
 
-**<span class="scenario-ln">LN — SSP2 "Low Overshoot"</span>**
-*Model: AIM 3.0*
+**<span class="scen-ml">SSP2-ML "Medium-Low Emissions"</span>**
+*COFFEE 1.6*
 
-- Temporary overshoot of 1.5°C before returning
-- Deep negative emissions required post-2070
-- High CDR deployment (BECCS, DACCS)
-- Tests climate reversibility
+Current NDC ambition plus modest strengthening. Net-zero CO₂ ~2075, moderate CDR. ~2.5°C by 2100 — upper bound of current pledges.
 
-**<span class="scenario-h">H — SSP3 "High Emissions"</span>**
-*Model: GCAM 8s*
+<br>
 
-- Regional rivalry, limited cooperation
-- High fossil fuel use, slow transition
-- ~4°C by 2100; continued rise to 2500
+**<span class="scen-m">SSP2-M "Medium Emissions"</span>**
+*IMAGE 3.4*
 
-**<span class="scenario-hl">HL — SSP5 "High then Low"</span>**
-*Model: WITCH 6.0*
-
-- Fossil-fuel development path to 2050
-- Then aggressive CDR and clean energy switch
-- High overshoot, high CDR — stress-tests reversibility
+Limited additional policy beyond current trends. CO₂ peaks and declines slowly. ~3°C by 2100 — a world where ambition does not increase substantially.
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: LN, H, HL CO₂ emissions — showing overshoot and high-CDR pathways]
-*(to be generated)*
+![center w:900](../outputs/presentation/F03_ml_m_narrative.png)
 
 </div>
 </div>
 
 ---
 
-## CO₂ Emissions: All Seven Scenarios
+## Narrative: SSP3-H and SSP5-HL — High Emissions and High CDR
 
-<div class="fig-placeholder" style="min-height:380px;">
+<div class="columns-swf">
+<div>
 
-[FIG: Total CO₂e emissions 1950–2100, all 7 scenarios, coloured by label]
-*(to be generated from scenariomip_default outputs — `fair_co2e_emissions_1750-2500.csv`)*
+**<span class="scen-h">SSP3-H "High Emissions"</span>**
+*GCAM 8s*
+
+Regional rivalry, slow energy transition. ~4°C by 2100; warming continues through 2500. The primary high-end scenario for impact research.
+
+<br>
+
+**<span class="scen-hl">SSP5-HL "Very High, then CDR"</span>**
+*WITCH 6.0*
+
+Fossil-intensive development through ~2060, then aggressive CDR switch. Peak ~3°C, declining toward ~2.5°C by 2100. The stress-test scenario for late-action CDR and reversibility.
+
+</div>
+<div class="fig">
+
+![center w:900](../outputs/presentation/F04_h_hl_narrative.png)
+
+</div>
+</div>
+
+---
+
+## SSP2-com: An Updated Pathway for Current Ambition
+
+**Lu et al. (2025)** — *Earth system responses under a global 2°C-target scenario*, ERL 20, 104049
+
+<div class="columns-wf">
+<div>
+
+**What SSP2-com represents:**
+- SSP2-based scenario updated with mid-century net-zero pledges and CDR deployment
+- ~2.05°C by 2100 — sitting **between ML and L** in the ScenarioMIP range
+- A reference for AR7 authors relating CMIP7 markers to current stated ambition
+
+**Key message:** SSP2-com illustrates where the trajectory might land if recent net-zero pledges are fulfilled — the marker set brackets the current-policy space well.
+
+</div>
+<div class="fig">
+
+![center w:900](../outputs/presentation/F05_ssp2com_comparison.png)
+
+</div>
+</div>
+
+---
+
+## Global CO₂ Emissions: All Scenarios to 2100
+
+<div class="fig fig-tall">
+
+![center w:950](../outputs/presentation/F06_all_scenarios_co2e.png)
 
 </div>
 
 <div class="small">
 
-Historical period (black), future projections coloured by scenario. Note the spread from net-negative (VL, LN) to continued high emissions (H).
+Historical period in black (to 2023). SSP2-com shown as dashed grey for context. Note the wide spread in net-zero timing and post-net-zero CDR reliance across scenarios.
 
 </div>
 
 ---
 
-## Temperature Outcomes to 2100
+## Non-CO₂ Emissions to 2100
 
-<div class="fig-placeholder" style="min-height:380px;">
+<div class="fig">
 
-[FIG: Temperature anomaly 1850–2100, all 7 scenarios, median + 5–95% ensemble range]
-*(to be generated from `fair_temperature_1750-2500.csv`)*
+![center w:950](../outputs/presentation/F07_ch4_sulfur_2100.png)
 
 </div>
 
 <div class="small">
 
-FaIR v2.2 probabilistic projections; shading shows 5th–95th percentile of 1000-member calibrated ensemble. Historical (black) blends to scenario colours at 2023.
+CH₄ and aerosol forcings contribute substantially to near-term warming spread — partially independent of CO₂ pathway. All scenarios show aerosol (sulfur) decline, causing near-term warming irrespective of CO₂ mitigation ambition.
 
 </div>
 
 ---
 
-## Non-CO₂ Forcing: CH₄ and Aerosols
+## Temperature Outcomes 2000–2100
 
-<div class="columns">
-<div class="fig-placeholder">
+<div class="fig fig-tall">
 
-[FIG: CH₄ emissions 2000–2100, all scenarios]
-*(to be generated from emissions_by_species data)*
+![center w:950](../outputs/presentation/F08_temperature_2100.png)
 
 </div>
-<div class="fig-placeholder">
 
-[FIG: Sulfur emissions 2000–2100, all scenarios]
-*(to be generated)*
+<div class="small">
 
-</div>
-</div>
-
-**Key points:**
-- Methane mitigation is scenario-dependent: VL and L see aggressive reductions; H maintains high agricultural CH₄
-- Sulfur (aerosol precursor) declines across all scenarios — aerosol unmasking effect
-- Non-CO₂ forcing contributes significantly to near-term warming spread
-
----
-
-## CDR in the Scenarios
-
-<div class="columns">
-<div>
-
-**Carbon Dioxide Removal is central to ambition:**
-
-- All mitigation scenarios rely on CDR to achieve net-zero or net-negative
-- **Gross negative emissions** components in 2100:
-  - BECCS (Bioenergy + CCS)
-  - AFOLU (land sinks: reforestation, soil carbon)
-  - DACCS (Direct Air Capture)
-  - Enhanced weathering, ocean CDR, biochar
-
-- **LN and HL** rely most heavily on CDR
-- Technology mix differs across scenarios and IAMs
+FaIR v2.2, 1000-member ensemble calibrated to IPCC AR6 assessed ranges. Emissions-driven: carbon cycle uncertainty propagates into temperature spread. SSP2-com sits between ML and L, consistent with current stated ambition.
 
 </div>
-<div class="fig-placeholder">
-
-[FIG: CDR breakdown by technology type for each scenario at 2100]
-*(to be generated — stacked bar or area plot)*
-
-</div>
-</div>
-
----
-
-<!-- _class: section-header -->
-
-## Part III: Extensions Beyond 2100 — FLEX
 
 ---
 
 ## Why Extend Beyond 2100?
 
+IAMs provide forcing to 2100 — but many Earth system processes respond on centennial or longer timescales.
+
 <div class="columns">
 <div>
 
-**IAM scenarios end at 2100 — but the climate system doesn't**
+**Processes requiring long forcing:**
 
-Key processes requiring multi-century forcing:
-- **Ice sheet dynamics** — Greenland/Antarctic response on centennial timescales
-- **Permafrost carbon** — slow release of soil carbon
-- **Sea level rise commitment** — centuries-long thermal expansion
-- **Ecosystem reorganisation** — biome shifts lag forcing
+| Process | Characteristic timescale |
+|---------|:----------------------:|
+| Greenland ice sheet | Centuries–millennia |
+| Antarctic ice sheet | Centuries–millennia |
+| Sea level rise commitment | Centuries |
+| Permafrost carbon release | Decades–centuries |
+| Deep ocean heat uptake | Decades–centuries |
+| Biome reorganisation | Decades–centuries |
 
-**CMIP7 ESMs need forcing to 2300–2500**
 
-Without consistent extensions, each modelling centre makes independent ad-hoc choices → incomparable results
 
 </div>
-<div class="fig-placeholder">
+<div class="highlight">
 
-[FIG: Schematic of slow climate processes and their characteristic timescales]
-*(to be generated or adapted from literature)*
+**CMIP7 request:** Default scenarios should run to 2150, including the 1st 50 years of extension
+**CMIP7 requirement:** Scenario forcing to at least **2300**, ideally **2500**, for ocean, ice sheet, and permafrost MIPs.
 
 </div>
 </div>
@@ -497,553 +529,380 @@ Without consistent extensions, each modelling centre makes independent ad-hoc ch
 
 ## FLEX: Framework for Long-term EXtensions
 
-**Sanderson et al. (in prep.)** — open-source toolkit for scenario extensions
-
-<div class="highlight">
-
-FLEX allows scenarios to be indefinitely extended by defining a concise list of properties (e.g. net-zero timing, methane policy, carbon removal assumptions), using storylines to generate self-consistent, harmonised emissions trajectories.
-
-</div>
+**Sanderson et al. (in preparation)** — Extends ScenarioMIP emissions beyond 2100 to 2500.
 
 <div class="columns">
 <div>
 
-**Key design principles:**
-- Continuity with IAM scenario narratives
-- Physical plausibility (no discontinuities)
-- Internally consistent across species
-- Configurable via simple YAML files
-- Reproducible, open-source (Python)
+**Design principles:**
+- Continuity with IAM narratives — no discontinuities at 2100
+- Physically plausible, internally consistent across species
+- Configurable via YAML; reproducible, open-source
 
 </div>
 <div>
 
-**Pipeline:**
-1. CO₂ fossil fuel storyline
-2. AFOLU extension
-3. CDR disaggregation
-4. Non-CO₂ species (CH₄, Sulfur, …)
-5. FaIR climate simulation
+**Pipeline stages:**
+CO₂ fossil storyline → AFOLU extension → CDR disaggregation → Non-CO₂ species → FaIR climate simulation
 
 </div>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:center;gap:0;margin-top:18px;font-size:14px;">
+<div style="background:#eef2ff;border:2px solid #3a5a8a;border-radius:8px;padding:8px 12px;text-align:center;min-width:100px;">
+<b>YAML config</b><br/><i style="font-size:12px;">scenarios, targets</i></div>
+<div style="font-size:20px;color:#3a5a8a;padding:0 4px;">▶</div>
+<div style="background:#f8f9ff;border:1.5px solid #667;border-radius:6px;padding:7px 10px;text-align:center;min-width:90px;">
+CO₂ fossil<br/>storyline</div>
+<div style="font-size:20px;color:#667;padding:0 4px;">▶</div>
+<div style="background:#f8f9ff;border:1.5px solid #667;border-radius:6px;padding:7px 10px;text-align:center;min-width:90px;">
+AFOLU<br/>extension</div>
+<div style="font-size:20px;color:#667;padding:0 4px;">▶</div>
+<div style="background:#f8f9ff;border:1.5px solid #667;border-radius:6px;padding:7px 10px;text-align:center;min-width:90px;">
+CDR<br/>disaggregation</div>
+<div style="font-size:20px;color:#667;padding:0 4px;">▶</div>
+<div style="background:#f8f9ff;border:1.5px solid #667;border-radius:6px;padding:7px 10px;text-align:center;min-width:90px;">
+Non-CO₂<br/>species</div>
+<div style="font-size:20px;color:#667;padding:0 4px;">▶</div>
+<div style="background:#fff8ee;border:2px solid #e07020;border-radius:8px;padding:7px 10px;text-align:center;min-width:100px;">
+<b>FaIR v2.2</b><br/><i style="font-size:12px;">841-member ens.</i></div>
+<div style="font-size:20px;color:#2e7d32;padding:0 4px;">▶</div>
+<div style="background:#e8f5e9;border:2px solid #2e7d32;border-radius:8px;padding:8px 10px;text-align:center;min-width:100px;">
+<b>Temperature</b><br/>Forcing · Conc.</div>
 </div>
 
 ---
 
-## CO₂ Storyline Types
+## CO₂ Fossil Fuel Storylines
 
-Three parameterised functional forms describe post-2100 CO₂ fossil fuel evolution:
+Three functional forms parameterise the post-2100 fossil CO₂ trajectory, continuing each scenario's narrative:
 
 <div class="columns3">
 <div>
 
 **CS — Constant–Sigmoid**
 Hold at 2100 value, then sigmoid ramp to zero
-*Used for: M (medium)*
+
+*<span class="scen-m">M</span>: limited new policy*
 
 </div>
 <div>
 
 **ECS — Exponential–Constant–Sigmoid**
-Exponential trend to a plateau, then sigmoid to zero (or negative)
-*Used for: VL, LN, L, ML, H, HL*
+Exponential trend to plateau, then sigmoid to zero or net-negative
+
+*<span class="scen-vl">VL</span> <span class="scen-ln">LN</span> <span class="scen-l">L</span> <span class="scen-ml">ML</span> <span class="scen-h">H</span> <span class="scen-hl">HL</span>*
 
 </div>
 <div>
 
 **CSCS — Double Sigmoid**
-Two-phase transition through intermediate value
-*Used for: more complex reversals*
+Two-phase transition for complex reversals
+
+*Available for custom scenarios*
 
 </div>
 </div>
 
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: Three storyline types illustrated on same axes — CS, ECS, CSCS schematic]
-*(to be generated — analytic curves)*
-
-</div>
-
----
-
-## Fossil CO₂ Extensions: All Scenarios
-
-<div class="fig-placeholder" style="min-height:380px;">
-
-[FIG: CO₂ FFI emissions 1750–2500, all 7 scenarios, showing pre-2100 IAM + post-2100 FLEX extension]
-*(to be generated from `fair_emissions_by_species.csv` — CO2 FFI column)*
+![center w:950](../outputs/presentation/F09_storyline_types_fossil.png)
 
 </div>
-
-<div class="small">
-
-Solid: IAM scenarios (1750–2100). Dashed extension: FLEX storylines (2100–2500). Vertical line at 2100 marks the handoff.
-
-</div>
-
----
-
-## AFOLU and CDR Extensions
-
-<div class="columns">
-<div class="fig-placeholder">
-
-[FIG: CO₂ AFOLU emissions 1750–2500, all scenarios]
-*(to be generated)*
-
-</div>
-<div class="fig-placeholder">
-
-[FIG: Total CDR by scenario 2000–2500 — stacked by technology]
-*(to be generated)*
-
-</div>
-</div>
-
-**Extension strategies:**
-- **NEG strategy** (VL, LN, L, ML, HL): gross positive emissions decay exponentially; CDR fills residual to match net target
-- **POS strategy** (M, H): CDR held constant at 2100 level; gross positive tracks fossil storyline
 
 ---
 
 ## CDR Technology Disaggregation
 
-<div class="columns">
+<div class="columns-wf">
 <div>
 
-**Six CDR categories tracked:**
-1. **BECCS** — Bioenergy with carbon capture
-2. **DACCS** — Direct air capture + storage
-3. **Ocean CDR** — Alkalinity enhancement, iron fertilisation
-4. **Enhanced Weathering** — Mineral silicate spreading
-5. **Biochar** — Pyrolysis of biomass
-6. **Soil Carbon Management** — Improved agricultural practices
+**Six CDR categories tracked through 2500:**
 
-Technology mix at 2100 is inherited from IAM scenarios, then held constant proportionally through the extension period.
+| Technology | Notes |
+|------------|-------|
+| BECCS | Bioenergy + CCS; land-use linked |
+| DACCS | Direct Air Capture + storage |
+| Ocean CDR | Alkalinity enhancement, fertilisation |
+| Enhanced Weathering | Mineral silicate spreading |
+| Biochar | Pyrolysis of biomass |
+| Soil Carbon | Agricultural practice improvement |
+
+Technology mix at 2100 is inherited from the IAM and held proportionally constant. Total CDR scales with the net CO₂ storyline target.
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: CDR by technology 2000–2500, stacked area chart, for VL and HL scenarios]
-*(to be generated)*
+![center w:900](../outputs/presentation/F10_cdr_aggregate.png)
 
 </div>
 </div>
 
 ---
 
-## Non-CO₂ Extensions: Methane
+## CDR and Storage Limits
+
+![center w:900](external_figures/vanvuuren2026_f03_cdr_top2.png)
+
+<div class="small">
+
+*(Van Vuuren et al. 2026, Fig. 3, VL & L rows)* — Annual and cumulative gross CO₂ fluxes for VL and L markers through 2500. Right panels show cumulative removals against sequestered storage capacity limits (dashed red) and probable fossil reserves (brown).
+
+</div>
+
+---
+
+## AFOLU Beyond 2100: The Carbon-Cycle Inertia Problem
 
 <div class="columns">
 <div>
 
-**CH₄ extension approach:**
-- Sigmoid transition from 2100 IAM value to a specified 2500 target
-- Targets set per-scenario to reflect narrative consistency:
-  - VL: 95 Mt/yr (strong mitigation)
-  - L, LN: 95–150 Mt/yr
-  - ML: 120 Mt/yr
-  - M: 450 Mt/yr (limited agriculture policy)
-  - H: 520 Mt/yr (high agricultural emissions)
-  - HL: 110 Mt/yr
+IAMs provide an **AFOLU CO₂ target trajectory** to 2500 — but converting this to consistent **gridded land-use fields** for LUH3 is non-trivial.
+
+**The naïve approach fails:** simply ramping land-use change rates to zero ignores carbon-cycle inertia.
+
+**Why inertia matters:**
+- Forests reforested before 2100 continue absorbing CO₂ for decades after planting — **committed removals**
+- A naive rate ramp overestimates net AFOLU flux early in the extension period and underestimates it later
+- The discrepancy can exceed 200 MtCO₂/yr — material for the global carbon budget and incompatible with FLEX's CO₂ targets
 
 </div>
-<div class="fig-placeholder">
+<div>
 
-[FIG: CH₄ emissions 1750–2500, all scenarios, showing sigmoid transition post-2100]
-*(to be generated from `fair_emissions_by_species.csv`)*
+![](figures/fig1_afolu_targets.png)
+
+<div class="vsmall">AFOLU target trajectories — what the FLEX extension must reproduce in gridded form. The signal of committed removals from existing forest cohorts must be accounted for in the rate ramp.</div>
 
 </div>
 </div>
 
 ---
 
-## Non-CO₂ Extensions: Aerosols (Sulfur)
+## LUH3 Extension: A Carbon-Consistent Ramp
 
-<div class="columns">
+A carbon cycle model is calibrated to pre-2100 IAM data, then **inverted** to find the land-use change rate $r(t)$ that reproduces the AFOLU target post-2100.
+
+<div class="columns-wf">
 <div>
 
-**Sulfur extension:**
-- Sulfur is an aerosol precursor — reduction causes near-term warming (aerosol unmasking)
-- Post-2100 targets reflect energy system decarbonisation
-  - VL: 20 Mt S/yr (residual industrial)
-  - LN: 10 Mt S/yr (near-zero)
-  - H: 50 Mt S/yr (continued fossil use)
+**Three flux channels in the model:**
 
-**Other non-CO₂ species:**
-- N₂O, halocarbons, NOₓ, BC, OC follow IAM trajectories or auto-calculated targets
-- Regional composition maintained at 2100 ratios through extension
+| Channel | What it captures |
+|---------|----------------|
+| Transition flux | Instantaneous carbon from land-type conversion |
+| Stock-change flux | Committed removals from forest cohorts, decaying with timescale ~35 years |
+| Secular trend | Expanding reforestation area over time |
+
+Once $r(t)$ is solved, it is applied cell-by-cell to the gridded LUH3 state fractions, with per-cell conservation enforced. BECCS biofuel area is scaled independently from the IAM's bioenergy trajectory.
 
 </div>
-<div class="fig-placeholder">
+<div>
 
-[FIG: Sulfur emissions 1750–2500, all scenarios]
-*(to be generated)*
+![](figures/fig4_extension_verify.png)
+
+<div class="vsmall">Verification: reconstructed AFOLU flux from the extended gridded fields matches the IAM target. A naïve linear ramp diverges substantially in the first post-2100 decades.</div>
 
 </div>
 </div>
 
 ---
 
-## Climate Outcomes: Extended Temperature Projections
+## Non-CO₂ Extensions: CH₄ and Sulfur
 
-<div class="fig-placeholder" style="min-height:380px;">
+<div class="columns-wf">
+<div>
 
-[FIG: Temperature anomaly (relative to 1850–1900) 1750–2500, all 7 scenarios, median + 5–95% range]
-*(to be generated from `fair_temperature_1750-2500.csv` — existing extensions.png plot)*
+**Methane — sigmoid transition to 2500 target:**
+
+Targets set to reflect each scenario's long-term narrative:
+
+| Scenario | 2500 CH₄ target |
+|----------|:-----------:|
+| <span class="scen-vl">VL</span>, <span class="scen-l">L</span> | 95 Mt/yr |
+| <span class="scen-ln">LN</span> | 150 Mt/yr |
+| <span class="scen-ml">ML</span> | 120 Mt/yr |
+| <span class="scen-m">M</span> | 450 Mt/yr |
+| <span class="scen-h">H</span> | 520 Mt/yr |
+| <span class="scen-hl">HL</span> | 110 Mt/yr |
+
+**Sulfur** declines in all scenarios (energy decarbonisation). Aerosol unmasking — the warming effect of clean-air policies — is largest in the most ambitious scenarios.
+
+</div>
+<div class="fig">
+
+![center w:900](../outputs/presentation/F11_ch4_1750_2500.png)
+
+</div>
+</div>
+
+---
+
+## Long-Term Climate Outcomes: 1750–2500
+
+<div class="fig fig-tall">
+
+![center w:950](../outputs/presentation/F13_temperature_2500.png)
 
 </div>
 
 <div class="small">
 
-Long-term stabilisation levels diverge markedly. VL stabilises below 1.5°C; H continues warming through 2500. HL peaks mid-century then declines due to CDR.
+VL stabilises below 1.5°C; H continues warming through 2500. HL peaks mid-21st century then declines with CDR — but recovery is slower than the warming, consistent with flat10MIP results.
 
-</div>
-
----
-
----
-
-# Extending LUH3 Land‑Use Fields Beyond 2100
-
----
-
-## The problem
-
-IAMs give us gridded land-use states + rates to **2100**, but CMIP needs fields to **2500**.
-
-We also have a global **AFOLU CO₂ trajectory** out to 2500:
-
-![center w:820](figures/fig1_afolu_targets.png)
-
-A naive linear ramp of rates to zero ignores carbon-cycle inertia — regrowing forests keep absorbing CO₂ long after planting. We need a smarter ramp.
-
----
-
-## The carbon-cycle model
-
-Four-predictor regression fit to pre-2100 IAM data:
-
-$$\text{AFOLU}(t) = \beta + \gamma \cdot t + \alpha_{\text{trans}} \cdot F^{\text{trans}}(t) + \alpha_{\text{stock}} \cdot F^{\text{stock}}(t;\, \tau)$$
-
-| Term | What it captures |
-|------|-----------------|
-| $\beta + \gamma \cdot t$ | Baseline + secular trend |
-| $\alpha_{\text{trans}} \cdot F^{\text{trans}}$ | Instantaneous carbon from land-type conversion |
-| $\alpha_{\text{stock}} \cdot F^{\text{stock}}$ | Cohort-based regrowth: $G_v(t) = G_v(t{-}1)\,e^{-1/\tau} + \Delta A_v(t)$ |
-
-Stock-change creates **committed removals** from past reforestation that decay with timescale $\tau$. Profile-likelihood scan over $\tau$; OLS for the rest.
-
----
-
-## Calibration fit
-
-Four-predictor regression fit to pre-2100 IAM data:
-
-$$\text{AFOLU}(t) = \beta + \gamma \cdot t + \alpha_{\text{trans}} \cdot F^{\text{trans}}(t) + \alpha_{\text{stock}} \cdot F^{\text{stock}}(t;\, \tau)$$
-![center w:900](figures/fig2_calibration_fit.png)
-
----
-
-## Calibration results
-
-| | **VL** (Very Low) | **H** (High) |
-|---|---|---|
-| Model / IAM | REMIND-MAgPIE | GCAM 8s |
-| State vars | 13 (full LUH set) | 9 (aggregated) |
-| $\tau$ | 35 yr | 20 yr (fixed) |
-| $R^2$ | 0.990 | 0.924 |
-| Ramp → 0 at | 2143 | 2143 |
-| Committed removal | −660 Mt CO₂/yr | +247 Mt CO₂/yr |
-
-VL: strong fit, large committed sink from ongoing reforestation.
-H: noisier (fewer categories), 3-predictor fallback ($\alpha_\text{stock}$ forced to 0).
-
----
-
-## Forward solve → the AFOLU-consistent ramp
-
-Invert the model to get $r(t)$:
-
-$$r(t) = \frac{\text{AFOLU}_{\text{target}}(t) - \alpha_{\text{stock}} \cdot S_{\text{committed}}(t)}{\text{baseline} + \alpha_{\text{trans}} \cdot F^{\text{trans}}_{\text{unit}} + \alpha_{\text{stock}} \cdot S_{\text{new}}}$$
-
-Each year feeds back into next year's cohort → sequential solve, clamped to $[0, 1]$.
-
-![center w:820](figures/fig3_ramp.png)
-
-Both reach zero by ~2143, but the *shapes* differ due to stock-change feedback.
-
----
-
-## Verification: reconstructed vs target AFOLU
-
-Does the ramp reproduce the IAM trajectory when plugged back in?
-
-![center w:900](figures/fig4_extension_verify.png)
-
-Gridded extension applies $r(t)$ cell-by-cell: $\;f_v(t{+}1) = f_v(t) + r(t) \cdot \dot{f}_v^{2100}$
-
-Per-cell conservation enforced (fractions sum to 1, clamped ≥ 0, residual absorbs excess). Output: 0.25° NetCDF, ~1.4 GB total for both scenarios.
-
----
-
-## Wood harvest + next steps
-
-Wood harvest demand ramped linearly (country-level); for GLM3: $h(t) = \max(h_{\text{maint}},\, \text{file})$
-
-![center w:900](figures/fig5_woodharvest.png)
-
-**Done** ✓ VL + H complete, shared on Google Drive, pipeline automated (`src/pipeline.py`)
-**Next** → 5 remaining scenarios (L, LN, M, ML, HL) as input data arrives
-
----
-
-## Long-Term Forcing and Concentrations
-
-<div class="columns">
-<div class="fig-placeholder">
-
-[FIG: Total radiative forcing 1750–2500, all scenarios, median + range]
-*(to be generated from `fair_forcing_sum_1750-2500.csv`)*
-
-</div>
-<div class="fig-placeholder">
-
-[FIG: CO₂ concentration 1750–2500, all scenarios]
-*(to be generated from `fair_concentration_ghgs_1750-2500.csv`)*
-
-</div>
 </div>
 
 ---
 
 ## Temperature Probability Distributions
 
-<div class="fig-placeholder" style="min-height:380px;">
+<div class="fig fig-tall">
 
-[FIG: ECDF of temperature at 2100, 2300, and maximum — all scenarios]
-*(existing plot: `temperature_ecdf.png` from scenariomip_default)*
+![center w:950](../outputs/presentation/F14_temperature_ecdfs.png)
 
 </div>
 
 <div class="small">
 
-Each curve shows empirical CDF across 1000 FaIR ensemble members. Vertical spread reflects carbon cycle and climate sensitivity uncertainty propagated through the emissions-driven framework.
+The ECDF representation captures the full probabilistic spread for each scenario. Scenario separation increases from 2100 to 2300 — slow carbon cycle feedbacks amplify differences between pathways on centennial timescales.
 
 </div>
 
 ---
 
-<!-- _class: section-header -->
+## WIEMIP: Counterfactual Scenario Pairs
 
-## Part IV: Counterfactuals with FLEX
-
----
-
-## Why Counterfactuals?
-
-**Standard scenario exercises explore ad-hoc futures — but policy asks sharper questions:**
-
-- *What would have happened without a specific policy?*
-- *What temperature outcome is achievable if net-zero is delayed by 10 years?*
-- *How does CDR deployment level affect peak warming?*
-
-**Counterfactual scenarios** hold all else equal and vary a single dimension — enabling causal attribution of climate outcomes to policy choices.
+Standard scenario exercises cannot answer **causal** questions about individual policy levers.
 
 <div class="highlight">
 
-FLEX enables counterfactuals by optimising extension parameters to match a prescribed temperature target, starting from any existing scenario as a baseline.
+*"How much additional sea level rise is committed by an overshoot trajectory, compared to maintaining the same peak warming level?"*
 
 </div>
 
+A core AR7-WG1-CH9 question. Answering it requires two scenarios **identical in all respects except CO₂ pathway**. FLEX enables this by **optimising extension parameters to hit a prescribed temperature target**, holding all non-CO₂ forcing fixed.
+
 ---
 
-## WIEMIP: Warming Impacts Experiment
+## WIEMIP Design: Source and Counterfactual Pairs
 
-**First application of FLEX counterfactuals**
+**Three scenario pairs, each sharing non-CO₂ forcing:**
 
-<div class="columns">
+| Source | Counterfactual | Target | Key question |
+|--------|---------------|--------|-------------|
+| <span class="scen-hl">HL</span> (overshoot) | <span class="scen-hl">HL-CF</span> | Maintain peak warming | Cost of overshoot |
+| <span class="scen-ml">ML</span> | <span class="scen-ml">ML-CF</span> | Match L-ambition warming | Benefit of deeper mitigation |
+| <span class="scen-vl">VL</span> | <span class="scen-vl">VL-CF</span> | Residual at low end | Sensitivity at low forcing |
+
+In each pair: non-CO₂ emissions are identical; CF adjusts CO₂ via optimised FLEX parameters. Any temperature difference is attributable **solely to CO₂ pathway**.
+
+**Primary pair for AR7-CH9:** HL vs. HL-CF — overshoot vs. maintain-peak.
+
+---
+
+## Optimisation: Finding the Target-Consistent Pathway
+
+<div class="columns-wf">
 <div>
 
-**Design:**
-- Take three marker scenarios (VL, ML, HL) as source
-- Construct counterfactual (-CF) variants that hit prescribed warming targets using optimised CDR/net-zero timing
-- Source and CF pairs share the same non-CO₂ emissions
-- Difference in temperature outcome attributable to CO₂ policy
+**Problem:** Find FLEX parameters such that **FaIR median temperature at a target year** matches a prescribed value.
 
-**Counterfactual targets:**
-- HL-CF: Match lower warming of ML
-- ML-CF: Match lower warming of L
-- VL-CF: Match lower warming of net-zero
+**Method:** `differential_evolution` — global stochastic optimiser
+- Decision variables: CDR scaling, net-zero timing, fossil decay rate
+- ~200–500 evaluations, each running FLEX + FaIR 841-member ensemble
+- Full ensemble re-run after convergence to verify and characterise uncertainty
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: WIEMIP source/CF scenario pairs — CO₂ emissions and temperature outcomes]
-*(existing: `cf_scenarios.png` from WIEMIP outputs)*
+![center w:900](../outputs/WIEMIP/optimization_HL-CF_verification.png)
 
 </div>
 </div>
 
 ---
 
-## FLEX Optimisation: How It Works
+## WIEMIP Results: CO₂ Emissions
 
-<div class="columns">
-<div>
+<div class="fig fig-tall">
 
-**Problem:** Find extension parameters such that the FaIR median temperature at a target year matches a prescribed value.
-
-**Method:** `scipy.optimize.differential_evolution`
-- Global optimisation — avoids local minima
-- Parameters: CDR scaling, net-zero timing, fossil decay rate
-- Objective: minimise |T(target_year) − T_target|
-- Each evaluation: full FLEX extension + FaIR simulation
-
-**Verification:** After optimisation, re-run FaIR with the full ensemble to confirm median matches target
-
-</div>
-<div class="fig-placeholder">
-
-[FIG: Optimisation convergence plot for HL-CF target]
-*(existing: `optimization_HL-CF_verification.png`)*
-
-</div>
-</div>
-
----
-
-## Counterfactual Results: CO₂ Emissions
-
-<div class="fig-placeholder" style="min-height:380px;">
-
-[FIG: CO₂ total emissions (FFI + AFOLU) for source and CF scenario pairs, 1900–2300]
-*(to be generated — cf_scenarios left panel)*
+![center w:950](../outputs/presentation/F15_wiemip_co2_emissions.png)
 
 </div>
 
 <div class="small">
 
-Solid: source scenario. Dashed: counterfactual variant. Same non-CO₂ forcing; difference is CO₂ policy only.
+The CF pathway deploys CDR earlier and more deeply to suppress the overshoot. Non-CO₂ forcing is identical between source and CF — any difference in climate response is attributable to this CO₂ pathway difference alone.
 
 </div>
 
 ---
 
-## Counterfactual Results: Temperature
+## WIEMIP Results: Temperature Outcomes
 
-<div class="fig-placeholder" style="min-height:380px;">
+<div class="fig fig-tall">
 
-[FIG: Median temperature + 5–95% range for each source/CF pair, 1900–2300; target temperatures shown as dashed horizontal lines]
-*(to be generated — cf_scenarios right panel)*
+![center w:950](../outputs/presentation/F16_wiemip_temperature.png)
 
 </div>
 
 <div class="small">
 
-The optimised CF scenarios hit their prescribed warming targets at 2200. Uncertainty ranges illustrate the residual spread from carbon cycle and climate sensitivity.
+The optimised CF variants track their prescribed targets. Residual uncertainty (shading) reflects carbon cycle and climate sensitivity spread — not CO₂ pathway uncertainty, which is removed by construction.
 
 </div>
 
 ---
 
-## FLEX: Future Applications
+## WIEMIP: HL Attribution
 
-<div class="columns">
+<div class="columns-wf">
 <div>
 
-**Already demonstrated:**
-- ScenarioMIP-CMIP7 default extensions (7 scenarios, 1750–2500)
-- WIEMIP counterfactuals (HL-CF, ML-CF, VL-CF)
+**HL / HL-CF pair — clean experimental design for WG1-CH9:**
 
-**Planned uses:**
-- **Space-spanning scenarios** — systematically fill the warming level × CDR deployment space
-- **Delayed NDC scenarios** — sensitivity to net-zero timing
-- **Non-CO₂ policy scenarios** — isolate methane mitigation contributions
-- **ISIMIP forcing** — provide consistent long-period forcing for impact models
-- **Custom ensembles** — any user-specified target via YAML config
+ESMs forced with both can attribute differences in:
+- **Sea level commitment** — thermal expansion + ice sheets
+- **Permafrost carbon release** — additional thaw under overshoot
+- **Ocean heat content** — additional heat stored under higher peak
+
+Non-CO₂ forcing is identical — any difference is attributable solely to the overshoot vs. maintain-peak choice.
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: Schematic of FLEX scenario space — warming target vs. CDR deployment, showing coverage by existing and planned scenarios]
-*(to be generated)*
+![center w:900](../outputs/presentation/F17_hl_attribution.png)
 
 </div>
 </div>
 
 ---
 
-## FLEX Architecture
+
+## Summary:
 
 <div class="columns">
 <div>
 
-**Open-source Python toolkit:**
+**ScenarioMIP-CMIP7 scenario set:**
+- Seven markers spanning ~1.5°C to ~4°C; emissions-driven as primary protocol
+- Includes overshoot (LN), high-CDR stress-test (HL), and current-policy-range (ML, M) markers
+- SSP2-com sits between ML and L — a useful reference for current stated ambition
 
-```
-FLEX/
-├── configs/          # YAML scenario configs
-├── src/flex/
-│   ├── config.py     # Config loader
-│   ├── optimise.py   # Differential evolution
-│   └── ...           # Extension functions
-├── notebooks/
-│   ├── 5191_extension.py
-│   ├── 5195_optimise.py
-│   ├── 5196_apply_optimised.py
-│   ├── 5201_fair_simulations.py
-│   └── 5202_fair_plots.py
-└── scripts/
-    └── run_pipeline.py
-```
+**Emissions-driven protocol:**
+- Carbon cycle feedbacks correctly represented in temperature spread
+- flat10MIP constrains TCRE and asymmetric response — use these results when interpreting overshoot scenarios; recovery is slower than the rise
 
 </div>
 <div>
 
-**Key features:**
-- Papermill pipeline with `--from` resume support
-- Parallel optimisation (`--parallel N`)
-- FaIR v2.2 probabilistic ensemble (1000 members)
-- All outputs in IAMC-compatible CSV format
-- Jupytext for version-controlled notebooks
-- Pixi for reproducible environments
+**FLEX extensions (1750–2500):**
+- Consistent CO₂, AFOLU (LUH3-compatible), CDR, and non-CO₂ forcing beyond 2100
+- Carbon-cycle-consistent AFOLU ramp avoids flux errors from naive rate ramps
 
-**To run ScenarioMIP default:**
-```bash
-pixi run pipeline scenariomip_default
-```
-
-</div>
-</div>
-
----
-
-## Summary: ScenarioMIP-CMIP7
-
-<div class="columns">
-<div>
-
-**Seven marker scenarios** spanning aggressive mitigation to high-emissions futures
-
-**Emissions-driven** protocol in CMIP7 enables correct propagation of carbon cycle feedbacks
-
-**flat10MIP** provides a dedicated experiment to characterise TCRE and reversibility
-
-**Extensions to 2500** via FLEX ensure consistent long-term boundary conditions for ice-sheet, permafrost, and sea-level models
-
-</div>
-<div>
-
-**FLEX counterfactuals** (WIEMIP) demonstrate causal attribution of temperature outcomes to CO₂ policy
-
-**Future development:**
-- Space-spanning scenario library
-- Integration with ISIMIP and regional downscaling
-- Target-seeking optimisation for arbitrary warming levels
-
-**All data and code open-source** — FLEX available on GitHub
+**WIEMIP counterfactuals:**
+- Designed for WG1-CH9: overshoot vs. maintain-peak-warming
+- Clean experimental design — non-CO₂ forcing held constant; temperature difference attributable solely to CO₂ pathway
+- Framework extensible to any temperature target or scenario pairing
 
 </div>
 </div>
@@ -1054,80 +913,82 @@ pixi run pipeline scenariomip_default
 
 <div class="small">
 
-- **Van Vuuren et al. (2026)** — The Scenario Model Intercomparison Project for CMIP7 (ScenarioMIP-CMIP7). *GMD* 19, 2627. https://doi.org/10.5194/gmd-19-2627-2026
+- **Meinshausen et al. (2024)** — A perspective on the next generation of Earth system model scenarios: towards representative emission pathways (REPs). *GMD* 17, 4533. https://doi.org/10.5194/gmd-17-4533-2024
+
+- **Van Vuuren et al. (2026)** — The Scenario Model Intercomparison Project for CMIP7. *GMD* 19, 2627. https://doi.org/10.5194/gmd-19-2627-2026
 
 - **Sanderson et al. (2024)** — The need for carbon-emissions-driven climate projections in CMIP7. *GMD* 17, 8141. https://doi.org/10.5194/gmd-17-8141-2024
 
 - **Sanderson et al. (2025)** — flat10MIP: an emissions-driven experiment to diagnose the climate response to positive, zero and negative CO₂ emissions. *GMD* 18, 5699. https://doi.org/10.5194/gmd-18-5699-2025
 
-- **Dunne et al. (2025)** — An evolving Coupled Model Intercomparison Project phase 7 (CMIP7) and Fast Track in support of future climate assessment. *GMD* 18, 6671. https://doi.org/10.5194/gmd-18-6671-2025
+- **Dunne et al. (2025)** — An evolving CMIP7 and Fast Track in support of future climate assessment. *GMD* 18, 6671. https://doi.org/10.5194/gmd-18-6671-2025
 
-- **Sanderson et al. (in prep.)** — FLEX: Framework for Long-term EXtensions. *GMD* (submitted).
+- **Lu et al. (2025)** — Earth system responses under a global 2°C-target scenario aligned with carbon neutrality pledges. *ERL* 20, 104049. https://doi.org/10.1088/1748-9326/adfbfb
 
-- **Smith et al. (2021)** — FaIR v2.0: a generalised impulse response model for climate uncertainty and future scenario exploration. *GMD*.
+- **Sanderson et al. (in prep.)** — FLEX: Framework for Long-term EXtensions. *GMD* (in preparation).
+
+- **Smith et al. (2021)** — FaIR v2.0: a generalised impulse response model for climate uncertainty and future scenario exploration. *GMD*. https://doi.org/10.5194/gmd-14-3007-2021
+
+- **Hurtt et al. (2020)** — Harmonization of global land use change and management for the period 850–2100 (LUH2). *GMD*. https://doi.org/10.5194/gmd-13-5425-2020
 
 </div>
 
 ---
 
 <!-- _paginate: false -->
+<!-- _class: title -->
 
-## Questions?
+# Thank you
 
-<br>
+**Benjamin Sanderson** · CICERO, Oslo · benjamin.sanderson@cicero.oslo.no
 
-**Benjamin Sanderson**
-CICERO Center for International Climate Research, Oslo
-benjamin.sanderson@cicero.oslo.no
-
-<br>
-
-**FLEX codebase:** `github.com/benmsanderson/FLEX` *(link TBC)*
-
-**ScenarioMIP data:** ESGF / CMIP7 data nodes
+*FLEX codebase: github.com/benmsanderson/FLEX (link TBC)*
 
 ---
 
 <!-- _paginate: false -->
 
-## Appendix: Scenario Parameters
+## Appendix A1: FLEX Extension Parameters
 
-| Scenario | Fossil type | CDR strategy | CH₄ 2500 target | Sulfur 2500 target |
-|----------|------------|-------------|----------------|-------------------|
-| VL | ECS (→ −3500 Mt) | NEG (τ=100, offset=60) | 95 Mt/yr | 20 Mt S/yr |
-| LN | ECS (→ −24000 Mt) | NEG (τ=50, offset=100) | 150 Mt/yr | 10 Mt S/yr |
-| L  | ECS (linear) | NEG (τ=50, offset=50) | 95 Mt/yr | auto |
-| ML | ECS (→ −13000 Mt) | NEG (τ=100, offset=0) | 120 Mt/yr | 20 Mt S/yr |
-| M  | CS | POS | 450 Mt/yr | 20 Mt S/yr |
-| H  | ECS (linear) | POS | 520 Mt/yr | 50 Mt S/yr |
-| HL | ECS (→ −22000 Mt) | NEG (τ=80, offset=20) | 110 Mt/yr | 10 Mt S/yr |
+| Scenario | Fossil type | CO₂ target | CDR strategy | CH₄ 2500 | SO₂ 2500 |
+|----------|------------|------------|-------------|:--------:|:--------:|
+| <span class="scen-vl">VL</span> | ECS | −3,500 Mt | NEG τ=100, off=60 | 95 Mt/yr | 20 Mt S/yr |
+| <span class="scen-ln">LN</span> | ECS | −24,000 Mt | NEG τ=50, off=100 | 150 | 10 |
+| <span class="scen-l">L</span>   | ECS | linear→0 | NEG τ=50, off=50 | 95 | auto |
+| <span class="scen-ml">ML</span> | ECS | −13,000 Mt | NEG τ=100, off=0 | 120 | 20 |
+| <span class="scen-m">M</span>  | CS  | →0 | POS (CDR constant) | 450 | 20 |
+| <span class="scen-h">H</span>  | ECS | linear→0 | POS (CDR constant) | 520 | 50 |
+| <span class="scen-hl">HL</span> | ECS | −22,000 Mt | NEG τ=80, off=20 | 110 | 10 |
+
+<div class="vsmall">NEG = gross-positive decays exponentially (timescale τ years, offset Mt/yr CDR floor); CDR fills residual. POS = CDR held constant at 2100 level; fossil follows storyline.</div>
 
 ---
 
 <!-- _paginate: false -->
 
-## Appendix: FaIR Ensemble Setup
+## Appendix A2: FaIR v2.2 Configuration
 
 <div class="columns">
 <div>
 
-**FaIR v2.2 configuration:**
+**Ensemble setup:**
 - 1000-member probabilistic ensemble
-- Calibrated to IPCC AR6 assessed ranges
-- Emissions-driven: CO₂, CH₄, N₂O, halocarbons, aerosols, ozone
-- Run 1750–2500 for all scenarios
+- Parameters calibrated to IPCC AR6 assessed ranges (ECS, TCR, TCRE)
+- Emissions-driven: CO₂, CH₄, N₂O, halocarbons, SO₂, BC, OC, ozone precursors
+- Run period: 1750–2500 for all scenarios
 
 **Key outputs:**
 - Temperature (median, 5th, 95th percentile)
-- Radiative forcing by species
-- CO₂/CH₄ concentrations
-- ECDF data for impact assessment
+- Total and species-resolved radiative forcing
+- CO₂, CH₄, N₂O concentrations
+- CO₂-equivalent emissions (AR6 GWP100)
+- ECDF data for probabilistic impact assessment
 
 </div>
-<div class="fig-placeholder">
+<div class="fig">
 
-[FIG: FaIR calibration — temperature vs. IPCC assessed ranges]
-*(from FaIR documentation or to be generated)*
+[FIG: FaIR calibration — ECS and TCR distributions vs. AR6 assessed likely ranges]
+*(from FaIR documentation / Smith et al. 2021)*
 
 </div>
 </div>
@@ -1136,11 +997,34 @@ benjamin.sanderson@cicero.oslo.no
 
 <!-- _paginate: false -->
 
-## Appendix: FLEX Extension Timeline
+## Appendix A3: Extensions 8-Panel Diagnostic
 
-<div class="fig-placeholder" style="min-height: 380px;">
+<div class="fig fig-tall">
 
-[FIG: 8-panel extensions diagnostic (extensions.png) for scenariomip_default]
-*(existing plot from 5202_extension_fair_plots output)*
+[FIG: 8-panel extensions diagnostic for scenariomip_default — CO₂ FFI, CO₂ AFOLU, CH₄, cumulative CO₂, Sulfur, total CO₂e, total forcing, temperature anomaly — all 1750–2500, all 7 scenarios]
+*(existing: outputs/scenariomip_default/ — extensions.png from 5202_extension_fair_plots)*
 
+</div>
+
+---
+
+## flat10MIP: Key Results
+
+<div class="columns-wf">
+<div>
+
+**Multi-model ensemble shows:**
+
+- **Warming phase:** large spread in peak temperature — TCRE uncertainty across ESMs
+- **Zero-emissions phase:** temperature plateaus but does not reverse
+- **Negative-emissions phase:** temperature declines **more slowly** than it rose — asymmetric response from ocean heat uptake and land carbon lag
+- **For ScenarioMIP:** overshoot scenarios won't recover as quickly as simplified frameworks suggest
+
+</div>
+<div class="fig">
+
+![center w:900](external_figures/sanderson2025_f03_flat10mip_temperature.png)
+*(Sanderson et al. 2025, Fig. 3)*
+
+</div>
 </div>

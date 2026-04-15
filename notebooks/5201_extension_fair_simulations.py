@@ -43,7 +43,7 @@ config_name = "scenariomip_default"
 # Set True to run the full ~1000-member calibrated ensemble
 # (gives proper uncertainty bands but is much slower).
 # When False, uses the same n_configs as the optimiser (from YAML config).
-full_ensemble = False
+full_ensemble = True
 
 # --- Ensemble configuration ---
 # %%
