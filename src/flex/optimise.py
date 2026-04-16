@@ -149,7 +149,7 @@ def run_fair_single_scenario(
         scenario_mapping=mapping,
         n_configs=n_configs,
     )
-    f.run()
+    f.run(progress=False)
     temp = f.temperature.sel(scenario=scenario, layer=0)
     return temp.median(dim="config").values
 
@@ -486,7 +486,7 @@ def _batch_objective_plateau(
             scenario_mapping=mapping,
             n_configs=n_configs,
         )
-        f.run()
+        f.run(progress=False)
     except Exception as e:
         print(f"Batch FaIR failed: {e}")
         return costs

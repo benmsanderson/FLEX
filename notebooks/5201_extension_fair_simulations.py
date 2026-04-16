@@ -40,10 +40,10 @@ from flex.config import load_config, DATA_DIR
 # %% tags=["parameters"]
 config_name = "scenariomip_default"
 
-# Set True to run the full ~1000-member calibrated ensemble
+# Set True to run the full 841-member calibrated ensemble
 # (gives proper uncertainty bands but is much slower).
 # When False, uses the same n_configs as the optimiser (from YAML config).
-full_ensemble = False
+full_ensemble = True
 
 # --- Ensemble configuration ---
 # %%
@@ -365,6 +365,96 @@ print(f"  Saved ECDF data: {len(ecdf_data)} rows ({len(f.configs)} configs × {l
 print(f"  File size estimate: ~{len(ecdf_data) * 80 / 1024:.1f} KB")
 
 # %%
+# Find the single FaIR config that minimises combined normalised distance
+# from the ensemble median at both 2100 and 2300 across all CF scenarios.
+import json as _json_bc
+
+cf_scenarios_opt = [s for s in f.scenarios if s.endswith("-CF")]
+
+if not cf_scenarios_opt:
+    print("No CF scenarios found — skipping best-config selection.")
+    best_config = None
+else:
+    timebounds_arr = np.array(f.timebounds)
+
+    # Per-CF-scenario stats (vectorised over configs)
+    cf_stats = {}
+    all_vals = {}
+    for cf in cf_scenarios_opt:
+        td = f.temperature.sel(scenario=cf, layer=0)          # (timebounds, configs)
+        t1850 = td.sel(timebounds=1850).values                 # (configs,)
+        v2100 = td.sel(timebounds=2100).values - t1850
+        v2300 = td.sel(timebounds=2300).values - t1850
+        cf_stats[cf] = {
+            'med_2100': float(np.median(v2100)),
+            'med_2300': float(np.median(v2300)),
+            'iqr_2100': float(np.percentile(v2100, 75) - np.percentile(v2100, 25)),
+            'iqr_2300': float(np.percentile(v2300, 75) - np.percentile(v2300, 25)),
+        }
+        all_vals[cf] = {'v2100': v2100, 'v2300': v2300}
+
+    # RMS normalised distance, shape (n_configs,)
+    sq_sum = np.zeros(len(f.configs))
+    for cf in cf_scenarios_opt:
+        s = cf_stats[cf]
+        sq_sum += ((all_vals[cf]['v2100'] - s['med_2100']) / s['iqr_2100']) ** 2
+        sq_sum += ((all_vals[cf]['v2300'] - s['med_2300']) / s['iqr_2300']) ** 2
+    rms_scores = np.sqrt(sq_sum / (2 * len(cf_scenarios_opt)))
+
+    best_idx = int(np.argmin(rms_scores))
+    best_config = f.configs[best_idx]   # run ID from calibrated_constrained_parameters.csv
+    best_score = float(rms_scores[best_idx])
+
+    print(f"Best config run ID: {best_config}  (RMS normalised score = {best_score:.4f})")
+    print()
+    print(f"{'Scenario':<10}  {'T2100 member':>12}  {'T2100 median':>12}  "
+          f"{'T2300 member':>12}  {'T2300 median':>12}")
+    for cf in cf_scenarios_opt:
+        s = cf_stats[cf]
+        print(f"{cf:<10}  {all_vals[cf]['v2100'][best_idx]:>12.3f}  {s['med_2100']:>12.3f}  "
+              f"{all_vals[cf]['v2300'][best_idx]:>12.3f}  {s['med_2300']:>12.3f}")
+
+    # Save temperature timeseries for best config across all scenarios
+    # Baseline-corrected to 1850-1900 mean for consistency with ensemble plots
+    baseline_mask = (timebounds_arr >= 1850) & (timebounds_arr <= 1900)
+    best_ts_list = []
+    for scenario in f.scenarios:
+        td = f.temperature.sel(scenario=scenario, layer=0)
+        t1850_single = float(td.sel(timebounds=1850, config=best_config).values)
+        ts = td.sel(config=best_config).values - t1850_single
+        offset = float(np.mean(ts[baseline_mask]))
+        best_ts_list.append(pd.DataFrame({
+            'Scenario': scenario,
+            'Year': timebounds_arr,
+            'Temperature_anomaly': ts - offset,
+        }))
+
+    best_ts_df = pd.concat(best_ts_list, ignore_index=True)
+    best_ts_df.to_csv(OUTPUTS_DIR / 'fair_temperature_best_config_1750-2500.csv', index=False)
+
+    # Save metadata JSON
+    meta = {
+        'runid': int(best_config),
+        'rms_score': best_score,
+        'n_configs_evaluated': len(f.configs),
+        'cf_scenarios': cf_scenarios_opt,
+        'deviations': {
+            cf: {
+                'T2100_member': float(all_vals[cf]['v2100'][best_idx]),
+                'T2100_median': cf_stats[cf]['med_2100'],
+                'T2300_member': float(all_vals[cf]['v2300'][best_idx]),
+                'T2300_median': cf_stats[cf]['med_2300'],
+            }
+            for cf in cf_scenarios_opt
+        },
+    }
+    with open(OUTPUTS_DIR / 'fair_best_config.json', 'w') as _fh:
+        _json_bc.dump(meta, _fh, indent=2)
+
+    print(f"\nSaved: fair_temperature_best_config_1750-2500.csv  ({len(best_ts_df)} rows)")
+    print(f"Saved: fair_best_config.json  (run ID {int(best_config)})")
+
+# %%
 # Export emissions by species (first config for diagnostic plots)
 print("Exporting emissions by species...")
 emissions_species = ['CO2 FFI', 'CO2 AFOLU', 'CH4', 'Sulfur']
@@ -410,6 +500,8 @@ print("  - fair_forcing_1750-2500.csv (by species)")
 print("  - fair_concentration_ghgs_1750-2500.csv (CO2, CH4, N2O)")
 print("  - fair_co2e_emissions_1750-2500.csv")
 print("  - fair_temperature_ecdf_data.csv (for probability plots)")
+print("  - fair_temperature_best_config_1750-2500.csv (optimal single member)")
+print("  - fair_best_config.json (run ID and selection scores)")
 print("  - fair_emissions_by_species.csv")
 print("  - fair_forcing_sum_1750-2500.csv (total ERF)")
 print("="*60)

@@ -532,3 +532,96 @@ else:
     pl.savefig(PLOTS_DIR / "cf_scenarios.png", dpi=600, bbox_inches="tight")
     pl.savefig(PLOTS_DIR / "cf_scenarios.pdf", format="pdf", bbox_inches="tight")
     print("✓ Saved: cf_scenarios.png and cf_scenarios.pdf")
+
+# %% [markdown]
+# ## Plot 5: Optimal single FaIR config across all CF scenarios (cf_best_config.png)
+#
+# The best-scoring config is identified in 5201 by minimising the RMS normalised distance
+# from the ensemble median at 2100 and 2300 across all three CF scenarios simultaneously.
+# Here we overlay its full temperature trajectory on the ensemble median and spread.
+
+# %%
+_best_ts_file   = OUTPUTS_DIR / 'fair_temperature_best_config_1750-2500.csv'
+_best_meta_file = OUTPUTS_DIR / 'fair_best_config.json'
+
+if not _best_ts_file.exists() or not _best_meta_file.exists():
+    print("Best-config outputs not found — re-run 5201 to generate them.")
+elif not cf_pairs:
+    print("No CF scenario pairs found — skipping.")
+else:
+    best_ts_df = pd.read_csv(_best_ts_file)
+    with open(_best_meta_file) as _fh:
+        best_meta = _json.load(_fh)
+
+    best_runid = best_meta['runid']
+    best_score = best_meta['rms_score']
+
+    print(f"Best config run ID: {best_runid}  (RMS score = {best_score:.4f})")
+    print()
+    print(f"{'Scenario':<10}  {'T2100 member':>12}  {'T2100 median':>12}  "
+          f"{'T2300 member':>12}  {'T2300 median':>12}")
+    for cf, devs in best_meta['deviations'].items():
+        print(f"{cf:<10}  {devs['T2100_member']:>12.3f}  {devs['T2100_median']:>12.3f}  "
+              f"{devs['T2300_member']:>12.3f}  {devs['T2300_median']:>12.3f}")
+
+    fig, axes = pl.subplots(1, 2, figsize=(14, 5))
+
+    # --- Left: CO2 emissions (same as Plot 4) ---
+    ax = axes[0]
+    for src, cf in cf_pairs:
+        for scenario in (src, cf):
+            ffi = emis_species_df[
+                (emis_species_df["Scenario"] == scenario) & (emis_species_df["Species"] == "CO2 FFI")
+            ].set_index("Year")["Emissions"]
+            afolu = emis_species_df[
+                (emis_species_df["Scenario"] == scenario) & (emis_species_df["Species"] == "CO2 AFOLU")
+            ].set_index("Year")["Emissions"]
+            ax.plot((ffi + afolu).index, (ffi + afolu).values / 1e6,
+                    color=color_for(scenario), ls=ls_for(scenario), lw=1.8, label=scenario)
+    ax.set_xlim(1900, 2300)
+    ax.axhline(0, color="k", lw=0.5, ls=":")
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Total CO$_2$ (FFI + AFOLU), GtCO$_2$ yr$^{-1}$")
+    ax.set_title("(a) CO$_2$ emissions")
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.3)
+
+    # --- Right: ensemble median/range + best single config ---
+    ax = axes[1]
+    for src, cf in cf_pairs:
+        target_temp = opt_results_plot[cf]["target_temp"]
+        color = color_for(cf)
+
+        for scenario in (src, cf):
+            # Ensemble median and range
+            d = temp_df[temp_df["Scenario"] == scenario]
+            bm = d[(d["Year"] >= 1850) & (d["Year"] <= 1901)]["Temperature_median"].mean()
+            ax.fill_between(d["Year"], d["Temperature_p05"] - bm, d["Temperature_p95"] - bm,
+                            color=color, alpha=0.12, lw=0)
+            ax.plot(d["Year"], d["Temperature_median"] - bm,
+                    color=color, ls=ls_for(scenario), lw=1.8, label=scenario)
+
+            # Best-config single trajectory
+            bc = best_ts_df[best_ts_df["Scenario"] == scenario].sort_values("Year")
+            ax.plot(bc["Year"], bc["Temperature_anomaly"],
+                    color=color, ls=ls_for(scenario), lw=0.8, alpha=0.9,
+                    label=f"{scenario} (run {best_runid})")
+
+        # Target reference line
+        src_d = temp_df[temp_df["Scenario"] == src]
+        src_bm = src_d[(src_d["Year"] >= 1850) & (src_d["Year"] <= 1901)]["Temperature_median"].mean()
+        ax.axhline(target_temp - src_bm, color=color, ls=":", lw=1.2, alpha=0.8,
+                   label=f"{cf} target ({target_temp - src_bm:.2f} K)")
+
+    ax.set_xlim(1900, 2300)
+    ax.axhline(0, color="k", lw=0.5, ls=":")
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Temperature anomaly, K above 1850–1900")
+    ax.set_title(f"(b) Best single config: run {best_runid} (RMS score {best_score:.3f})")
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.3)
+
+    pl.tight_layout()
+    pl.savefig(PLOTS_DIR / "cf_best_config.png", dpi=600, bbox_inches="tight")
+    pl.savefig(PLOTS_DIR / "cf_best_config.pdf", format="pdf", bbox_inches="tight")
+    print("\n✓ Saved: cf_best_config.png and cf_best_config.pdf")
