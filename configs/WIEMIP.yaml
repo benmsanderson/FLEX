@@ -21,6 +21,8 @@ time:
 flags:
   make_plots: false
   dump_csvs: true
+  counterfactual_suffix: "-CF"  # Suffix for counterfactual scenario names (e.g., VL-CF)
+
 
 # --- Scenario-to-model mapping ---
 scenario_model_match:

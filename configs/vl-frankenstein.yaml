@@ -23,6 +23,7 @@ time:
 flags:
   make_plots: false
   dump_csvs: true
+  counterfactual_suffix: "-hold"  # Suffix for counterfactual scenario names (e.g., VL-CF)
 
 # --- Scenario-to-model mapping ---
 # Each marker maps to: [scenario_name, model_name, plot_color]
@@ -75,10 +76,10 @@ removal_strategy:
   VL-fossil-frankenstein-zero-afolu:
     type: NEG
     params: [100, 60]
-  VL-fossil-frankenstein-CF:
+  VL-fossil-frankenstein-hold:
     type: NEG
     params: [100, 60]
-  VL-fossil-frankenstein-zero-afolu-CF:
+  VL-fossil-frankenstein-zero-afolu-hold:
     type: NEG
     params: [100, 60]
 

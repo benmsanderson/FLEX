@@ -42,6 +42,7 @@ class FlexConfig:
 
     # Optimization settings (empty dict if no optimization configured)
     optimization: dict[str, dict] = field(default_factory=dict)
+    counterfactual_suffix: str = "-CF"
     # Optional alternate data sources (paths relative to DATA_DIR)
     data_sources: dict | None = None
     # Maps marker names to volcanic_solar.csv scenario IDs (e.g. "VL")
@@ -178,6 +179,7 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         # Flags
         make_plots=raw["flags"]["make_plots"],
         dump_csvs=raw["flags"]["dump_csvs"],
+        counterfactual_suffix=raw["flags"].get("counterfactual_suffix", "-CF"),
         # Core dicts (converted to notebook-compatible format)
         scenario_model_match=_convert_scenario_model_match(raw["scenario_model_match"]),
         fossil_evolution_dictionary=_convert_fossil_evolution(raw["fossil_evolution"]),

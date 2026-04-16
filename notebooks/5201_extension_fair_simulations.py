@@ -57,7 +57,9 @@ print(f"Outputs: {OUTPUTS_DIR}")
 f = FAIR()
 
 # Determine ensemble size: match the optimiser by default
-params_file = DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
+params_file = (
+    DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
+)
 if not full_ensemble:
     _opt_cfgs = cfg.optimization or {}
     n_fair_configs = max(
@@ -73,7 +75,9 @@ snames = cfg.markers
 
 f.define_time(1750, 2501, 1)
 f.define_scenarios(snames)
-species, properties = read_properties(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
+species, properties = read_properties(
+    str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv")
+)
 f.define_species(species, properties)
 f.ch4_method = "Thornhill2021"
 
@@ -83,9 +87,12 @@ f.ch4_method = "Thornhill2021"
 
 # %%
 if not params_file.exists():
-    ZENODO_DOI = "10.5281/zenodo.7112539"
+    # ZENODO_DOI = "10.5281/zenodo.7112539" # v1.5.0 (legacy)
+    ZENODO_DOI = "10.5281/zenodo.18828694"  # v1.6.0
     FILE_NAME = "calibrated_constrained_parameters.csv"
-    FILE_HASH = "md5:8a70a3fb05d0e0cf35e136de382582a5"
+    # FILE_HASH = "md5:8a70a3fb05d0e0cf35e136de382582a5" (1.5.0 legacy)
+    FILE_HASH = "md5:b0fadc337e7b66525703f5b7f5fce2db"  # (1.6.0)
+
     data_pooch = pooch.create(
         path=str(DATA_DIR / "fair-inputs"),
         base_url=f"doi:{ZENODO_DOI}",
@@ -132,7 +139,9 @@ print(f"Using emissions: {emissions_csv}")
 # **FaIR configuration**: Using calibrated parameters from Smith et al. with legacy CH4 lifetime method
 
 # %%
-gwpmat = pd.read_csv(DATA_DIR / "fair-inputs" / "gwp_mass_adjusted_100y.csv", index_col=0)
+gwpmat = pd.read_csv(
+    DATA_DIR / "fair-inputs" / "gwp_mass_adjusted_100y.csv", index_col=0
+)
 
 # %%
 # Apply scenario_mapping + forcing_scenario for counterfactual scenarios
@@ -235,7 +244,9 @@ co2e = co2eo * 1e6  # -co2eo.loc[dict(timepoints=2019.5)].values+53.e6
 # ## Run FaIR
 
 # %%
-f.fill_species_configs(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
+f.fill_species_configs(
+    str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv")
+)
 f.override_defaults(str(params_file))
 f.climate_configs["stochastic_run"][:] = False
 initialise(f.concentration, f.species_configs["baseline_concentration"])
@@ -258,7 +269,7 @@ f.run()
 # %%
 # Suppress All-NaN slice warnings during export
 # (These occur when forcing species have no data for certain scenarios/configs)
-warnings.filterwarnings('ignore', message='All-NaN slice encountered')
+warnings.filterwarnings("ignore", message="All-NaN slice encountered")
 
 # %%
 # Export temperature summary statistics
@@ -266,17 +277,19 @@ print("Exporting temperature data...")
 temp_df_list = []
 for scenario in f.scenarios:
     temp_data = f.temperature.sel(scenario=scenario, layer=0)
-    df_temp = pd.DataFrame({
-        'Scenario': scenario,
-        'Year': f.timebounds,
-        'Temperature_median': temp_data.median(dim='config').values,
-        'Temperature_p05': temp_data.quantile(0.05, dim='config').values,
-        'Temperature_p95': temp_data.quantile(0.95, dim='config').values,
-    })
+    df_temp = pd.DataFrame(
+        {
+            "Scenario": scenario,
+            "Year": f.timebounds,
+            "Temperature_median": temp_data.median(dim="config").values,
+            "Temperature_p05": temp_data.quantile(0.05, dim="config").values,
+            "Temperature_p95": temp_data.quantile(0.95, dim="config").values,
+        }
+    )
     temp_df_list.append(df_temp)
 
 temp_summary = pd.concat(temp_df_list, ignore_index=True)
-temp_summary.to_csv(OUTPUTS_DIR / 'fair_temperature_1750-2500.csv', index=False)
+temp_summary.to_csv(OUTPUTS_DIR / "fair_temperature_1750-2500.csv", index=False)
 print(f"  Saved temperature data: {len(temp_summary)} rows")
 
 # Export forcing by species (median only to keep file size manageable)
@@ -285,54 +298,60 @@ forcing_df_list = []
 for scenario in f.scenarios:
     for species in f.forcing.specie.values:
         forcing_data = f.forcing.sel(scenario=scenario, specie=species)
-        df_forcing = pd.DataFrame({
-            'Scenario': scenario,
-            'Species': species,
-            'Year': f.timebounds,
-            'Forcing_median': forcing_data.median(dim='config').values,
-            'Forcing_p05': forcing_data.quantile(0.05, dim='config').values,
-            'Forcing_p95': forcing_data.quantile(0.95, dim='config').values,
-        })
+        df_forcing = pd.DataFrame(
+            {
+                "Scenario": scenario,
+                "Species": species,
+                "Year": f.timebounds,
+                "Forcing_median": forcing_data.median(dim="config").values,
+                "Forcing_p05": forcing_data.quantile(0.05, dim="config").values,
+                "Forcing_p95": forcing_data.quantile(0.95, dim="config").values,
+            }
+        )
         forcing_df_list.append(df_forcing)
 
 forcing_summary = pd.concat(forcing_df_list, ignore_index=True)
-forcing_summary.to_csv(OUTPUTS_DIR / 'fair_forcing_1750-2500.csv', index=False)
+forcing_summary.to_csv(OUTPUTS_DIR / "fair_forcing_1750-2500.csv", index=False)
 print(f"  Saved forcing data: {len(forcing_summary)} rows")
 
 # Export key GHG concentrations (CO2, CH4, N2O)
 print("Exporting concentration data...")
-key_species = ['CO2', 'CH4', 'N2O']
+key_species = ["CO2", "CH4", "N2O"]
 conc_df_list = []
 for scenario in f.scenarios:
     for species in key_species:
         conc_data = f.concentration.sel(scenario=scenario, specie=species)
-        df_conc = pd.DataFrame({
-            'Scenario': scenario,
-            'Species': species,
-            'Year': f.timebounds,
-            'Concentration_median': conc_data.median(dim='config').values,
-            'Concentration_p05': conc_data.quantile(0.05, dim='config').values,
-            'Concentration_p95': conc_data.quantile(0.95, dim='config').values,
-        })
+        df_conc = pd.DataFrame(
+            {
+                "Scenario": scenario,
+                "Species": species,
+                "Year": f.timebounds,
+                "Concentration_median": conc_data.median(dim="config").values,
+                "Concentration_p05": conc_data.quantile(0.05, dim="config").values,
+                "Concentration_p95": conc_data.quantile(0.95, dim="config").values,
+            }
+        )
         conc_df_list.append(df_conc)
 
 conc_summary = pd.concat(conc_df_list, ignore_index=True)
-conc_summary.to_csv(OUTPUTS_DIR / 'fair_concentration_ghgs_1750-2500.csv', index=False)
+conc_summary.to_csv(OUTPUTS_DIR / "fair_concentration_ghgs_1750-2500.csv", index=False)
 print(f"  Saved concentration data: {len(conc_summary)} rows")
 
 # Export CO2e emissions (already calculated earlier)
 print("Exporting CO2e emissions...")
 co2e_df_list = []
 for scenario in f.scenarios:
-    df_co2e = pd.DataFrame({
-        'Scenario': scenario,
-        'Year': f.timepoints,
-        'CO2e_emissions': co2e.sel(scenario=scenario).values,
-    })
+    df_co2e = pd.DataFrame(
+        {
+            "Scenario": scenario,
+            "Year": f.timepoints,
+            "CO2e_emissions": co2e.sel(scenario=scenario).values,
+        }
+    )
     co2e_df_list.append(df_co2e)
 
 co2e_summary = pd.concat(co2e_df_list, ignore_index=True)
-co2e_summary.to_csv(OUTPUTS_DIR / 'fair_co2e_emissions_1750-2500.csv', index=False)
+co2e_summary.to_csv(OUTPUTS_DIR / "fair_co2e_emissions_1750-2500.csv", index=False)
 print(f"  Saved CO2e emissions: {len(co2e_summary)} rows")
 
 # %%
@@ -342,26 +361,32 @@ ecdf_df_list = []
 
 for scenario in f.scenarios:
     temp_data = f.temperature.sel(scenario=scenario, layer=0)
-    
+
     # Get temperature at specific years for each ensemble member
     for config_idx, config in enumerate(f.configs):
+        temp_2050 = temp_data.sel(config=config, timebounds=2050).values
         temp_2100 = temp_data.sel(config=config, timebounds=2100).values
         temp_2300 = temp_data.sel(config=config, timebounds=2300).values
         temp_1850 = temp_data.sel(config=config, timebounds=1850).values
-        temp_max = temp_data.sel(config=config).max(dim='timebounds').values
-        
-        df_ecdf = pd.DataFrame({
-            'Scenario': [scenario],
-            'Config': [config],
-            'Temp_2100_anomaly': [temp_2100 - temp_1850],
-            'Temp_2300_anomaly': [temp_2300 - temp_1850],
-            'Temp_max_anomaly': [temp_max - temp_1850],
-        })
+        temp_max = temp_data.sel(config=config).max(dim="timebounds").values
+
+        df_ecdf = pd.DataFrame(
+            {
+                "Scenario": [scenario],
+                "Config": [config],
+                "Temp_2050_anomaly": [temp_2050 - temp_1850],
+                "Temp_2100_anomaly": [temp_2100 - temp_1850],
+                "Temp_2300_anomaly": [temp_2300 - temp_1850],
+                "Temp_max_anomaly": [temp_max - temp_1850],
+            }
+        )
         ecdf_df_list.append(df_ecdf)
 
 ecdf_data = pd.concat(ecdf_df_list, ignore_index=True)
-ecdf_data.to_csv(OUTPUTS_DIR / 'fair_temperature_ecdf_data.csv', index=False)
-print(f"  Saved ECDF data: {len(ecdf_data)} rows ({len(f.configs)} configs × {len(f.scenarios)} scenarios)")
+ecdf_data.to_csv(OUTPUTS_DIR / "fair_temperature_ecdf_data.csv", index=False)
+print(
+    f"  Saved ECDF data: {len(ecdf_data)} rows ({len(f.configs)} configs × {len(f.scenarios)} scenarios)"
+)
 print(f"  File size estimate: ~{len(ecdf_data) * 80 / 1024:.1f} KB")
 
 # %%
@@ -369,7 +394,7 @@ print(f"  File size estimate: ~{len(ecdf_data) * 80 / 1024:.1f} KB")
 # from the ensemble median at both 2100 and 2300 across all CF scenarios.
 import json as _json_bc
 
-cf_scenarios_opt = [s for s in f.scenarios if s.endswith("-CF")]
+cf_scenarios_opt = [s for s in f.scenarios if s.endswith(cfg.counterfactual_suffix)]
 
 if not cf_scenarios_opt:
     print("No CF scenarios found — skipping best-config selection.")
@@ -381,38 +406,52 @@ else:
     cf_stats = {}
     all_vals = {}
     for cf in cf_scenarios_opt:
-        td = f.temperature.sel(scenario=cf, layer=0)          # (timebounds, configs)
-        t1850 = td.sel(timebounds=1850).values                 # (configs,)
+        td = f.temperature.sel(scenario=cf, layer=0)  # (timebounds, configs)
+        t1850 = td.sel(timebounds=1850).values  # (configs,)
+        v2050 = td.sel(timebounds=2050).values - t1850
         v2100 = td.sel(timebounds=2100).values - t1850
         v2300 = td.sel(timebounds=2300).values - t1850
         cf_stats[cf] = {
-            'med_2100': float(np.median(v2100)),
-            'med_2300': float(np.median(v2300)),
-            'iqr_2100': float(np.percentile(v2100, 75) - np.percentile(v2100, 25)),
-            'iqr_2300': float(np.percentile(v2300, 75) - np.percentile(v2300, 25)),
+            "med_2050": float(np.median(v2050)),
+            "med_2100": float(np.median(v2100)),
+            "med_2300": float(np.median(v2300)),
+            "iqr_2050": float(np.percentile(v2050, 75) - np.percentile(v2050, 25)),
+            "iqr_2100": float(np.percentile(v2100, 75) - np.percentile(v2100, 25)),
+            "iqr_2300": float(np.percentile(v2300, 75) - np.percentile(v2300, 25)),
         }
-        all_vals[cf] = {'v2100': v2100, 'v2300': v2300}
+        all_vals[cf] = {"v2050": v2050, "v2100": v2100, "v2300": v2300}
 
     # RMS normalised distance, shape (n_configs,)
     sq_sum = np.zeros(len(f.configs))
     for cf in cf_scenarios_opt:
         s = cf_stats[cf]
-        sq_sum += ((all_vals[cf]['v2100'] - s['med_2100']) / s['iqr_2100']) ** 2
-        sq_sum += ((all_vals[cf]['v2300'] - s['med_2300']) / s['iqr_2300']) ** 2
-    rms_scores = np.sqrt(sq_sum / (2 * len(cf_scenarios_opt)))
+        sq_sum += ((all_vals[cf]["v2050"] - s["med_2050"]) / s["iqr_2050"]) ** 2
+        sq_sum += ((all_vals[cf]["v2100"] - s["med_2100"]) / s["iqr_2100"]) ** 2
+        sq_sum += ((all_vals[cf]["v2300"] - s["med_2300"]) / s["iqr_2300"]) ** 2
+    rms_scores = np.sqrt(sq_sum / (3 * len(cf_scenarios_opt)))
 
     best_idx = int(np.argmin(rms_scores))
-    best_config = f.configs[best_idx]   # run ID from calibrated_constrained_parameters.csv
+    best_config = f.configs[
+        best_idx
+    ]  # run ID from calibrated_constrained_parameters.csv
     best_score = float(rms_scores[best_idx])
 
-    print(f"Best config run ID: {best_config}  (RMS normalised score = {best_score:.4f})")
+    print(
+        f"Best config run ID: {best_config}  (RMS normalised score = {best_score:.4f})"
+    )
     print()
-    print(f"{'Scenario':<10}  {'T2100 member':>12}  {'T2100 median':>12}  "
-          f"{'T2300 member':>12}  {'T2300 median':>12}")
+    print(
+        f"{'Scenario':<10}  {'T2050 member':>12}  {'T2050 median':>12}  "
+        f"{'T2100 member':>12}  {'T2100 median':>12}  "
+        f"{'T2300 member':>12}  {'T2300 median':>12}"
+    )
     for cf in cf_scenarios_opt:
         s = cf_stats[cf]
-        print(f"{cf:<10}  {all_vals[cf]['v2100'][best_idx]:>12.3f}  {s['med_2100']:>12.3f}  "
-              f"{all_vals[cf]['v2300'][best_idx]:>12.3f}  {s['med_2300']:>12.3f}")
+        print(
+            f"{cf:<10}  {all_vals[cf]['v2050'][best_idx]:>12.3f}  {s['med_2050']:>12.3f}  "
+            f"{all_vals[cf]['v2100'][best_idx]:>12.3f}  {s['med_2100']:>12.3f}  "
+            f"{all_vals[cf]['v2300'][best_idx]:>12.3f}  {s['med_2300']:>12.3f}"
+        )
 
     # Save temperature timeseries for best config across all scenarios
     # Baseline-corrected to 1850-1900 mean for consistency with ensemble plots
@@ -423,55 +462,69 @@ else:
         t1850_single = float(td.sel(timebounds=1850, config=best_config).values)
         ts = td.sel(config=best_config).values - t1850_single
         offset = float(np.mean(ts[baseline_mask]))
-        best_ts_list.append(pd.DataFrame({
-            'Scenario': scenario,
-            'Year': timebounds_arr,
-            'Temperature_anomaly': ts - offset,
-        }))
+        best_ts_list.append(
+            pd.DataFrame(
+                {
+                    "Scenario": scenario,
+                    "Year": timebounds_arr,
+                    "Temperature_anomaly": ts - offset,
+                }
+            )
+        )
 
     best_ts_df = pd.concat(best_ts_list, ignore_index=True)
-    best_ts_df.to_csv(OUTPUTS_DIR / 'fair_temperature_best_config_1750-2500.csv', index=False)
+    best_ts_df.to_csv(
+        OUTPUTS_DIR / "fair_temperature_best_config_1750-2500.csv", index=False
+    )
 
     # Save metadata JSON
     meta = {
-        'runid': int(best_config),
-        'rms_score': best_score,
-        'n_configs_evaluated': len(f.configs),
-        'cf_scenarios': cf_scenarios_opt,
-        'deviations': {
+        "runid": int(best_config),
+        "rms_score": best_score,
+        "n_configs_evaluated": len(f.configs),
+        "cf_scenarios": cf_scenarios_opt,
+        "deviations": {
             cf: {
-                'T2100_member': float(all_vals[cf]['v2100'][best_idx]),
-                'T2100_median': cf_stats[cf]['med_2100'],
-                'T2300_member': float(all_vals[cf]['v2300'][best_idx]),
-                'T2300_median': cf_stats[cf]['med_2300'],
+                "T2050_member": float(all_vals[cf]["v2050"][best_idx]),
+                "T2050_median": cf_stats[cf]["med_2050"],
+                "T2100_member": float(all_vals[cf]["v2100"][best_idx]),
+                "T2100_median": cf_stats[cf]["med_2100"],
+                "T2300_member": float(all_vals[cf]["v2300"][best_idx]),
+                "T2300_median": cf_stats[cf]["med_2300"],
             }
             for cf in cf_scenarios_opt
         },
     }
-    with open(OUTPUTS_DIR / 'fair_best_config.json', 'w') as _fh:
+    with open(OUTPUTS_DIR / "fair_best_config.json", "w") as _fh:
         _json_bc.dump(meta, _fh, indent=2)
 
-    print(f"\nSaved: fair_temperature_best_config_1750-2500.csv  ({len(best_ts_df)} rows)")
+    print(
+        f"\nSaved: fair_temperature_best_config_1750-2500.csv  ({len(best_ts_df)} rows)"
+    )
     print(f"Saved: fair_best_config.json  (run ID {int(best_config)})")
 
 # %%
 # Export emissions by species (first config for diagnostic plots)
 print("Exporting emissions by species...")
-emissions_species = ['CO2 FFI', 'CO2 AFOLU', 'CH4', 'Sulfur']
+emissions_species = ["CO2 FFI", "CO2 AFOLU", "CH4", "Sulfur"]
 emis_species_list = []
 
 for scenario in f.scenarios:
     for species in emissions_species:
-        df_species = pd.DataFrame({
-            'Scenario': scenario,
-            'Species': species,
-            'Year': f.timepoints,
-            'Emissions': f.emissions.sel(scenario=scenario, specie=species, config=f.configs[0]).values,
-        })
+        df_species = pd.DataFrame(
+            {
+                "Scenario": scenario,
+                "Species": species,
+                "Year": f.timepoints,
+                "Emissions": f.emissions.sel(
+                    scenario=scenario, specie=species, config=f.configs[0]
+                ).values,
+            }
+        )
         emis_species_list.append(df_species)
 
 emis_species_df = pd.concat(emis_species_list, ignore_index=True)
-emis_species_df.to_csv(OUTPUTS_DIR / 'fair_emissions_by_species.csv', index=False)
+emis_species_df.to_csv(OUTPUTS_DIR / "fair_emissions_by_species.csv", index=False)
 print(f"  Saved species emissions: {len(emis_species_df)} rows")
 
 # Export total forcing (forcing_sum)
@@ -479,21 +532,29 @@ print("Exporting total forcing...")
 forcing_sum_list = []
 
 for scenario in f.scenarios:
-    df_forcing_sum = pd.DataFrame({
-        'Scenario': scenario,
-        'Year': f.timebounds,
-        'Forcing_sum_median': f.forcing_sum.sel(scenario=scenario).median(dim='config').values,
-        'Forcing_sum_p05': f.forcing_sum.sel(scenario=scenario).quantile(0.05, dim='config').values,
-        'Forcing_sum_p95': f.forcing_sum.sel(scenario=scenario).quantile(0.95, dim='config').values,
-    })
+    df_forcing_sum = pd.DataFrame(
+        {
+            "Scenario": scenario,
+            "Year": f.timebounds,
+            "Forcing_sum_median": f.forcing_sum.sel(scenario=scenario)
+            .median(dim="config")
+            .values,
+            "Forcing_sum_p05": f.forcing_sum.sel(scenario=scenario)
+            .quantile(0.05, dim="config")
+            .values,
+            "Forcing_sum_p95": f.forcing_sum.sel(scenario=scenario)
+            .quantile(0.95, dim="config")
+            .values,
+        }
+    )
     forcing_sum_list.append(df_forcing_sum)
 
 forcing_sum_df = pd.concat(forcing_sum_list, ignore_index=True)
-forcing_sum_df.to_csv(OUTPUTS_DIR / 'fair_forcing_sum_1750-2500.csv', index=False)
+forcing_sum_df.to_csv(OUTPUTS_DIR / "fair_forcing_sum_1750-2500.csv", index=False)
 print(f"  Saved total forcing: {len(forcing_sum_df)} rows")
 
 # %%
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("All climate model outputs saved to outputs/ directory:")
 print("  - fair_temperature_1750-2500.csv (summary statistics)")
 print("  - fair_forcing_1750-2500.csv (by species)")
@@ -504,5 +565,4 @@ print("  - fair_temperature_best_config_1750-2500.csv (optimal single member)")
 print("  - fair_best_config.json (run ID and selection scores)")
 print("  - fair_emissions_by_species.csv")
 print("  - fair_forcing_sum_1750-2500.csv (total ERF)")
-print("="*60)
-
+print("=" * 60)
