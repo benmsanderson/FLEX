@@ -23,6 +23,10 @@ flags:
   dump_csvs: true
   counterfactual_suffix: "-CF"  # Suffix for counterfactual scenario names (e.g., VL-CF)
 
+# --- FaIR settings ---
+fair:
+  calibration_version: "1.6.0"  # Version of FaIR calibration to
+
 
 # --- Scenario-to-model mapping ---
 scenario_model_match:
