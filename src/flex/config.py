@@ -34,9 +34,6 @@ class FlexConfig:
     make_plots: bool
     dump_csvs: bool
 
-    #FaIR settings
-    fair_calibration_version: str = "1.5.0"
-
     # The four core configuration dicts (in notebook-compatible format)
     scenario_model_match: dict[str, list]
     fossil_evolution_dictionary: dict[str, list]
@@ -53,6 +50,9 @@ class FlexConfig:
     # Derived paths
     outputs_dir: Path = field(init=False)
     plots_dir: Path = field(init=False)
+    
+    #FaIR settings
+    fair_calibration_version: str = "1.5.0"
 
     def __post_init__(self):
         self.outputs_dir = REPO_ROOT / "outputs" / self.name
@@ -184,7 +184,6 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         dump_csvs=raw["flags"]["dump_csvs"],
         counterfactual_suffix=raw["flags"].get("counterfactual_suffix", "-CF"),
         # FaIR settings
-        fair_calibration_version=raw.get("fair", {}).get("calibration_version", "1.5.0"),
         # Core dicts (converted to notebook-compatible format)
         scenario_model_match=_convert_scenario_model_match(raw["scenario_model_match"]),
         fossil_evolution_dictionary=_convert_fossil_evolution(raw["fossil_evolution"]),
@@ -193,6 +192,7 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         optimization=raw.get("optimization", {}),
         data_sources=raw.get("data_sources", None),
         forcing_scenario=raw.get("forcing_scenario", {}),
+        fair_calibration_version=raw.get("fair", {}).get("calibration_version", "1.5.0"),
     )
 
 
