@@ -39,7 +39,6 @@ from joblib import Parallel, delayed
 from flex.config import load_config, DATA_DIR
 from flex.optimise import (
     optimize_scenario,
-    run_fair_single_scenario,
     modify_emissions_csv,
     setup_fair,
 )
@@ -251,6 +250,7 @@ f = setup_fair(
     all_scenarios,
     memory_limited=True,
     scenario_mapping={**cfg.scenario_mapping, **cfg.forcing_scenario},
+    fair_calib_version = cfg.fair_calibration_version
 )
 f.run()
 

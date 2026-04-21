@@ -34,9 +34,6 @@ import pandas as pd
 from flex.config import load_config, DATA_DIR
 from flex.optimise import (
     optimize_scenario,
-    run_fair_single_scenario,
-    modify_emissions_csv,
-    setup_fair,
 )
 
 # %% tags=["parameters"]

@@ -56,9 +56,10 @@ print(f"Outputs: {OUTPUTS_DIR}")
 # %%
 f = FAIR()
 
+fair_calib_version = cfg.fair_calibration_version
 # Determine ensemble size: match the optimiser by default
 params_file = (
-    DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
+    DATA_DIR / "fair-inputs" / fair_calib_version / "calibrated_constrained_parameters.csv"
 )
 if not full_ensemble:
     _opt_cfgs = cfg.optimization or {}
