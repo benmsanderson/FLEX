@@ -68,13 +68,16 @@ scenario_model_match:
     color: "#FF6600"
 
 # --- Fossil CO2 storyline parameters ---
+#   ECS (Exp-Constant-Sigmoid): [type, exp_end, exp_targ, sig_start, sig_end, roll_in, roll_out]
+
 fossil_evolution:
   VL:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]
   VL-CF:
     type: ECS
-    params: [2048, 3300, 2048, 2450, 20, 20]
+    params: [2050, 4000, 2050, 2400, 20, 20]
+
   LN:
     type: ECS
     params: [2120, -24000.0, 2200, 2300, 20, 20]
@@ -192,7 +195,7 @@ optimization:
   VL-CF:
     enabled: true
     target_year: peak
-    departure_year: peak
+    departure_year: 2040
     departure_offset: -15
     n_configs: 50
     optimize_params: [exp_targ, sig_start, sig_end]
@@ -201,3 +204,5 @@ optimization:
       exp_targ: [-5000.0, 5000.0]
       sig_start: [2040, 2200]
       sig_end: [2100, 3000]
+
+
