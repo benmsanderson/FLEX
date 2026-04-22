@@ -59,11 +59,11 @@ def setup_fair(
     if n_configs is not None:
         # Always draw from the full parameter set so any ensemble size
         # from 1 up to ~1000 is representative.
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
+        params_file = fair_inputs / "1.6.0" / "calibrated_constrained_parameters.csv"
     elif memory_limited:
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters_short.csv"
+        params_file = fair_inputs / "1.6.0" / "calibrated_constrained_parameters_short.csv"
     else:
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
+        params_file = fair_inputs / "1.6.0" / "calibrated_constrained_parameters.csv"
 
     df_configs = pd.read_csv(params_file, index_col=0)
     if n_configs is not None and n_configs < len(df_configs):

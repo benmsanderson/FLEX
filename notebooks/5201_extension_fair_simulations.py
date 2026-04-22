@@ -58,7 +58,7 @@ f = FAIR()
 
 # Determine ensemble size: match the optimiser by default
 params_file = (
-    DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
+    DATA_DIR / "fair-inputs" / "1.6.0" / "calibrated_constrained_parameters.csv"
 )
 if not full_ensemble:
     _opt_cfgs = cfg.optimization or {}
