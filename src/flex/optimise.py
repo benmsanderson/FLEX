@@ -67,6 +67,7 @@ def setup_fair(
         params_file = fair_inputs / fair_calib_version / "calibrated_constrained_parameters.csv"
 
     df_configs = pd.read_csv(params_file, index_col=0)
+    
     if n_configs is not None and n_configs < len(df_configs):
         indices = np.linspace(0, len(df_configs) - 1, n_configs, dtype=int)
         df_configs = df_configs.iloc[indices]
@@ -118,6 +119,9 @@ def setup_fair(
     initialise(f.ocean_heat_content_change, 0)
 
     return f
+
+
+
 
 
 def run_fair_single_scenario(
@@ -236,6 +240,7 @@ def modify_emissions_csv(
     return output_path
 
 
+# Lot's of unused parameters here, why?
 def build_co2_trajectory_from_ecs_params(
     base_emissions_csv: str,
     scenario: str,
@@ -255,6 +260,7 @@ def build_co2_trajectory_from_ecs_params(
     -------
     Full trajectory array (752 timepoints matching FaIR emissions CSV).
     """
+    # Why is this here?
     from flex.fossil_co2_storyline_functions import (
         extend_co2_for_scen_storyline,
     )
@@ -499,6 +505,16 @@ def _batch_objective_plateau(
         f.run(progress=False)
     except Exception as e:
         print(f"Batch FaIR failed: {e}")
+        # print(temp_csv_path)
+        # fair_fail_debug(
+        #     temp_csv_path,
+        #     scenario_names,
+        #     memory_limited=memory_limited,
+        #     scenario_mapping=mapping,
+        #     n_configs=n_configs,
+        #     fair_calib_version = fair_calib_version,       
+        # )
+        
         return costs
 
     # Compute per-candidate cost
@@ -635,7 +651,10 @@ def optimize_scenario(
     if "exp_targ" in optimize_params:
         et_pos = optimize_params.index("exp_targ")
         lo, hi = bounds[et_pos]
-        clamped_hi = min(hi, dep_total_co2)
+        #clamped_hi = min(hi, max(dep_total_co2, 50))
+        clamped_hi = hi
+        print(f"Clamped hi: {clamped_hi}")
+        #sys.exit(4)
         if lo > clamped_hi:
             # Departure-year CO2 is below configured lower bound (e.g. net-negative);
             # shift the whole search window down, preserving its width.
@@ -668,7 +687,7 @@ def optimize_scenario(
         ),
         bounds=bounds,
         seed=42,
-        maxiter=15,
+        maxiter=20,
         tol=0.01,
         atol=0.5,
         popsize=5,

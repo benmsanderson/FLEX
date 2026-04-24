@@ -107,6 +107,12 @@ scenarios_complete_global = pd.concat(_global_dfs) if len(_global_dfs) > 1 else 
 print(f"Loaded scenarios_complete_global: {scenarios_complete_global.shape}")
 
 print("Loading history from CSV...")
+print(DATA_DIR)
+history_path = DATA_DIR / ds.get("history", "history.csv")
+print(history_path)
+hist_test = pd.read_csv(history_path)
+print(hist_test.shape)
+print(hist_test.head())
 history = pd.read_csv(
     DATA_DIR / ds.get("history", "history.csv"),
     index_col=[0, 1, 2, 3, 4]
