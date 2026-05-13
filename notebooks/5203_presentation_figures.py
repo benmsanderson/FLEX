@@ -53,6 +53,8 @@ warnings.filterwarnings("ignore", message="All-NaN slice encountered")
 
 cfg = load_config(config_name)
 wcfg = load_config(wiemip_config)
+print(DATA_DIR)
+#sys.exit(4)
 
 OUTPUTS_DIR = cfg.outputs_dir
 WIEMIP_DIR = wcfg.outputs_dir
@@ -459,6 +461,7 @@ print(f"  shape: {scen_reg.shape}")
 avail_vars = scen_reg["variable"].unique()
 cdr_avail = {k: v for k, v in CDR_VARS.items() if v in avail_vars}
 print(f"  CDR vars found: {list(cdr_avail.keys())}")
+#sys.exit(4)
 
 # %%
 # For each scenario and each CDR tech, extract world total at 5-year intervals
@@ -1105,7 +1108,7 @@ else:
     ax.set_xlim(2000, 2500)
     ax.set_xlabel("Year")
     ax.set_ylabel("Gross CDR, GtCO₂ yr⁻¹")
-    ax.set_title("Gross CDR 2000–2500 (aggregate; technology breakdown requires re-run of 5191)")
+    ax.set_title("Gross CDR 2000–2500 (aggregate)")#; technology breakdown requires re-run of 5191)")
     ax.legend()
     ax.grid(alpha=0.3)
     pl.tight_layout()
