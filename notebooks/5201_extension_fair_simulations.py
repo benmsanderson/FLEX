@@ -36,6 +36,7 @@ from fair.interface import initialise
 from fair.io import read_properties
 
 from flex.config import load_config, DATA_DIR
+from flex.optimise import _get_conc_driven_species, _fill_concentrations_from_file
 
 # %% tags=["parameters"]
 config_name = "scenariomip_default"
@@ -74,6 +75,21 @@ snames = cfg.markers
 f.define_time(1750, 2501, 1)
 f.define_scenarios(snames)
 species, properties = read_properties(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
+
+# When a concentrations file is configured, switch all non-CO2 GHG species
+# to concentration-driven mode before defining species in FaIR.
+_conc_file = (
+    str(DATA_DIR / cfg.concentrations_file)
+    if cfg.concentrations_file is not None
+    else None
+)
+_conc_species: list[str] = []
+if _conc_file is not None:
+    _conc_species = _get_conc_driven_species(properties)
+    for _sp in _conc_species:
+        properties[_sp]["input_mode"] = "concentration"
+    print(f"Concentration-driven mode: {len(_conc_species)} non-CO2 GHG species")
+
 f.define_species(species, properties)
 f.ch4_method = "Thornhill2021"
 
@@ -244,6 +260,11 @@ initialise(f.temperature, 0)
 initialise(f.cumulative_emissions, 0)
 initialise(f.airborne_emissions, 0)
 initialise(f.ocean_heat_content_change, 0)
+
+# Fill concentration timeseries for concentration-driven species
+if _conc_file is not None and _conc_species:
+    _fill_concentrations_from_file(f, _conc_file, _conc_species)
+
 f.run()
 
 # %% [markdown]

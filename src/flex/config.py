@@ -46,6 +46,9 @@ class FlexConfig:
     data_sources: dict | None = None
     # Maps marker names to volcanic_solar.csv scenario IDs (e.g. "VL")
     forcing_scenario: dict[str, str] = field(default_factory=dict)
+    # Optional concentrations file: when set, all non-CO2 GHG species are
+    # run in concentration-driven mode using this file (path relative to DATA_DIR).
+    concentrations_file: str | None = None
     # Derived paths
     outputs_dir: Path = field(init=False)
     plots_dir: Path = field(init=False)
@@ -186,6 +189,7 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         optimization=raw.get("optimization", {}),
         data_sources=raw.get("data_sources", None),
         forcing_scenario=raw.get("forcing_scenario", {}),
+        concentrations_file=raw.get("concentrations_file", None),
     )
 
 

@@ -14,12 +14,98 @@ from scipy.optimize import differential_evolution
 from flex.config import DATA_DIR, FlexConfig
 
 
+def _get_conc_driven_species(properties: dict) -> list[str]:
+    """Return names of non-CO2 GHG species to run in concentration-driven mode.
+
+    Selects all species where input_mode == "emissions" and greenhouse_gas == 1,
+    excluding CO2 FFI and CO2 AFOLU (which stay emissions-driven).
+    """
+    return [
+        sp for sp, p in properties.items()
+        if p.get("input_mode") == "emissions"
+        and p.get("greenhouse_gas") == 1
+        and sp not in ("CO2 FFI", "CO2 AFOLU")
+    ]
+
+
+def _fill_concentrations_from_file(
+    f: "FAIR",
+    concentrations_file: str,
+    conc_species: list[str],
+    scenario_list: list[str],
+) -> None:
+    """Fill f.concentration from a CSV for the given concentration-driven species.
+
+    The CSV format mirrors the emissions file:
+    - Columns: ``scenario``, ``variable``, and float year columns
+      (e.g. ``1750.5``, ``1751.5``, …, ``2500.5``).
+    - ``variable`` must match FaIR species names (e.g. "CH4", "N2O").
+    - If the file contains only one unique scenario value, that data is
+      applied to all FaIR scenarios.  Otherwise scenario names must match
+      exactly.
+    """
+    df = pd.read_csv(concentrations_file)
+    year_cols = [c for c in df.columns if c.replace(".", "").replace("-", "").isdigit()]
+    years = np.array([float(c) for c in year_cols])
+
+    file_scenarios = df["scenario"].unique().tolist() if "scenario" in df.columns else [None]
+    single_scenario = len(file_scenarios) == 1
+
+    for fair_scen in f.scenarios:
+        if single_scenario:
+            df_scen = df
+        elif fair_scen in file_scenarios:
+            df_scen = df[df["scenario"] == fair_scen]
+        elif fair_scen.split("-")[0] in file_scenarios:
+            base_scen = fair_scen.split("-")[0]
+            df_scen = df[df["scenario"] == base_scen]
+        else:
+            no_scenario = True
+            for s in scenario_list:
+                if s in file_scenarios:
+                    df_scen = df[df["scenario"] == s]
+                    break
+            if no_scenario:
+                raise ValueError(
+                    f"Scenario '{fair_scen}' not found in concentrations file "
+                    f"{concentrations_file}. Available: {file_scenarios}"
+                )
+
+        for sp in conc_species:
+            rows = df_scen[df_scen["variable"] == sp] if "variable" in df_scen.columns else pd.DataFrame()
+            if rows.empty:
+                continue
+            values = rows[year_cols].values.flatten()
+            # Map file years to FaIR timebounds (both should be mid-year floats)
+            fair_timebounds = f.timebounds
+            print(sp)
+            print(len(values))
+            print(len(fair_timebounds))
+            if len(values) == len(fair_timebounds):
+                f.concentration.loc[dict(scenario=fair_scen, specie=sp)] = values
+            else:
+                # Interpolate if grids differ
+                interp = np.interp(fair_timebounds, years, values)
+                config_num = f.concentration.loc[dict(scenario=fair_scen, specie=sp)].shape[1]
+                # print(interp.shape)
+                # print(interp[0])
+                interp_broadcast = np.broadcast_to(interp, (config_num, len(interp))).T
+                # print(interp_broadcast.shape)
+                # print(interp_broadcast)
+                # print(f.concentration.loc[dict(scenario=fair_scen, specie=sp)].shape)
+                # print(f.concentration.loc[dict(scenario=fair_scen, specie=sp)])
+                f.concentration.loc[dict(scenario=fair_scen, specie=sp)] = interp_broadcast
+                #print(f.concentration.loc[dict(scenario=fair_scen, specie=sp)])
+                #sys.exit(4)
+
+
 def setup_fair(
     emissions_csv: str | pd.DataFrame,
     scenarios: list[str],
     memory_limited: bool = True,
     scenario_mapping: dict[str, str] | None = None,
     n_configs: int | None = None,
+    concentrations_file: str | None = None,
 ) -> FAIR:
     """Set up a FaIR instance ready to run.
 
@@ -39,6 +125,12 @@ def setup_fair(
         Explicit number of configs to use, drawn evenly-spaced from the
         full ~1000-member parameter set.  Overrides *memory_limited* when
         set.  Use 1 for a fast deterministic run during optimization.
+    concentrations_file
+        Optional path to a CSV with pre-computed concentration timeseries.
+        When provided, all non-CO2 GHG species (CH4, N2O, F-gases, etc.)
+        are run in concentration-driven mode using these values; only CO2
+        (FFI + AFOLU) remains emissions-driven.  CSV format: ``scenario``,
+        ``variable``, and float year columns (e.g. ``1750.5``).
 
     Returns
     -------
@@ -53,6 +145,15 @@ def setup_fair(
     species, properties = read_properties(
         str(fair_inputs / "species_configs_properties_1.4.1.csv")
     )
+
+    # When a concentrations file is provided, switch all non-CO2 GHG species
+    # to concentration-driven mode before defining species in FaIR.
+    conc_species: list[str] = []
+    if concentrations_file is not None:
+        conc_species = _get_conc_driven_species(properties)
+        for sp in conc_species:
+            properties[sp]["input_mode"] = "concentration"
+
     f.define_species(species, properties)
     f.ch4_method = "Thornhill2021"
 
@@ -116,6 +217,13 @@ def setup_fair(
     initialise(f.airborne_emissions, 0)
     initialise(f.ocean_heat_content_change, 0)
 
+    # Fill concentration timeseries for concentration-driven species
+    if concentrations_file is not None and conc_species:
+        print(scenarios)
+        print(emissions_csv)
+        print(scenario_mapping)
+        _fill_concentrations_from_file(f, concentrations_file, conc_species, list(scenario_mapping.values()))
+
     return f
 
 
@@ -125,6 +233,7 @@ def run_fair_single_scenario(
     memory_limited: bool = True,
     base_scenario: str | None = None,
     n_configs: int | None = None,
+    concentrations_file: str | None = None,
 ) -> np.ndarray:
     """Run FaIR for a single scenario and return median temperature.
 
@@ -135,6 +244,8 @@ def run_fair_single_scenario(
         base scenario for volcanic/solar forcing.
     n_configs
         Explicit number of configs (passed to *setup_fair*).
+    concentrations_file
+        Optional path to concentrations CSV (passed to *setup_fair*).
 
     Returns
     -------
@@ -148,6 +259,7 @@ def run_fair_single_scenario(
         memory_limited=memory_limited,
         scenario_mapping=mapping,
         n_configs=n_configs,
+        concentrations_file=concentrations_file,
     )
     f.run()
     temp = f.temperature.sel(scenario=scenario, layer=0)
@@ -322,6 +434,7 @@ def _objective_plateau(
     memory_limited: bool = True,
     forcing_scenario: str | None = None,
     n_configs: int | None = None,
+    concentrations_file: str | None = None,
 ) -> float:
     """Objective function: squared temperature deviation from target post-departure.
 
@@ -375,6 +488,7 @@ def _objective_plateau(
             memory_limited=memory_limited,
             base_scenario=forcing_scenario or base_scenario,
             n_configs=n_configs,
+            concentrations_file=concentrations_file,
         )
     except Exception as e:
         print(f"FaIR failed with params {params}: {e}")
@@ -403,6 +517,7 @@ def _batch_objective_plateau(
     memory_limited: bool,
     forcing_scenario: str | None,
     n_configs: int | None,
+    concentrations_file: str | None,
     base_df: pd.DataFrame,
     base_co2_ffi: np.ndarray,
     base_co2_afolu: np.ndarray,
@@ -428,6 +543,7 @@ def _batch_objective_plateau(
                 memory_limited=memory_limited,
                 forcing_scenario=forcing_scenario,
                 n_configs=n_configs,
+                concentrations_file=concentrations_file,
                 base_df=base_df,
                 base_co2_ffi=base_co2_ffi,
                 base_co2_afolu=base_co2_afolu,
@@ -485,6 +601,7 @@ def _batch_objective_plateau(
             memory_limited=memory_limited,
             scenario_mapping=mapping,
             n_configs=n_configs,
+            concentrations_file=concentrations_file,
         )
         f.run()
     except Exception as e:
@@ -537,6 +654,11 @@ def optimize_scenario(
     -------
     Dict with optimized params, target temperature, and final cost.
     """
+    concentrations_file = (
+        str(DATA_DIR / cfg.concentrations_file)
+        if cfg.concentrations_file is not None
+        else None
+    )
     opt_settings = cfg.optimization[marker]
     if n_configs is None:
         n_configs = opt_settings.get("n_configs", 1)
@@ -567,6 +689,7 @@ def optimize_scenario(
         base_emissions_csv, source_marker, memory_limited=memory_limited,
         base_scenario=forcing_scen if forcing_scen != source_marker else None,
         n_configs=n_configs,
+        concentrations_file=concentrations_file,
     )
     timebounds = np.arange(1750, 2501, 1.0)
 
@@ -647,6 +770,7 @@ def optimize_scenario(
             memory_limited=memory_limited,
             forcing_scenario=forcing_scen,
             n_configs=n_configs,
+            concentrations_file=concentrations_file,
             base_df=base_df,
             base_co2_ffi=base_co2_ffi_vals,
             base_co2_afolu=base_co2_afolu_vals,

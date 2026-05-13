@@ -190,12 +190,20 @@ if opt_results:
     if first_marker in cfg.optimization:
         n_configs = cfg.optimization[first_marker].get("n_configs", None)
 
+# Resolve concentrations file path (relative to DATA_DIR) if configured
+_conc_file = (
+    str(DATA_DIR / cfg.concentrations_file)
+    if cfg.concentrations_file is not None
+    else None
+)
+
 if n_configs is not None:
     print(f"Using n_configs={n_configs} (from optimization settings)")
     f = setup_fair(
         current_csv, all_scenarios,
         n_configs=n_configs,
         scenario_mapping={**cfg.scenario_mapping, **cfg.forcing_scenario},
+        concentrations_file=_conc_file,
     )
 else:
     print(f"Using memory_limited ensemble (5 members)")
@@ -203,6 +211,7 @@ else:
         current_csv, all_scenarios,
         memory_limited=True,
         scenario_mapping={**cfg.scenario_mapping, **cfg.forcing_scenario},
+        concentrations_file=_conc_file,
     )
 
 f.run()
