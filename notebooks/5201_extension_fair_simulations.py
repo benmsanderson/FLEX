@@ -263,7 +263,7 @@ initialise(f.ocean_heat_content_change, 0)
 
 # Fill concentration timeseries for concentration-driven species
 if _conc_file is not None and _conc_species:
-    _fill_concentrations_from_file(f, _conc_file, _conc_species)
+    _fill_concentrations_from_file(f, _conc_file, _conc_species, list(forcing_map.values()))
 
 f.run()
 

@@ -11,6 +11,7 @@ notebook = "jupyter lab"
 test = "python -m pytest tests"
 test-cov = "pytest --cov=src"
 pipeline = "python scripts/run_pipeline.py"
+pipeline_no_opt = "python scripts/run_pipeline_no_opt.py"
 
 [dependencies]
 python = ">=3.10,<3.13"
