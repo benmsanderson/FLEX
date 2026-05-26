@@ -20,6 +20,7 @@ def setup_fair(
     memory_limited: bool = True,
     scenario_mapping: dict[str, str] | None = None,
     n_configs: int | None = None,
+    fair_calib_version = "1.5.0",
 ) -> FAIR:
     """Set up a FaIR instance ready to run.
 
@@ -59,13 +60,14 @@ def setup_fair(
     if n_configs is not None:
         # Always draw from the full parameter set so any ensemble size
         # from 1 up to ~1000 is representative.
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
+        params_file = fair_inputs / fair_calib_version / "calibrated_constrained_parameters.csv"
     elif memory_limited:
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters_short.csv"
+        params_file = fair_inputs / fair_calib_version / "calibrated_constrained_parameters_short.csv"
     else:
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
+        params_file = fair_inputs / fair_calib_version / "calibrated_constrained_parameters.csv"
 
     df_configs = pd.read_csv(params_file, index_col=0)
+    
     if n_configs is not None and n_configs < len(df_configs):
         indices = np.linspace(0, len(df_configs) - 1, n_configs, dtype=int)
         df_configs = df_configs.iloc[indices]
@@ -119,12 +121,16 @@ def setup_fair(
     return f
 
 
+
+
+
 def run_fair_single_scenario(
     emissions_csv_path: str,
     scenario: str,
     memory_limited: bool = True,
     base_scenario: str | None = None,
     n_configs: int | None = None,
+    fair_calib_version = "1.5.0",
 ) -> np.ndarray:
     """Run FaIR for a single scenario and return median temperature.
 
@@ -135,6 +141,8 @@ def run_fair_single_scenario(
         base scenario for volcanic/solar forcing.
     n_configs
         Explicit number of configs (passed to *setup_fair*).
+    fair_calib_version
+        Version of the FaIR calibration to use (passed to *setup_fair*).
 
     Returns
     -------
@@ -148,8 +156,9 @@ def run_fair_single_scenario(
         memory_limited=memory_limited,
         scenario_mapping=mapping,
         n_configs=n_configs,
+        fair_calib_version=fair_calib_version,
     )
-    f.run()
+    f.run(progress=False)
     temp = f.temperature.sel(scenario=scenario, layer=0)
     return temp.median(dim="config").values
 
@@ -231,6 +240,7 @@ def modify_emissions_csv(
     return output_path
 
 
+# Lot's of unused parameters here, why?
 def build_co2_trajectory_from_ecs_params(
     base_emissions_csv: str,
     scenario: str,
@@ -250,6 +260,7 @@ def build_co2_trajectory_from_ecs_params(
     -------
     Full trajectory array (752 timepoints matching FaIR emissions CSV).
     """
+    # Why is this here?
     from flex.fossil_co2_storyline_functions import (
         extend_co2_for_scen_storyline,
     )
@@ -322,6 +333,7 @@ def _objective_plateau(
     memory_limited: bool = True,
     forcing_scenario: str | None = None,
     n_configs: int | None = None,
+    fair_calib_version = "1.5.0",
 ) -> float:
     """Objective function: squared temperature deviation from target post-departure.
 
@@ -375,6 +387,7 @@ def _objective_plateau(
             memory_limited=memory_limited,
             base_scenario=forcing_scenario or base_scenario,
             n_configs=n_configs,
+            fair_calib_version=fair_calib_version,
         )
     except Exception as e:
         print(f"FaIR failed with params {params}: {e}")
@@ -408,6 +421,7 @@ def _batch_objective_plateau(
     base_co2_afolu: np.ndarray,
     years: np.ndarray,
     year_cols: list[str],
+    fair_calib_version = "1.5.0",
 ) -> np.ndarray | float:
     """Vectorized objective: evaluate N candidates in one FaIR run.
 
@@ -433,6 +447,7 @@ def _batch_objective_plateau(
                 base_co2_afolu=base_co2_afolu,
                 years=years,
                 year_cols=year_cols,
+                fair_calib_version=fair_calib_version,
             )[0]
         )
 
@@ -485,10 +500,21 @@ def _batch_objective_plateau(
             memory_limited=memory_limited,
             scenario_mapping=mapping,
             n_configs=n_configs,
+            fair_calib_version=fair_calib_version,
         )
-        f.run()
+        f.run(progress=False)
     except Exception as e:
         print(f"Batch FaIR failed: {e}")
+        # print(temp_csv_path)
+        # fair_fail_debug(
+        #     temp_csv_path,
+        #     scenario_names,
+        #     memory_limited=memory_limited,
+        #     scenario_mapping=mapping,
+        #     n_configs=n_configs,
+        #     fair_calib_version = fair_calib_version,       
+        # )
+        
         return costs
 
     # Compute per-candidate cost
@@ -538,6 +564,7 @@ def optimize_scenario(
     Dict with optimized params, target temperature, and final cost.
     """
     opt_settings = cfg.optimization[marker]
+    fair_calib_version = cfg.fair_calibration_version
     if n_configs is None:
         n_configs = opt_settings.get("n_configs", 1)
     departure_year_cfg = opt_settings.get("departure_year", "peak")
@@ -567,6 +594,7 @@ def optimize_scenario(
         base_emissions_csv, source_marker, memory_limited=memory_limited,
         base_scenario=forcing_scen if forcing_scen != source_marker else None,
         n_configs=n_configs,
+        fair_calib_version=fair_calib_version,
     )
     timebounds = np.arange(1750, 2501, 1.0)
 
@@ -623,7 +651,10 @@ def optimize_scenario(
     if "exp_targ" in optimize_params:
         et_pos = optimize_params.index("exp_targ")
         lo, hi = bounds[et_pos]
-        clamped_hi = min(hi, dep_total_co2)
+        #clamped_hi = min(hi, max(dep_total_co2, 50))
+        clamped_hi = hi
+        print(f"Clamped hi: {clamped_hi}")
+        #sys.exit(4)
         if lo > clamped_hi:
             # Departure-year CO2 is below configured lower bound (e.g. net-negative);
             # shift the whole search window down, preserving its width.
@@ -652,10 +683,11 @@ def optimize_scenario(
             base_co2_afolu=base_co2_afolu_vals,
             years=years_arr,
             year_cols=year_cols,
+            fair_calib_version=fair_calib_version,
         ),
         bounds=bounds,
         seed=42,
-        maxiter=15,
+        maxiter=20,
         tol=0.01,
         atol=0.5,
         popsize=5,

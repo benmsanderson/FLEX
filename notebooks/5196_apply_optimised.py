@@ -196,6 +196,7 @@ if n_configs is not None:
         current_csv, all_scenarios,
         n_configs=n_configs,
         scenario_mapping={**cfg.scenario_mapping, **cfg.forcing_scenario},
+        fair_calib_version = cfg.fair_calibration_version,
     )
 else:
     print(f"Using memory_limited ensemble (5 members)")
