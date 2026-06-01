@@ -19,7 +19,7 @@ time:
 
 # --- Flags ---
 flags:
-  make_plots: false
+  make_plots: true
   dump_csvs: true
 
 # --- Scenario-to-model mapping ---

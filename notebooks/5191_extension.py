@@ -24,6 +24,7 @@
 # %%
 import glob
 import re
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -51,6 +52,7 @@ from flex.extension_functionality import (
 )
 from flex.extensions_functions_for_non_co2 import (
     do_single_component_for_scenario_model_regionally,
+    plot_just_global,
 )
 from flex.finish_regional_extensions import (
     extend_regional_for_missing,
@@ -88,6 +90,7 @@ TUPLE_LENGTH_WITH_STAGE = 6
 # Papermill parameters
 make_plots: bool = cfg.make_plots
 dump_csvs: bool = cfg.dump_csvs
+look_at_all = True
 
 # %% [markdown]
 # ## Loading scenarios
@@ -293,6 +296,8 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
     pd.DataFrame
         Concatenated DataFrame of all extended non-CO2 emission variables across scenarios and models.
     """
+    print("Starting non-CO2 extensions...")
+    print("Lookatall flag is set to:", look_at_all)
     total_df_list = []
 
     for variable in tqdm.auto.tqdm(scenarios_complete_global.pix.unique("variable").values):
@@ -345,6 +350,59 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
                 print(df_comp_scen_model)
                 sys.exit(4)
             total_df_list.append(df_comp_scen_model)
+                        # print(df_comp_scen_model.columns)
+            if look_at_all:
+                if not os.path.exists(f"{OUTPUTS_DIR}/figures/regional"):
+                    os.makedirs(f"{OUTPUTS_DIR}/figures/regional")
+                print(df_comp_scen_model.columns)
+                pdf = (
+                    df_comp_scen_model.reset_index()
+                    .melt(
+                        id_vars=df_comp_scen_model.index.names,
+                        var_name="time",
+                        value_name="value",
+                    )
+                )
+                pdf["time"] = pd.to_numeric(pdf["time"])
+                print(pdf.head())
+                fg = sns.relplot(
+                    data=pdf,
+                    x="time",
+                    y="value",
+                    col="variable",
+                    col_order=sorted(pdf["variable"].unique()),
+                    col_wrap=3,
+                    hue="region",
+                    hue_order=sorted(pdf["region"].unique()),
+                    kind="line",
+                    linewidth=2.0,
+                    alpha=0.7,
+                    facet_kws=dict(sharey=False),
+                    errorbar=None,
+                )
+                for ax in fg.axes.flatten():
+                    if "CO2" in ax.get_title():
+                        ax.axhline(0.0, linestyle="--", color="gray")
+                    else:
+                        ax.set_ylim(ymin=0.0)
+                        ax.axvline(2100, linestyle="--", color="gray")
+                    if ax.get_title().endswith("Emissions|BC"):
+                        ax.axhline(2.0814879929813928, linestyle="--", color="gray")
+                    # ax.set_xticks(np.arange(2020, 2, 10))
+                    ax.grid()
+                fg.savefig(f"{OUTPUTS_DIR}/figures/regional/regionally_extended_{variable.split('|')[-1]}_{meta[0].replace(' ', '')}_{meta[1].replace(' ', '')}.png")
+                plt.clf()
+                plt.close()
+            elif make_plots:
+                plot_just_global(
+                    meta[0],
+                    meta[1],
+                    variable,
+                    df_comp_scen_model.loc[pix.ismatch(region="World", variable=f"{variable}")],
+                    scenarios_complete_global,
+                    history,
+                    scenarios_regional=scenarios_regional,
+                )
             # print(df_comp_scen_model.columns)
     df_all = pix.concat(total_df_list)
     return df_all
