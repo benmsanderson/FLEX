@@ -43,7 +43,7 @@ config_name = "scenariomip_default"
 # Set True to run the full 841-member calibrated ensemble
 # (gives proper uncertainty bands but is much slower).
 # When False, uses the same n_configs as the optimiser (from YAML config).
-full_ensemble = True
+full_ensemble = False
 
 # --- Ensemble configuration ---
 # %%
@@ -222,6 +222,7 @@ for s in scens:
     df_scen.dropna(inplace=True)
     scens_out.append(df_scen)
 scens_out = pd.concat(scens_out)
+print("Done scenario concatenation")
 
 
 # %% [markdown]
@@ -240,11 +241,12 @@ for specie in f.emissions.specie.values:
     else:
         0
 co2e = co2eo * 1e6  # -co2eo.loc[dict(timepoints=2019.5)].values+53.e6
-
+print("Done making gwp-adjusted emissions")
 # %% [markdown]
 # ## Run FaIR
 
 # %%
+print("Filling FaIR model...")
 f.fill_species_configs(
     str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv")
 )
@@ -256,8 +258,9 @@ initialise(f.temperature, 0)
 initialise(f.cumulative_emissions, 0)
 initialise(f.airborne_emissions, 0)
 initialise(f.ocean_heat_content_change, 0)
+print("Done initialising fair")
 f.run()
-
+print("FaIR run complete")
 # %% [markdown]
 # ## Export Climate Model Outputs
 #

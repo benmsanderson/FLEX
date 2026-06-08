@@ -240,8 +240,8 @@ def extend_linear_rampdown(function: np.ndarray, t_vals: np.ndarray, rampdown_en
     """
     data_extend = np.zeros(len(t_vals))
     data_extend[: len(function)] = function
-    data_extend[len(function) : rampdown_end - t_vals[0]] = np.linspace(
-        function[-1], 0, rampdown_end - t_vals[len(function)]
+    data_extend[len(function) - 1 : rampdown_end - t_vals[0]] = np.linspace(
+        function[-1], 0, rampdown_end - t_vals[len(function) -1]
     )
     return data_extend
 
