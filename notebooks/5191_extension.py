@@ -24,6 +24,7 @@
 # %%
 import glob
 import re
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -67,11 +68,13 @@ from flex.general_utils_for_extensions import (
 )
 
 # %% tags=["parameters"]
-config_name = "scenariomip_default"
+config_name = "vl-frankenstein"  # Name of the config file (without .yaml) in configs/ to use for this notebook
+#config_name = "scenariomip_default"
 
 # --- Load ensemble configuration ---
 # %%
 cfg = load_config(config_name)
+print(cfg)
 OUTPUTS_DIR = cfg.outputs_dir
 print(f"Loaded config: {cfg.name}")
 print(f"Outputs: {OUTPUTS_DIR}")
@@ -88,6 +91,8 @@ TUPLE_LENGTH_WITH_STAGE = 6
 # Papermill parameters
 make_plots: bool = cfg.make_plots
 dump_csvs: bool = cfg.dump_csvs
+read_non_co2_from_csv: bool = cfg.read_non_co2_from_csv
+read_afolu_from_csv: bool = cfg.read_afolu_from_csv
 
 # %% [markdown]
 # ## Loading scenarios
@@ -95,17 +100,24 @@ dump_csvs: bool = cfg.dump_csvs
 # %%
 # Load data from CSV files — uses cfg.data_sources if set, otherwise standard defaults
 ds = cfg.data_sources or {}
+print(ds)
+print(cfg)
+
 
 # scenarios_global: list of files to concatenate, or single default
 _global_paths = ds.get("scenarios_global", ["scenarios_complete_global.csv"])
 if isinstance(_global_paths, str):
     _global_paths = [_global_paths]
+print(_global_paths)
+
 
 print("Loading scenarios_complete_global from CSV...")
-_global_dfs = [pd.read_csv(DATA_DIR / p, index_col=[0, 1, 2, 3, 4]) for p in _global_paths]
+_global_dfs = [pd.read_csv(DATA_DIR / p, index_col=[0, 1, 2, 3, 4, 5]) for p in _global_paths]
 scenarios_complete_global = pd.concat(_global_dfs) if len(_global_dfs) > 1 else _global_dfs[0]
 print(f"Loaded scenarios_complete_global: {scenarios_complete_global.shape}")
 
+print(scenarios_complete_global.index.names)
+print(scenarios_complete_global.head())
 print("Loading history from CSV...")
 history = pd.read_csv(
     DATA_DIR / ds.get("history", "history.csv"),
@@ -158,25 +170,13 @@ print(f"  history columns dtype: {history.columns.dtype}")
 print(f"  scenarios_regional columns dtype: {scenarios_regional.columns.dtype}")
 print(f"  history_regional columns dtype: {history_regional.columns.dtype}")
 
-# Apply regional_scenario_fallback: duplicate regional data for missing scenarios
-_fallback = ds.get("regional_scenario_fallback", {})
-if _fallback:
-    _new_dfs = []
-    for target_scen, source_scen in _fallback.items():
-        source = scenarios_regional.loc[pix.ismatch(scenario=source_scen)]
-        if not source.empty:
-            new = source.rename(index={source_scen: target_scen}, level="scenario")
-            _new_dfs.append(new)
-            print(f"  Fallback: copied regional data from '{source_scen}' -> '{target_scen}'")
-    if _new_dfs:
-        scenarios_regional = pd.concat([scenarios_regional] + _new_dfs)
-
 # %%
 unique_model_scenario_pairs = scenarios_complete_global.index.droplevel(
-    ["region", "variable", "unit"]
+    ["region", "variable", "unit", "workflow"]
 ).drop_duplicates()
 
 # Filter to only model/scenario pairs used by this config's markers
+print(unique_model_scenario_pairs)
 _config_pairs = {(v[1], v[0]) for v in cfg.scenario_model_match.values()}
 unique_model_scenario_pairs = unique_model_scenario_pairs[
     unique_model_scenario_pairs.isin(_config_pairs)
@@ -187,6 +187,52 @@ print("\nUnique model-scenario pairs:")
 for i, (model, scenario) in enumerate(unique_model_scenario_pairs, 1):
     print(f"{i:2d}. {model} | {scenario}")
 
+
+# Apply regional_scenario_fallback: duplicate regional data for missing scenarios
+_fallback = ds.get("regional_scenario_fallback", {})
+if _fallback:
+    _new_dfs = []
+    _new_dfs_glob = []
+    for target_scen, source_scen in _fallback.items():
+        source = scenarios_regional.loc[pix.ismatch(scenario=source_scen)]
+        if not source.empty:
+            new = source.rename(index={source_scen: target_scen}, level="scenario")
+            _new_dfs.append(new)
+            print(f"  Fallback: copied regional data from '{source_scen}' -> '{target_scen}'")
+        if target_scen not in scenarios_complete_global.pix.unique("scenario"):
+            source_glob = scenarios_complete_global.loc[pix.ismatch(scenario=source_scen)]
+            if not source_glob.empty:
+                new_glob = source_glob.rename(index={source_scen: target_scen}, level="scenario")
+                _new_dfs_glob.append(new_glob)
+                print(f"  Fallback: copied global data from '{source_scen}' -> '{target_scen}'")
+
+    if _new_dfs:
+        scenarios_regional = pd.concat([scenarios_regional] + _new_dfs)
+    if _new_dfs_glob:
+        scenarios_complete_global = pd.concat([scenarios_complete_global] + _new_dfs_glob)
+        print(f"Hello")
+print(scenarios_regional.pix.unique("scenario"))
+print(scenarios_complete_global.pix.unique("scenario"))
+#sys.exit(4)
+
+# %%
+unique_model_scenario_pairs = scenarios_complete_global.index.droplevel(
+    ["region", "variable", "unit", "workflow"]
+).drop_duplicates()
+
+# Filter to only model/scenario pairs used by this config's markers
+print(unique_model_scenario_pairs)
+_config_pairs = {(v[1], v[0]) for v in cfg.scenario_model_match.values()}
+unique_model_scenario_pairs = unique_model_scenario_pairs[
+    unique_model_scenario_pairs.isin(_config_pairs)
+]
+print(_config_pairs)
+print(f"Number of unique model-scenario pairs: {len(unique_model_scenario_pairs)}")
+print("\nUnique model-scenario pairs:")
+for i, (model, scenario) in enumerate(unique_model_scenario_pairs, 1):
+    print(f"{i:2d}. {model} | {scenario}")
+
+#sys.exit(4)
 # %% [markdown]
 # Marker definitions
 
@@ -351,9 +397,27 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
 # Set this to true if running for the first time to generate CSVs
 # Otherwise you can set to false to speed-up by not running throuhg
 # all the non-CO2 and afolu extensions again
-do_and_write_to_csv = True
-if do_and_write_to_csv:
+do_and_write_to_csv = False
+if read_non_co2_from_csv:
+    print("Reading non-CO2 extensions from CSV...")
+    do_and_write_to_csv = False
+    df_all = scenarios_complete_global.loc[~pix.ismatch(variable="**CO2**")]
+elif do_and_write_to_csv:
     df_all = do_all_non_co2_extensions(scenarios_complete_global, history)
+
+else:
+    print("Reading non-CO2 extensions from CSV in folder...")
+    df_all = pd.read_csv("first_draft_extended_nonCO2_all.csv", index_col=[0, 1, 2, 3, 4, 5])
+#sys.exit(4)         
+
+if read_afolu_from_csv:
+    do_and_write_to_csv = False
+    afolu_dfs = {}
+    afolu_dfs["linear_afolu_rampdown"] = scenarios_complete_global.loc[pix.ismatch(variable="**CO2|AFOLU**")]
+    # df_compare = pd.read_csv("first_draft_extended_afolu_linear_afolu_rampdown.csv", index_col=[0, 1, 2, 3, 4])
+    #print(afolu_dfs["linear_afolu_rampdown"].shape, df_compare.shape)
+    #print(afolu_dfs["linear_afolu_rampdown"].head(), df_compare.head())
+elif do_and_write_to_csv:
     afolu_dfs = calculate_afolu_extensions(
         scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots
     )
@@ -361,18 +425,14 @@ if do_and_write_to_csv:
         df_all.to_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
             afolu_df.to_csv(OUTPUTS_DIR / f"first_draft_extended_afolu_{name}.csv")
-
-
-# %%
-if not do_and_write_to_csv:
-    df_all = pd.read_csv("first_draft_extended_nonCO2_all.csv", index_col=[0, 1, 2, 3, 4, 5])
+else:
     afolu_dfs = {}
     for afolu_file in glob.glob("first_draft_extended_afolu_linear*.csv"):
         print("Reading " + afolu_file)
         name = afolu_file.split("first_draft_extended_afolu_")[-1].split(".csv")[0]
 
         afolu_dfs[name] = pd.read_csv(afolu_file, index_col=[0, 1, 2, 3, 4])
-
+#sys.exit(4)
 # %% [markdown]
 # # Total CO2 Storyline dictionaries
 # These dictionaries define how total CO2 emissions evolve from 2023 to 2500
@@ -418,20 +478,44 @@ df_afolu = afolu_dfs[name]
 temp_list_for_new_data = []
 for s, meta in scenario_model_match.items():
     print(f"Processing fossil CO2 to match storyline and AFOLU for {s}")
-    co2_fossil = interpolate_to_annual(
-        scenarios_complete_global.loc[
-            pix.ismatch(
-                variable="Emissions|CO2|Energy and Industrial Processes",
-                model=meta[1],
-                scenario=meta[0],
-            )
-        ]
-    )
+    if meta[0] in df_afolu.pix.unique("scenario"):
+        # Standard case:
+        co2_fossil = interpolate_to_annual(
+            scenarios_complete_global.loc[
+                pix.ismatch(
+                    variable="Emissions|CO2|Energy and Industrial Processes",
+                    model=meta[1],
+                    scenario=meta[0],
+                    workflow="for_scms",
+                )
+            ]
+        )
+    else:
+        # Hard overwrite to make Frankenstein work:
+        co2_fossil = interpolate_to_annual(
+            scenarios_complete_global.loc[
+                pix.ismatch(
+                    variable="Emissions|CO2|Energy and Industrial Processes",
+                    model=meta[1],
+                    workflow="for_scms",
+                )
+            ]
+        )       
 
     # co2_afolu = df_afolu.loc[(df_afolu["model"] == meta[1]) & (df_afolu["scenario"] == meta[0])]
     co2_afolu = df_afolu.loc[pix.ismatch(model=meta[1], scenario=meta[0])]
+    print(df_afolu.pix.unique("model"))
+    print(df_afolu.pix.unique("scenario"))
+    print("meta: ", meta)
+    if meta[0] not in df_afolu.pix.unique("scenario"):
+        # Hard overwrite to make Frankenstein work:
+        co2_afolu = df_afolu.loc[pix.ismatch(model=meta[1])]
+    if co2_afolu.shape[0] > 1:
+        print("Hello")
+        co2_afolu = co2_afolu.iloc[0:1]  # Take the first row if multiple exist
 
-
+    print(co2_fossil.shape, co2_afolu.shape)
+    #sys.exit(4)
     df_total = process_single_scenario_storyline_wrapper(
         co2_fossil, 
         co2_afolu, 
@@ -555,12 +639,20 @@ years_extension = np.arange(SCENARIO_END_YEAR + 1, EXTENSIONS_END_YEAR + 1)
 if co2_gross_positive is not None:
     # Initialize extension DataFrames with all new columns at once
     # Create empty DataFrames for the extension years with same index
-    extension_cols_gross_pos = pd.DataFrame(np.nan, index=co2_gross_positive.index, columns=years_extension)
-    extension_cols_cdr = pd.DataFrame(np.nan, index=global_cdr.index, columns=years_extension)
+    if co2_gross_positive.loc[:,years_extension].shape[1] == len(years_extension):
+        print("Extension columns already exist in co2_gross_positive, skipping creation.")
+        co2_gross_positive_ext = co2_gross_positive
+    else:
+        extension_cols_gross_pos = pd.DataFrame(np.nan, index=co2_gross_positive.index, columns=years_extension)
+        co2_gross_positive_ext = pd.concat([co2_gross_positive, extension_cols_gross_pos], axis=1)
+    if global_cdr.loc[:,years_extension].shape[1] == len(years_extension):
+        print("Extension columns already exist in global_cdr, skipping creation.")
+        global_cdr_ext = global_cdr
+    else:
+        extension_cols_cdr = pd.DataFrame(np.nan, index=global_cdr.index, columns=years_extension)
 
-    # Concatenate original data with extension columns
-    co2_gross_positive_ext = pd.concat([co2_gross_positive, extension_cols_gross_pos], axis=1)
-    global_cdr_ext = pd.concat([global_cdr, extension_cols_cdr], axis=1)
+        # Concatenate original data with extension columns
+        global_cdr_ext = pd.concat([global_cdr, extension_cols_cdr], axis=1)
 else:
     co2_gross_positive_ext = None
     global_cdr_ext = None
@@ -568,6 +660,7 @@ else:
 
 print(f"Extension setup complete. Extending from {SCENARIO_END_YEAR + 1} to {EXTENSIONS_END_YEAR}")
 print(f"Number of extension years: {len(years_extension)}")
+
 
 if co2_gross_positive is not None:
     # Map removal_dictionary keys to actual scenario names
@@ -605,6 +698,8 @@ if co2_gross_positive is not None:
                     unit,
                 )
             ]
+            if fossil_row.shape[1] > 1:
+                fossil_row = fossil_row.iloc[0]  # Take the first row if multiple exist
         except KeyError:
             print(f"No fossil extension for {model}, {scenario}, skipping.")
             continue
@@ -637,6 +732,9 @@ if co2_gross_positive is not None:
             )
             # Calculate CDR as residual to match fossil trajectory
             fossil_vals = fossil_row[years_extension].values
+            print(fossil_vals.shape, gross_pos_extension.shape)
+            print(fossil_row.head())
+            #sys.exit(4)
             cdr_extension = fossil_vals - gross_pos_extension
 
         else:
@@ -644,7 +742,16 @@ if co2_gross_positive is not None:
             continue
 
         # Apply extensions to DataFrames using vectorized assignment
+        print(co2_gross_positive_ext.loc[idx, years_extension].shape)
+        print(co2_gross_positive_ext.head())
+        print(gross_pos_extension.shape)
+        print(idx)
+        print(years_extension)
+        print(co2_gross_positive_ext.loc[idx, years_extension])
         co2_gross_positive_ext.loc[idx, years_extension] = gross_pos_extension
+        print(cdr_extension.shape)
+        print(global_cdr_ext.loc[cdr_idx, years_extension].shape)
+        print(global_cdr_ext.head())
         global_cdr_ext.loc[cdr_idx, years_extension] = cdr_extension
 
         processed_count += 1
@@ -738,7 +845,7 @@ if make_plots and co2_gross_positive_ext is not None:
             )
 
             # Add vertical line at 2023 (historical/future boundary)
-            ax.axvline(x=2023, color="red", linestyle="--", alpha=0.7, linewidth=1)
+            ax.axvline(x=FUTURE_START_YEAR, color="red", linestyle="--", alpha=0.7, linewidth=1)
 
             # Add horizontal line at zero
             ax.axhline(y=0, color="black", linestyle="-", alpha=0.3, linewidth=0.5)
@@ -879,7 +986,9 @@ _merge_dict = {
 }
 # Filter out None entries (e.g. when CDR data is unavailable)
 _merge_dict = {k: v for k, v in _merge_dict.items() if v is not None}
-df_everything = fix_up_and_concatenate_extensions(_merge_dict)
+for item in _merge_dict:
+    print(f"{item}: {type(_merge_dict[item])}, shape: {_merge_dict[item].shape}")
+df_everything = fix_up_and_concatenate_extensions(_merge_dict, startyr = FUTURE_START_YEAR)
 print(df_everything.head())
 print(f"✅ Successfully merged all DataFrames! Shape: {df_everything.shape}")
 print(df_everything.shape)
@@ -1010,8 +1119,9 @@ print(continuous_timeseries_extended.index.names)
 output_file = OUTPUTS_DIR / "extended_scenarios_1750_2500.csv"
 continuous_timeseries_extended.to_csv(output_file)
 print(f"✅ Saved extended scenarios to {output_file}")
-
-
+#sys.exit(4)
+print(df_everything.pix.unique("scenario"))
+print(df_everything.shape)
 # %%
 # Simple CSV output
 if dump_csvs:

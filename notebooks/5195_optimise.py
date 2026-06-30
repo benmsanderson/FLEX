@@ -40,7 +40,8 @@ from flex.optimise import (
 )
 
 # %% tags=["parameters"]
-config_name = "WIEMIP"
+#config_name = "WIEMIP"
+config_name = "vl-frankenstein"
 n_jobs = 1  # Number of parallel jobs: 1=sequential, >1=parallel, -1=all cores (capped at 20)
 
 # %%
@@ -158,6 +159,7 @@ else:
         print(f"\n{'='*60}")
         print(f"Optimizing: {marker}")
         print(f"{'='*60}")
+
 
         result = optimize_scenario(
             cfg,

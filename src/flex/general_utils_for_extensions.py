@@ -199,7 +199,7 @@ def add_workflow_level_to_index(df: pd.DataFrame, workflow="for_scms") -> pd.Dat
     return df_reset.set_index(index_cols)
 
 
-def fix_up_and_concatenate_extensions(extended_dfs_dict: dict) -> pd.DataFrame:
+def fix_up_and_concatenate_extensions(extended_dfs_dict: dict, startyr:int =2023) -> pd.DataFrame:
     """
     Fix up and concatenate extended DataFrames from different components.
 
@@ -231,7 +231,7 @@ def fix_up_and_concatenate_extensions(extended_dfs_dict: dict) -> pd.DataFrame:
             df_fixed = df.copy()
         if "workflow" not in df_fixed.index.names:
             df_fixed = add_workflow_level_to_index(df_fixed)
-        df_fixed = standardize_year_columns(df_fixed)
+        df_fixed = standardize_year_columns(df_fixed, startyr=startyr)
         fixed_dfs.append(df_fixed)
 
     concatenated_df = pix.concat(fixed_dfs)

@@ -672,6 +672,8 @@ def optimize_scenario(
     # (LN-CF uses LN's base data)
     source_marker = None
     for m, info in cfg.scenario_model_match.items():
+        print(f"Checking {m}: {info} against {base_scenario} and {cfg.scenario_model_match[marker][1]}")
+        print(marker, base_scenario, cfg.scenario_model_match[marker][1])
         if m != marker and info[0] == base_scenario and info[1] == cfg.scenario_model_match[marker][1]:
             source_marker = m
             break

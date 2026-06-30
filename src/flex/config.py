@@ -30,15 +30,20 @@ class FlexConfig:
     scenario_end_year: int
     extensions_end_year: int
 
-    # Flags
-    make_plots: bool
-    dump_csvs: bool
+
+
 
     # The four core configuration dicts (in notebook-compatible format)
     scenario_model_match: dict[str, list]
     fossil_evolution_dictionary: dict[str, list]
     removal_dictionary: dict[str, list]
     component_global_targets: dict[str, dict]
+
+    # Flags
+    make_plots: bool = False
+    dump_csvs: bool  = False
+    read_non_co2_from_csv: bool = False
+    read_afolu_from_csv: bool = False
 
     # Optimization settings (empty dict if no optimization configured)
     optimization: dict[str, dict] = field(default_factory=dict)
@@ -179,8 +184,10 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         scenario_end_year=raw["time"]["scenario_end_year"],
         extensions_end_year=raw["time"]["extensions_end_year"],
         # Flags
-        make_plots=raw["flags"]["make_plots"],
-        dump_csvs=raw["flags"]["dump_csvs"],
+        make_plots=raw["flags"].get("make_plots", False),
+        dump_csvs=raw["flags"].get("dump_csvs", False),
+        read_non_co2_from_csv=raw["flags"].get("read_non_co2_from_csv", False),
+        read_afolu_from_csv=raw["flags"].get("read_afolu_from_csv", False),
         # Core dicts (converted to notebook-compatible format)
         scenario_model_match=_convert_scenario_model_match(raw["scenario_model_match"]),
         fossil_evolution_dictionary=_convert_fossil_evolution(raw["fossil_evolution"]),

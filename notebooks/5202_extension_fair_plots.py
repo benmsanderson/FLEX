@@ -37,7 +37,7 @@ import pandas as pd
 from flex.config import load_config
 
 # %% tags=["parameters"]
-config_name = "scenariomip_default"
+config_name = "vl-frankenstein"
 
 # --- Ensemble configuration ---
 # %%

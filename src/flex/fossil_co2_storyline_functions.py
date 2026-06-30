@@ -397,8 +397,23 @@ def extend_co2_for_scen_storyline(  # noqa: PLR0913
     extended_years = np.arange(start, end + 1)
     co2_fossil_extend = np.zeros(len(extended_years))
     print(df_fossil.shape)
-    co2_fossil_extend[: scenario_end + 1 - start] = df_fossil.loc[f"{start}" :, :].to_numpy().flatten()
-    co2_total_extend = co2_fossil_extend + df_extended_afolu.loc[:, f"{start}" :].to_numpy().flatten()
+    print(df_fossil)
+    print(extended_years)
+    print(start)
+    print(df_fossil.loc[:, :].to_numpy()[0,:scenario_end + 1 -start].shape)
+    try:
+        co2_fossil_extend[: scenario_end + 1 - start] = df_fossil.loc[f"{start}" :, :].to_numpy().flatten()
+    except ValueError as e:
+        print(f"Error while assigning fossil CO2 emissions: {e}")
+        co2_fossil_extend[: scenario_end + 1 - start] = df_fossil.loc[:, :].to_numpy()[0,:scenario_end + 1 -start].flatten()   
+    
+    print(df_extended_afolu.shape)
+    print(df_extended_afolu)
+    try:    
+        co2_total_extend = co2_fossil_extend + df_extended_afolu.loc[:, f"{start}" :].to_numpy().flatten()
+    except ValueError as e:
+        print(f"Error while calculating total CO2 emissions: {e}")
+        co2_total_extend = co2_fossil_extend + df_extended_afolu.loc[:, :].to_numpy().flatten()
 
     storyline_type = storyline[0]
     if storyline_type == "CS":

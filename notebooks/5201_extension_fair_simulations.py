@@ -39,7 +39,7 @@ from flex.config import load_config, DATA_DIR
 from flex.optimise import _get_conc_driven_species, _fill_concentrations_from_file
 
 # %% tags=["parameters"]
-config_name = "scenariomip_default"
+config_name = "vl-frankenstein"
 
 # Set True to run the full ~1000-member calibrated ensemble
 # (gives proper uncertainty bands but is much slower).
@@ -172,6 +172,12 @@ if forcing_map:
         df_forcing_raw.to_csv(_tmp.name, index=False)
         forcing_path = _tmp.name
 
+print(emissions_csv)
+df = pd.read_csv(emissions_csv)
+print(f"Emissions CSV: {len(df)} rows, {len(df['scenario'].unique())} scenarios")
+print(df.head())
+print(snames)
+print(df['scenario'].unique())
 f.fill_from_csv(
     forcing_file=forcing_path,
     emissions_file=str(emissions_csv),
@@ -263,7 +269,7 @@ initialise(f.ocean_heat_content_change, 0)
 
 # Fill concentration timeseries for concentration-driven species
 if _conc_file is not None and _conc_species:
-    _fill_concentrations_from_file(f, _conc_file, _conc_species)
+    _fill_concentrations_from_file(f, _conc_file, _conc_species, f.scenarios)
 
 f.run()
 

@@ -36,7 +36,7 @@ from flex.optimise import (
 )
 
 # %% tags=["parameters"]
-config_name = "WIEMIP"
+config_name = "vl-frankenstein"
 
 # %%
 cfg = load_config(config_name)
