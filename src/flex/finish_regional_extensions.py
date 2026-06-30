@@ -42,6 +42,10 @@ def extend_regional_for_missing(
             .drop_duplicates()
         )
         for model, scen in unique_meta.to_list():
+            # Skip scenarios with no computed fractions (e.g. fallback-only scenarios
+            # injected via regional_scenario_fallback that are not config markers).
+            if (model, scen) not in fractions_list:
+                continue
             data_regional = scenarios_regional.loc[
                 pix.ismatch(scenario=f"{scen}", model=f"{model}", variable=f"{variable}**")
             ]

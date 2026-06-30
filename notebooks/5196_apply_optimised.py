@@ -28,11 +28,19 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pandas_indexing as pix
 
 from flex.config import load_config, DATA_DIR
 from flex.optimise import (
     modify_emissions_csv,
     setup_fair,
+)
+from flex.regionalize_fossil import (
+    build_global_fossil_extension_df,
+    load_regionalization_inputs,
+    regionalize_fossil_co2,
+    rescale_fossil_splits_to_optimised,
+    write_extended_scenarios_csv,
 )
 
 # %% tags=["parameters"]
@@ -94,6 +102,10 @@ print(f"Base emissions: {base_emissions_csv}")
 
 # %%
 current_csv = base_emissions_csv
+
+# Per-marker optimised global fossil trajectories, captured for the optional
+# regionalisation step below.
+optimised_fossil_global = {}
 
 for marker, result in opt_results.items():
     print(f"\nApplying optimized parameters for: {marker}")
@@ -159,6 +171,17 @@ for marker, result in opt_results.items():
     co2_opt = co2_ffi.copy()
     co2_opt[dep_idx_emis:] = total_co2[dep_idx_emis:] - co2_afolu[dep_idx_emis:]
     
+    # Capture the optimised global fossil trajectory (FaIR mid-year grid) so it
+    # can optionally be regionalised/sectorised after the loop.
+    optimised_fossil_global[marker] = {
+        "co2_opt": co2_opt.copy(),
+        "years": years.copy(),
+        "source_marker": source_marker,
+        "model": cfg.scenario_model_match[marker][1],
+        "base_scenario": base_scenario,
+        "color": cfg.scenario_model_match[marker][2],
+    }
+    
     # Write to emissions CSV
     final_csv = str(OUTPUTS_DIR / "emissions_1750-2500.csv")
     modify_emissions_csv(
@@ -170,6 +193,119 @@ for marker, result in opt_results.items():
     current_csv = final_csv
 
 print(f"\nAll scenarios applied. Augmented CSV: {current_csv}")
+
+# %% [markdown]
+# ## Regionalise / sectorise the optimised counterfactual (optional)
+#
+# When `regionalize_optimised_output` is set, take each optimised global fossil
+# CO2 trajectory and split it back into the original sectors/regions, keeping the
+# non-CO2 and CO2 AFOLU components untouched. This re-uses the same machinery as
+# 5191 via `regionalize_fossil_co2`, producing a regionalised counterfactual
+# extended-scenarios CSV.
+
+# %%
+if cfg.regionalize_optimised_output:
+    print("=== REGIONALISING OPTIMISED COUNTERFACTUAL OUTPUT ===")
+    reg_inputs = load_regionalization_inputs(cfg)
+
+    # Map each base scenario to its removal strategy (NEG/POS) via the markers
+    # that share the scenario and are listed in the removal dictionary. The
+    # optimised -hold markers inherit the strategy of their base scenario.
+    _scenario_strategy = {}
+    for _mk, _info in cfg.scenario_model_match.items():
+        if _mk in cfg.removal_dictionary:
+            _scenario_strategy[_info[0]] = cfg.removal_dictionary[_mk][0]
+
+    _opt_concise = []
+    _opt_full = []
+    _opt_scenario_model_match = {}
+    for marker, data in optimised_fossil_global.items():
+        model = data["model"]
+        base_scenario = data["base_scenario"]
+        color = data["color"]
+        print(f"Regionalising optimised fossil for {marker} ({model} | {base_scenario})")
+
+        # Restrict the (untouched) regional / non-CO2 / AFOLU inputs to this
+        # source model+scenario so only the counterfactual scenario is produced.
+        scenarios_regional_sub = reg_inputs["scenarios_regional"].loc[
+            pix.ismatch(model=model, scenario=base_scenario)
+        ]
+        df_afolu_sub = reg_inputs["df_afolu"].loc[pix.ismatch(model=model, scenario=base_scenario)]
+        df_all_sub = reg_inputs["df_all"].loc[pix.ismatch(model=model, scenario=base_scenario)]
+
+        # Build a global fossil extension dataframe from the optimised trajectory.
+        _years_int = np.arange(int(cfg.future_start_year), int(cfg.extensions_end_year) + 1)
+        _template = pd.DataFrame(
+            np.nan,
+            index=pd.MultiIndex.from_tuples(
+                [(model, base_scenario, "World", "Emissions|CO2|Energy and Industrial Processes", "Mt CO2/yr")],
+                names=["model", "scenario", "region", "variable", "unit"],
+            ),
+            columns=_years_int,
+        )
+        fossil_extension_df = build_global_fossil_extension_df(
+            _template, data["co2_opt"], data["years"]
+        )
+
+        continuous_concise, df_everything_opt = regionalize_fossil_co2(
+            fossil_extension_df,
+            scenarios_regional_sub,
+            df_afolu_sub,
+            df_all_sub,
+            reg_inputs["history"],
+            reg_inputs["fractions_fossil_total"],
+            cfg.removal_dictionary,
+            cfg.scenario_model_match,
+            future_start_year=cfg.future_start_year,
+            scenario_end_year=cfg.scenario_end_year,
+            extensions_end_year=cfg.extensions_end_year,
+            make_plots=False,
+        )
+
+        # Rescale the fossil CO2 splits so the regional/sectoral breakdown
+        # reconciles to the optimised net EIP, using the removal strategy from
+        # the configuration (NEG -> removals absorb the delta; POS -> gross
+        # positive absorbs the delta). Preserves base per-year sector/region
+        # shares.
+        strategy = _scenario_strategy.get(base_scenario)
+        if strategy is None:
+            print(
+                f"  WARNING: no removal strategy found for base scenario "
+                f"{base_scenario!r}; leaving fossil splits unscaled."
+            )
+        else:
+            print(f"  Rescaling fossil splits with '{strategy}' strategy")
+            df_everything_opt = rescale_fossil_splits_to_optimised(df_everything_opt, strategy)
+
+        # Relabel the scenario level to the counterfactual marker so the output
+        # is unambiguous (the base and counterfactual share a long scenario name).
+        continuous_concise = continuous_concise.rename(index={base_scenario: marker}, level="scenario")
+        df_everything_opt = df_everything_opt.rename(index={base_scenario: marker}, level="scenario")
+        _opt_concise.append(continuous_concise)
+        _opt_full.append(df_everything_opt)
+        _opt_scenario_model_match[marker] = (marker, model, color)
+
+    if _opt_concise:
+        continuous_optimised = pd.concat(_opt_concise)
+        out_file = write_extended_scenarios_csv(
+            continuous_optimised,
+            OUTPUTS_DIR,
+            _opt_scenario_model_match,
+            filename="extended_scenarios_optimised_1750_2500.csv",
+            continuous_filename="continuous_emissions_timeseries_optimised_1750_2500.csv",
+            fair_filename="emissions_optimised_1750-2500.csv",
+        )
+        print(f"Wrote regionalised (World) optimised output: {out_file}")
+
+        # Full regional/sectoral breakdown -- the optimised analogue of 5191's
+        # extensions_full_emissions_timeseries_2023_2500.csv. This is the file
+        # that actually carries the per-region/per-sector split.
+        df_everything_optimised = pd.concat(_opt_full)
+        full_file = OUTPUTS_DIR / "extensions_full_emissions_timeseries_optimised_2023_2500.csv"
+        df_everything_optimised.to_csv(full_file)
+        print(f"Wrote full regionalised optimised extensions: {full_file}")
+else:
+    print("regionalize_optimised_output is disabled; skipping regionalisation.")
 
 # %% [markdown]
 # ## Verification: run all scenarios through FaIR

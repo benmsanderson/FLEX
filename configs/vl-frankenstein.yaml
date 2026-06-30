@@ -25,6 +25,9 @@ flags:
   dump_csvs: True
   read_non_co2_from_csv: True
   read_afolu_from_csv: True
+  # Produce a regionalised/sectorised extended_scenarios CSV for the
+  # optimised counterfactual markers (run in 5196 after optimisation).
+  regionalize_optimised_output: True
 
 # --- Scenario-to-model mapping ---
 # Each marker maps to: [scenario_name, model_name, plot_color]

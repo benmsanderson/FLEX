@@ -44,6 +44,10 @@ class FlexConfig:
     dump_csvs: bool  = False
     read_non_co2_from_csv: bool = False
     read_afolu_from_csv: bool = False
+    # When True, 5196 regionalises/sectorises the optimised counterfactual
+    # fossil CO2 and writes a full extended_scenarios CSV alongside the
+    # global FaIR-format output.
+    regionalize_optimised_output: bool = False
 
     # Optimization settings (empty dict if no optimization configured)
     optimization: dict[str, dict] = field(default_factory=dict)
@@ -188,6 +192,7 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         dump_csvs=raw["flags"].get("dump_csvs", False),
         read_non_co2_from_csv=raw["flags"].get("read_non_co2_from_csv", False),
         read_afolu_from_csv=raw["flags"].get("read_afolu_from_csv", False),
+        regionalize_optimised_output=raw["flags"].get("regionalize_optimised_output", False),
         # Core dicts (converted to notebook-compatible format)
         scenario_model_match=_convert_scenario_model_match(raw["scenario_model_match"]),
         fossil_evolution_dictionary=_convert_fossil_evolution(raw["fossil_evolution"]),
