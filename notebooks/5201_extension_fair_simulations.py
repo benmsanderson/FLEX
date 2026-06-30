@@ -510,7 +510,7 @@ else:
 # %%
 # Export emissions by species (first config for diagnostic plots)
 print("Exporting emissions by species...")
-emissions_species = ["CO2 FFI", "CO2 AFOLU", "CH4", "Sulfur"]
+emissions_species = ["CO2 FFI", "CO2 AFOLU", "CH4", "Sulfur", "BC", "OC"]
 emis_species_list = []
 
 for scenario in f.scenarios:
