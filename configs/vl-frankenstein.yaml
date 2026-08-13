@@ -127,7 +127,13 @@ forcing_scenario:
 # (FFI + AFOLU) remains emissions-driven.
 # Path is relative to the data/ directory.
 # concentrations_file: "path/to/concentrations_1750-2500.csv"
-concentrations_file: fair-inputs/concentrations_1750-2500.csv
+#
+# Single-scenario (SSP1 Very Low Emissions) extract of the published
+# concentration master. The loader selects concentrations by a `scenario`
+# column; the multi-scenario master (`concentrations_1750-2500.csv`, 7
+# `long_scenario` values) cannot be resolved to VL and breaks the run, so we
+# point at the VL-only extract, which reproduces the published output exactly.
+concentrations_file: fair-inputs/concentrations_1750-2500_VL.csv
 
 # --- Optimization settings ---
 # The -hold variants are optimized to hold FaIR median temperature
@@ -139,6 +145,24 @@ concentrations_file: fair-inputs/concentrations_1750-2500.csv
 optimization:
   VL-fossil-frankenstein-hold:
     enabled: true
+    # --- Pinned published parameters (optimizer bypassed) ---
+    # The published -hold optimization FAILED: every FaIR evaluation raised
+    # ("Scenario '_opt_0' not found in concentrations file"), so
+    # differential_evolution returned its seed-42 initial guess unchanged
+    # (final_cost=1e6). These values reproduce the published output exactly and
+    # are pinned here because the branch's optimiser now converges elsewhere.
+    # This scenario is NOT the result of a successful optimisation.
+    fixed_result:
+      exp_targ: 1517.6445501577082
+      sig_start: 2040.71118898707
+      sig_end: 2116.7881643031055
+      departure_year: 2032
+      target_temp: 1.6989185926711297
+      final_cost: 1000000.0
+      success: true
+      note: "Published seed-42 fallback from failed optimisation (2026-06-30); pinned for reproducibility, not a true optimum."
+    # Optimiser settings below are retained for provenance but unused while
+    # fixed_result is present. Remove fixed_result to re-run the optimiser.
     target_year: peak
     departure_year: peak
     departure_offset: -15

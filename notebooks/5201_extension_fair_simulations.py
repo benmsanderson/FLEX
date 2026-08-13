@@ -23,7 +23,6 @@
 
 # %%
 import os
-import sys
 import warnings
 from pathlib import Path
 
@@ -40,13 +39,13 @@ from flex.config import load_config, DATA_DIR
 from flex.optimise import _get_conc_driven_species, _fill_concentrations_from_file
 
 # %% tags=["parameters"]
-config_name = "scenariomip_default"#"vl-frankenstein"
+config_name = "vl-frankenstein"
 
 # Set True to run the full ~1000-member calibrated ensemble
 # (gives proper uncertainty bands but is much slower).
 # When False, uses the same n_configs as the optimiser (from YAML config).
-#full_ensemble = True
-full_ensemble = False
+full_ensemble = True
+
 # --- Ensemble configuration ---
 # %%
 cfg = load_config(config_name)
@@ -54,7 +53,6 @@ OUTPUTS_DIR = cfg.outputs_dir
 print(f"Config: {cfg.name}")
 print(f"Scenarios: {cfg.markers}")
 print(f"Outputs: {OUTPUTS_DIR}")
-#sys.exit(4)  # --- IGNORE ---
 
 # %%
 f = FAIR()
@@ -65,12 +63,11 @@ if not full_ensemble:
     _opt_cfgs = cfg.optimization or {}
     n_fair_configs = max(
         (v.get("n_configs", 1) for v in _opt_cfgs.values()),
-        default=100,
+        default=1,
     )
 else:
     n_fair_configs = None  # use all
 print(f"Ensemble: {'full' if full_ensemble else f'{n_fair_configs} config(s)'}")
-#sys.exit(4)  # --- IGNORE ---
 # %%
 snames = cfg.markers
 
@@ -330,7 +327,7 @@ print(f"  Saved forcing data: {len(forcing_summary)} rows")
 
 # Export key GHG concentrations (CO2, CH4, N2O)
 print("Exporting concentration data...")
-key_species = ['CO2', 'CH4', 'N2O', "Equivalent effective stratospheric chlorine"]
+key_species = ['CO2', 'CH4', 'N2O']
 conc_df_list = []
 for scenario in f.scenarios:
     for species in key_species:
@@ -396,7 +393,7 @@ print(f"  File size estimate: ~{len(ecdf_data) * 80 / 1024:.1f} KB")
 # %%
 # Export emissions by species (first config for diagnostic plots)
 print("Exporting emissions by species...")
-emissions_species = ['CO2 FFI', 'CO2 AFOLU', 'CH4', 'Sulfur', 'VOC', 'CO', 'NOx']
+emissions_species = ['CO2 FFI', 'CO2 AFOLU', 'CH4', 'Sulfur']
 emis_species_list = []
 
 for scenario in f.scenarios:
@@ -412,7 +409,7 @@ for scenario in f.scenarios:
 emis_species_df = pd.concat(emis_species_list, ignore_index=True)
 emis_species_df.to_csv(OUTPUTS_DIR / 'fair_emissions_by_species.csv', index=False)
 print(f"  Saved species emissions: {len(emis_species_df)} rows")
-sys.exit(4)
+
 # Export total forcing (forcing_sum)
 print("Exporting total forcing...")
 forcing_sum_list = []

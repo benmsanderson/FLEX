@@ -165,6 +165,19 @@ non_co2_targets:
 optimization:
   HL-CF:
     enabled: true
+    # Pinned published parameters (optimizer bypassed). HL-CF's published run
+    # FAILED (final_cost=1e6): differential_evolution fell back to its seed-42
+    # initial guess. Pinned to reproduce the published output exactly; NOT a
+    # true optimum.
+    fixed_result:
+      exp_targ: 8035.289100315416
+      sig_start: 2107.6508492764788
+      sig_end: 2200.7289858186327
+      departure_year: 2080
+      target_temp: 2.825050895269616
+      final_cost: 1000000.0
+      success: true
+      note: "Published seed-42 fallback from failed optimisation; pinned for reproducibility, not a true optimum."
     target_year: peak
     departure_year: 2073
     departure_offset: -15
@@ -177,6 +190,18 @@ optimization:
       sig_end: [2100, 3000]
   ML-CF:
     enabled: true
+    # Pinned published parameters (optimizer bypassed). Published run was a real
+    # but unconverged optimisation (final_cost=31.88, "max iterations exceeded").
+    # Pinned to reproduce the published output exactly.
+    fixed_result:
+      exp_targ: -655.6391087097682
+      sig_start: 2101.879838660313
+      sig_end: 2154.201395270703
+      departure_year: 2090
+      target_temp: 2.269308148086313
+      final_cost: 31.876899502891458
+      success: false
+      note: "Published (unconverged) optimiser result; pinned for reproducibility."
     target_year: peak
     departure_year: 2060
     departure_offset: -15
@@ -189,6 +214,18 @@ optimization:
       sig_end: [2100, 3000]
   VL-CF:
     enabled: true
+    # Pinned published parameters (optimizer bypassed). Published run was a real
+    # but unconverged optimisation (final_cost=26.20, "max iterations exceeded").
+    # Pinned to reproduce the published output exactly.
+    fixed_result:
+      exp_targ: -3374.0185875949123
+      sig_start: 2067.868405220457
+      sig_end: 2068.699199748727
+      departure_year: 2050
+      target_temp: 1.7111679842615657
+      final_cost: 26.204053277061746
+      success: false
+      note: "Published (unconverged) optimiser result; pinned for reproducibility."
     target_year: peak
     departure_year: peak
     departure_offset: -15

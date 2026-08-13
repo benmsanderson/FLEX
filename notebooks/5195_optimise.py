@@ -95,18 +95,45 @@ print(f"Scenarios in CSV: {sorted(df_check['scenario'].unique())}")
 # %%
 timebounds = np.arange(1750, 2501, 1.0)
 
-# Collect markers to optimize
+# Collect markers to optimize. A marker carrying a `fixed_result` block in its
+# optimization config bypasses the optimizer entirely: its parameters are pinned
+# verbatim. This is used to reconstruct published runs whose optimizer output is
+# not reproducible (e.g. a failed run that fell back to its seed initial guess).
 markers_to_optimize = []
+fixed_markers: dict[str, dict] = {}
 for marker, opt_settings in cfg.optimization.items():
-    if opt_settings.get("enabled", True):
-        markers_to_optimize.append(marker)
-    else:
+    if not opt_settings.get("enabled", True):
         print(f"Skipping {marker} (disabled)")
+        continue
+    if opt_settings.get("fixed_result"):
+        fixed_markers[marker] = opt_settings["fixed_result"]
+    else:
+        markers_to_optimize.append(marker)
 
 print(f"\nWill optimize {len(markers_to_optimize)} marker(s): {markers_to_optimize}")
+if fixed_markers:
+    print(f"Using pinned fixed_result for {len(fixed_markers)} marker(s): {list(fixed_markers)}")
 
 # Run optimizations in parallel or serial mode
 opt_results: dict[str, dict] = {}
+
+# Seed results with any pinned (fixed_result) markers — no optimizer/FaIR run.
+for marker, fr in fixed_markers.items():
+    print(f"\n{'='*60}")
+    print(f"Pinned parameters (fixed_result) for: {marker} — optimizer bypassed")
+    print(f"{'='*60}")
+    opt_results[marker] = {
+        "exp_targ": float(fr["exp_targ"]),
+        "sig_start": float(fr["sig_start"]),
+        "sig_end": float(fr["sig_end"]),
+        "target_temp": float(fr.get("target_temp", float("nan"))),
+        "departure_year": int(fr["departure_year"]),
+        "final_cost": float(fr.get("final_cost", float("nan"))),
+        "success": bool(fr.get("success", True)),
+        "message": str(fr.get("note", "pinned fixed_result (optimizer bypassed)")),
+    }
+    for k in ("exp_targ", "sig_start", "sig_end", "departure_year"):
+        print(f"  {k} = {opt_results[marker][k]}")
 
 if n_jobs_effective > 1 and len(markers_to_optimize) > 1:
     # PARALLEL MODE
