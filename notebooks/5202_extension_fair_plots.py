@@ -212,7 +212,7 @@ print("✓ Saved: temperature_emis.png and temperature_emis.pdf")
 #
 # 8-panel diagnostic plot showing:
 # - CO2 FFI emissions
-# - CO2 AFOLU emissions  
+# - Total CO2 emissions (FFI + AFOLU)
 # - CH4 emissions
 # - Cumulative CO2 emissions
 # - Sulfur emissions
@@ -242,18 +242,23 @@ ax[0, 0].axhline(0, color='k', lw=0.5, ls=':')
 ax[0, 0].grid()
 ax[0, 0].legend(fontsize=8)
 
-# Panel 1: CO2 AFOLU emissions  
+# Panel 1: Total CO2 emissions (FFI + AFOLU)
 for scenario, meta in scenario_model_match.items():
-    scenario_data = emis_species_df[
-        (emis_species_df['Scenario'] == scenario) & 
+    ffi = emis_species_df[
+        (emis_species_df['Scenario'] == scenario) &
+        (emis_species_df['Species'] == 'CO2 FFI')
+    ].set_index('Year')['Emissions']
+    afolu = emis_species_df[
+        (emis_species_df['Scenario'] == scenario) &
         (emis_species_df['Species'] == 'CO2 AFOLU')
-    ]
+    ].set_index('Year')['Emissions']
+    total = ffi.add(afolu, fill_value=0.0)
     ax[0, 1].plot(
-        scenario_data['Year'],
-        scenario_data['Emissions'].values / 1e6,
+        total.index,
+        total.values / 1e6,
         color=meta[2]
     )
-ax[0, 1].set_ylabel("CO$_2$ AFOLU emissions,\\nGtCO$_2$ yr$^{-1}$")
+ax[0, 1].set_ylabel("Total CO$_2$ emissions,\\nGtCO$_2$ yr$^{-1}$")
 ax[0, 1].set_xlim(1750, 2500)
 ax[0, 1].axhline(0, color='k', lw=0.5, ls=':')
 ax[0, 1].grid()

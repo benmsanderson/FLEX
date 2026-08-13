@@ -523,11 +523,18 @@ def _batch_objective_plateau(
     base_co2_afolu: np.ndarray,
     years: np.ndarray,
     year_cols: list[str],
+    overshoot_weight: float = 1.0,
 ) -> np.ndarray | float:
     """Vectorized objective: evaluate N candidates in one FaIR run.
 
     Accepts ``(D, N)`` from ``differential_evolution(vectorized=True)``
     or ``(D,)`` during the polish step.
+
+    ``overshoot_weight`` multiplies the squared deviation on years where the
+    median temperature *exceeds* the target (T > target_temp), leaving the
+    shortfall (T < target) at weight 1. Values >> 1 drive a no-overshoot hold:
+    the optimizer keeps the median at or just below the target. The symmetric
+    default (1.0) reproduces the original least-squares behaviour.
     """
     if x.ndim == 1:
         x = x.reshape(-1, 1)
@@ -549,6 +556,7 @@ def _batch_objective_plateau(
                 base_co2_afolu=base_co2_afolu,
                 years=years,
                 year_cols=year_cols,
+                overshoot_weight=overshoot_weight,
             )[0]
         )
 
@@ -614,12 +622,16 @@ def _batch_objective_plateau(
     for j, scen_name, _ in valid:
         temp = f.temperature.sel(scenario=scen_name, layer=0).median(dim="config").values
         post_dep = temp[dep_bound_idx:]
-        costs[j] = np.sum((post_dep - target_temp) ** 2)
+        dev = post_dep - target_temp
+        over = np.clip(dev, 0.0, None)   # exceedance (T > target)
+        under = np.clip(-dev, 0.0, None)  # shortfall (T < target)
+        costs[j] = np.sum(overshoot_weight * over**2 + under**2)
 
         params = x[:, j]
         all_p = dict(zip(optimize_params, params)) | fixed_params
         opt_str = ", ".join(f"{k}={all_p[k]:.0f}" for k in optimize_params)
-        print(f"  {opt_str} -> cost={costs[j]:.4f}")
+        max_over = float(over.max()) if over.size else 0.0
+        print(f"  {opt_str} -> cost={costs[j]:.4f} (max overshoot={max_over:.4f})")
 
     return costs
 
@@ -666,6 +678,11 @@ def optimize_scenario(
     target_year_cfg = opt_settings.get("target_year", "peak")
     departure_offset = opt_settings.get("departure_offset", 0)
     bounds_cfg = opt_settings["bounds"]
+    # Asymmetric penalty: weight on exceedance (T > target). >>1 => no-overshoot.
+    overshoot_weight = float(opt_settings.get("overshoot_weight", 1.0))
+    # Local L-BFGS-B polish after differential evolution. Slow with
+    # concentration-driven FaIR; disable for fast iteration.
+    do_polish = bool(opt_settings.get("polish", True))
 
     base_scenario = cfg.scenario_model_match[marker][0]
     # Find the source marker that shares the same scenario/model
@@ -705,6 +722,16 @@ def optimize_scenario(
     target_temp = temp_baseline[np.searchsorted(timebounds, target_year)]
     print(f"Peak temperature year: {peak_year}")
     print(f"Target year: {target_year}, target temperature: {target_temp:.4f} K")
+
+    # Absolute temperature target overrides the baseline-derived value. Use this
+    # to hold at a level *below* the baseline peak (e.g. a no-overshoot 1.5 C
+    # hold), which cannot be expressed as a year on the baseline trajectory.
+    # NOTE: FaIR temperature is an anomaly vs 1750; "1.5 C above 1850-1900"
+    # corresponds to ~1.5795 K here (1850-1900 mean ~= 0.0795 K).
+    target_temp_abs = opt_settings.get("target_temp_abs", None)
+    if target_temp_abs is not None:
+        target_temp = float(target_temp_abs)
+        print(f"Overriding with absolute target temperature: {target_temp:.4f} K")
 
     # Determine departure year (when trajectory diverges from source)
     if departure_year_cfg == "peak":
@@ -778,6 +805,7 @@ def optimize_scenario(
             base_co2_afolu=base_co2_afolu_vals,
             years=years_arr,
             year_cols=year_cols,
+            overshoot_weight=overshoot_weight,
         ),
         bounds=bounds,
         seed=42,
@@ -785,7 +813,7 @@ def optimize_scenario(
         tol=0.01,
         atol=0.5,
         popsize=5,
-        polish=True,
+        polish=do_polish,
         disp=True,
         vectorized=True,
     )

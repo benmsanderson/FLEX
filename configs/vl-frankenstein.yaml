@@ -40,6 +40,18 @@ scenario_model_match:
     scenario: "SSP1 - Very Low Emissions Ref1p5"
     model: "REMIND-MAgPIE 3.5-4.11"
     color: "#9C27B0"
+  VL-fossil-frankenstein-1p5:
+    scenario: "SSP1 - Very Low Emissions Ref1p5"
+    model: "REMIND-MAgPIE 3.5-4.11"
+    color: "#00A651"
+  VL-fossil-frankenstein-1p6:
+    scenario: "SSP1 - Very Low Emissions Ref1p5"
+    model: "REMIND-MAgPIE 3.5-4.11"
+    color: "#FF9800"
+  VL-fossil-frankenstein-1p5x:
+    scenario: "SSP1 - Very Low Emissions Ref1p5"
+    model: "REMIND-MAgPIE 3.5-4.11"
+    color: "#009688"
   # VL-fossil-frankenstein-zero-afolu:
   #   scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
   #   model: "REMIND-MAgPIE 3.5-4.11"
@@ -66,6 +78,15 @@ fossil_evolution:
   VL-fossil-frankenstein-hold:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]  # initial guess; optimized
+  VL-fossil-frankenstein-1p5:
+    type: ECS
+    params: [2200, -3500.0, 2450, 2500, 20, 20]  # placeholder; overwritten by fixed_result
+  VL-fossil-frankenstein-1p6:
+    type: ECS
+    params: [2200, -3500.0, 2450, 2500, 20, 20]  # placeholder; overwritten by fixed_result
+  VL-fossil-frankenstein-1p5x:
+    type: ECS
+    params: [2200, -3500.0, 2450, 2500, 20, 20]  # placeholder; overwritten by fixed_result
   VL-fossil-frankenstein-zero-afolu-hold:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]  # initial guess; optimized
@@ -119,6 +140,9 @@ forcing_scenario:
   VL-fossil-frankenstein: VL
   VL-fossil-frankenstein-zero-afolu: VL
   VL-fossil-frankenstein-hold: VL
+  VL-fossil-frankenstein-1p5: VL
+  VL-fossil-frankenstein-1p6: VL
+  VL-fossil-frankenstein-1p5x: VL
   VL-fossil-frankenstein-zero-afolu-hold: VL
 
 # --- Concentrations file (optional) ---
@@ -173,6 +197,90 @@ optimization:
       exp_targ: [0.0, 5000.0]
       sig_start: [2030, 2170]
       sig_end: [2100, 2250]
+  VL-fossil-frankenstein-1p5:
+    enabled: true
+    # --- Hand-tuned 1.5 C hold (pinned) ---
+    # Departs the base at 2037 and holds total CO2 at a sustained positive level
+    # so the FaIR median settles flat at ~1.5 C above 1850-1900 (2100-2500 all
+    # within ~1.50-1.52 C). Peaks ~1.64 C vs 1850-1900 around 2051.
+    # target_temp = 1.5795 K = 1.5 C vs 1850-1900.
+    fixed_result:
+      exp_targ: 3370.0
+      sig_start: 2045.0
+      sig_end: 2600.0
+      departure_year: 2037
+      target_temp: 1.5795
+      final_cost: 3.0887085042221676
+      success: true
+      note: "Hand-tuned 1.5 C flat hold (2026-08); holds steady at ~1.5 C vs 1850-1900 after 2100."
+    # Optimiser settings retained for provenance; unused while fixed_result set.
+    target_temp_abs: 1.5795
+    departure_year: 2037
+    departure_offset: 0
+    n_configs: 50
+    optimize_params: [exp_targ, sig_start, sig_end]
+    fixed_params: {}
+    overshoot_weight: 30
+    bounds:
+      exp_targ: [-5000.0, 5000.0]
+      sig_start: [2025, 2100]
+      sig_end: [2060, 3500]
+  VL-fossil-frankenstein-1p6:
+    enabled: true
+    # --- Hand-tuned ~1.6 C ("hold near the peak") variant (pinned) ---
+    # Companion to -1p5, offered so colleagues can choose the hold level.
+    # Departs at 2034 and holds total CO2 higher (exp_targ=5300) so the FaIR
+    # median sits roughly at the base peak level (~1.6 C vs 1850-1900),
+    # creeping to ~1.67 C by 2300 then easing.
+    fixed_result:
+      exp_targ: 5300.0
+      sig_start: 2070.0
+      sig_end: 2480.0
+      departure_year: 2034
+      target_temp: 1.5795
+      final_cost: 3.0887085042221676
+      success: true
+      note: "Hand-tuned ~1.6 C hold-near-peak (2026-08); companion choice to -1p5."
+    # Optimiser settings retained for provenance; unused while fixed_result set.
+    target_temp_abs: 1.6795
+    departure_year: 2034
+    departure_offset: 0
+    n_configs: 50
+    optimize_params: [exp_targ, sig_start, sig_end]
+    fixed_params: {}
+    overshoot_weight: 30
+    bounds:
+      exp_targ: [-5000.0, 8000.0]
+      sig_start: [2025, 2150]
+      sig_end: [2060, 3500]
+  VL-fossil-frankenstein-1p5x:
+    enabled: true
+    # --- Hand-tuned aggressive-early, low-overshoot 1.5 C hold (pinned) ---
+    # Departs the base at 2016 and cuts total CO2 hard (38 -> ~4 Gt/yr by 2030),
+    # roughly halving the peak overshoot (peak ~1.57-1.58 C vs 1850-1900) while
+    # still holding near 1.5 C long term. A more aggressive near-term companion
+    # to -1p5 for colleagues who want a smaller overshoot.
+    fixed_result:
+      exp_targ: 4300.0
+      sig_start: 2030.0
+      sig_end: 2500.0
+      departure_year: 2016
+      target_temp: 1.5795
+      final_cost: 3.0887085042221676
+      success: true
+      note: "Hand-tuned aggressive-early 1.5 C hold (2026-08); departs 2016, smaller overshoot than -1p5."
+    # Optimiser settings retained for provenance; unused while fixed_result set.
+    target_temp_abs: 1.5795
+    departure_year: 2016
+    departure_offset: 0
+    n_configs: 50
+    optimize_params: [exp_targ, sig_start, sig_end]
+    fixed_params: {}
+    overshoot_weight: 30
+    bounds:
+      exp_targ: [-5000.0, 8000.0]
+      sig_start: [2020, 2100]
+      sig_end: [2060, 3500]
   # VL-fossil-frankenstein-zero-hold:
   #   enabled: true
   #   target_year: peak
