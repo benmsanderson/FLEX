@@ -235,7 +235,7 @@ optimization:
     fixed_result:
       exp_targ: 5300.0
       sig_start: 2070.0
-      sig_end: 2480.0
+      sig_end: 2400.0
       departure_year: 2034
       target_temp: 1.5795
       final_cost: 3.0887085042221676

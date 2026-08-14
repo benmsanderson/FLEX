@@ -537,3 +537,63 @@ else:
     pl.savefig(PLOTS_DIR / "cf_scenarios.png", dpi=600, bbox_inches="tight")
     pl.savefig(PLOTS_DIR / "cf_scenarios.pdf", format="pdf", bbox_inches="tight")
     print("✓ Saved: cf_scenarios.png and cf_scenarios.pdf")
+
+
+# %% [markdown]
+# ## Plot 5: Hold-variant comparison — temperature & total CO2 (hold_comparison.png)
+#
+# Compares every scenario in the config (e.g. the base plus the -hold / -1p5 /
+# -1p6 / -1p5x hold variants): FaIR median temperature relative to 1850-1900
+# (with a 1.5 C reference line) and total CO2 (FFI + AFOLU). Markers whose name
+# ends in "x" are drawn dashed.
+
+# %%
+def _hold_ls(scenario):
+    return "--" if scenario.endswith("x") else "-"
+
+fig, axes = pl.subplots(1, 2, figsize=(14, 5))
+
+# --- (a) FaIR median temperature relative to 1850-1900 ---
+axt = axes[0]
+for scenario, meta in scenario_model_match.items():
+    d = temp_df[temp_df["Scenario"] == scenario]
+    if d.empty:
+        continue
+    baseline = d[(d["Year"] >= 1850) & (d["Year"] <= 1901)]["Temperature_median"].mean()
+    axt.plot(d["Year"], d["Temperature_median"].values - baseline,
+             color=meta[2], ls=_hold_ls(scenario), lw=2.0, label=scenario)
+axt.axhline(1.5, color="k", ls="--", lw=1.0)
+axt.text(2300, 1.51, "1.5 C", fontsize=9)
+axt.set_xlim(2000, 2500)
+axt.set_xlabel("Year")
+axt.set_ylabel("Median temperature above 1850-1900, K")
+axt.set_title("(a) FaIR median temperature")
+axt.grid(alpha=0.3)
+axt.legend(fontsize=8.5)
+
+# --- (b) Total CO2 emissions (FFI + AFOLU) ---
+axc = axes[1]
+for scenario, meta in scenario_model_match.items():
+    ffi = emis_species_df[
+        (emis_species_df["Scenario"] == scenario) & (emis_species_df["Species"] == "CO2 FFI")
+    ].set_index("Year")["Emissions"]
+    afolu = emis_species_df[
+        (emis_species_df["Scenario"] == scenario) & (emis_species_df["Species"] == "CO2 AFOLU")
+    ].set_index("Year")["Emissions"]
+    if ffi.empty:
+        continue
+    total = ffi.add(afolu, fill_value=0.0) / 1e6
+    axc.plot(total.index, total.values, color=meta[2], ls=_hold_ls(scenario),
+             lw=2.0, label=scenario)
+axc.axhline(0, color="k", lw=0.5, ls=":")
+axc.set_xlim(2000, 2500)
+axc.set_xlabel("Year")
+axc.set_ylabel("Total CO$_2$ (FFI + AFOLU), GtCO$_2$ yr$^{-1}$")
+axc.set_title("(b) Total CO$_2$ emissions")
+axc.grid(alpha=0.3)
+axc.legend(fontsize=8.5)
+
+pl.tight_layout()
+pl.savefig(PLOTS_DIR / "hold_comparison.png", dpi=600, bbox_inches="tight")
+pl.savefig(PLOTS_DIR / "hold_comparison.pdf", format="pdf", bbox_inches="tight")
+print("✓ Saved: hold_comparison.png and hold_comparison.pdf")
