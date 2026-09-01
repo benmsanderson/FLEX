@@ -177,11 +177,26 @@ The repository uses:
 
 ## Citation
 
-[Add citation information when published]
+If you use FLEX, please cite the description paper:
+
+> Sandstad, M., Sanderson, B., Chini, L., Friedlingstein, P., Kikstra, J.,
+> Ziehn, T., Zecchetto, M., Högner, A., Nicholls, Z., Yokohata, T., King, A.,
+> Smith, C., and Séférian, R. (2026). *FLEX: ScenarioMIP CMIP7 Post-2100
+> Extensions Framework*. Zenodo. https://doi.org/10.5281/zenodo.22212710
+
+Submitted to *Environmental Research Letters*. The DOI above is the concept DOI
+and always resolves to the most recent version.
 
 ## License
 
-[Add license information]
+The source code in this repository is released under the MIT Licence (see
+`LICENSE`).
+
+That does **not** extend to the datasets under `data/`. The historical emissions
+files are CC-BY 4.0 and derive from CEDS and the Global Carbon Budget; the
+ScenarioMIP marker scenarios must be obtained separately and carry IIASA's terms.
+See [data/README.md](data/README.md) for the source, licence and required
+attribution of every input.
 
 ## Contact
 
