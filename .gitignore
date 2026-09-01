@@ -36,3 +36,8 @@ notebooks/co2_fossil_fuel_extenstions_*.csv
 # Temporary files
 *.tmp
 *.log
+
+# Scenario data - obtain per data/README.md; not redistributable
+data/scenarios_complete_global.csv
+data/scenarios_regional.csv
+data/vl-extensions-inputs/
