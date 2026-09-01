@@ -81,7 +81,7 @@ FaIR calibrated-constrained parameters,
 demand by `notebooks/5201_extension_fair_simulations.py` and by
 `scripts/fetch_data.py`.
 
-## If you already have a working copy of the data
+## Use a custom data directory
 
 The scenario files used to be tracked here. When you pull the commit that
 removes them, **git deletes them from your working tree** — adding them to
