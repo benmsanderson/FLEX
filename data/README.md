@@ -36,16 +36,7 @@ delivery the pipeline was built on.
 
 Two things to know before you run:
 
-1. **v0.2 is not identical to the v0.1 delivery this pipeline was built on**
-   ([10.5281/zenodo.18497404](https://doi.org/10.5281/zenodo.18497404), now
-   access-restricted). Comparing the converted v0.2 against v0.1: 342 of 364
-   series are byte-identical. The revisions fall in Low, Medium-to-Low,
-   Low-to-Negative and Medium — chiefly `Emissions|CO2|Energy and Industrial
-   Processes`, `Emissions|CO2|AFOLU` and some ozone precursors — with a largest
-   single change of about 716 Mt CO2/yr. Very Low, High and High-to-Low are
-   unchanged. Expect published output to shift accordingly for the four affected
-   markers.
-2. **There is no regional data in the published release.** The spreadsheet is
+1. **There is no regional data in the published release.** The spreadsheet is
    World-only, so `data/scenarios_regional.csv` cannot be built from it. Global
    workflows run from the open release; anything needing the regional or
    gridded breakdown requires the regional delivery, requested through the
