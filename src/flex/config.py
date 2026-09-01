@@ -4,6 +4,7 @@ Loads YAML config files and converts them to the dict formats
 expected by the existing extension functions.
 """
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,13 @@ import yaml
 # Default paths relative to repo root
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIGS_DIR = REPO_ROOT / "configs"
-DATA_DIR = REPO_ROOT / "data"
+
+# Where the input data lives. Defaults to <repo>/data, but set FLEX_DATA_DIR to
+# keep your working copies outside the repository. The scenario files are no
+# longer tracked here, so a checkout of a pre-2026 commit will overwrite them and
+# checking back out will delete them again; holding them outside the working tree
+# avoids that entirely. See data/README.md.
+DATA_DIR = Path(os.environ.get("FLEX_DATA_DIR") or REPO_ROOT / "data").expanduser()
 
 
 @dataclass
