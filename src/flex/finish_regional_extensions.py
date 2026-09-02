@@ -56,6 +56,8 @@ def extend_regional_for_missing(
                     region="World",
                 )
             ]
+            if gross_pos_traj.empty:
+                continue
             regions_total = data_regional.pix.unique("region").values
             regions_existing = data_existing.pix.unique("region").values
             if set(regions_total) == set(regions_existing):
@@ -80,6 +82,8 @@ def extend_regional_for_missing(
                         data=data_extend, columns=full_years, index=data_regional.loc[pix.ismatch(region=region)].index
                     )
                     df_extended_list.append(df_regional)
+    if not df_extended_list:
+        return df_everything
     df_extended = pix.concat(df_extended_list)
     return pix.concat([df_everything, df_extended])
 

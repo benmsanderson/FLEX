@@ -19,35 +19,48 @@
 # scenarios using FaIR to find trajectories that hold temperature constant
 # at the departure-year level.
 #
-# **HL-CF**: Departs from HL at 2080, adjusts CO2 and CH4 so median
-# temperature stays at the 2080 peak rather than declining.
+# It reads the FaIR-format emissions CSV produced by 5191, loops over every
+# entry in `cfg.optimization`, and writes an augmented emissions CSV that
+# includes the optimized counterfactual scenarios alongside the originals.
 
 # %%
-import sys
 from pathlib import Path
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-# Add src directory to path
-src_dir = Path().resolve().parent / "src"
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
 
 from flex.config import load_config, DATA_DIR
 from flex.optimise import (
     optimize_scenario,
     run_fair_single_scenario,
     modify_emissions_csv,
-    build_ch4_plateau_trajectory,
+    setup_fair,
 )
 
 # %% tags=["parameters"]
 config_name = "WIEMIP"
+n_jobs = 1  # Number of parallel jobs: 1=sequential, >1=parallel, -1=all cores (capped at 20)
 
 # %%
 cfg = load_config(config_name)
+OUTPUTS_DIR = cfg.outputs_dir
+
+# Cap n_jobs at 20 when using -1, but allow explicit overrides
+if n_jobs == -1:
+    n_jobs_effective = min(os.cpu_count() or 1, 20)
+    print(f"Auto-detected {os.cpu_count()} cores, capping at {n_jobs_effective} workers")
+elif n_jobs > 1:
+    n_jobs_effective = n_jobs
+    if n_jobs > 20:
+        print(f"Using {n_jobs} workers (explicit override of 20-worker default cap)")
+    else:
+        print(f"Using {n_jobs} parallel workers")
+else:
+    n_jobs_effective = 1
+    print("Sequential mode (1 worker)")
+
 print(f"Config: {cfg.name}")
 print(f"Scenarios: {list(cfg.scenario_model_match.keys())}")
 print(f"Optimization targets: {list(cfg.optimization.keys())}")
@@ -55,184 +68,170 @@ print(f"Optimization targets: {list(cfg.optimization.keys())}")
 # %% [markdown]
 # ## Locate emissions CSV
 #
-# The optimizer needs the FaIR-format emissions CSV. This should already
-# exist from a prior run of the extension pipeline (5191) for the
-# scenariomip_default config, or from the data/fair-inputs directory.
+# The optimizer needs the FaIR-format emissions CSV produced by 5191.
 
 # %%
-# Use the standard FaIR emissions as the base
-# (contains all 7 ScenarioMIP markers, 1750-2500)
-base_emissions_csv = str(DATA_DIR / "fair-inputs" / "emissions_1750-2500.csv")
+base_emissions_csv = str(OUTPUTS_DIR / "emissions_1750-2500.csv")
+if not Path(base_emissions_csv).exists():
+    raise FileNotFoundError(
+        f"Pipeline-generated emissions not found: {base_emissions_csv}\n"
+        "Run 5191 first."
+    )
 print(f"Base emissions: {base_emissions_csv}")
 
-# Verify it exists and has HL
 df_check = pd.read_csv(base_emissions_csv, usecols=["scenario", "variable"])
 print(f"Scenarios in CSV: {sorted(df_check['scenario'].unique())}")
 
 # %% [markdown]
-# ## Run baseline HL through FaIR
+# ## Optimise each target scenario
 #
-# First, run the standard HL scenario to see the temperature trajectory
-# we're trying to modify.
+# Loop over (or parallelize) every entry in `cfg.optimization`. For each one we:
+# 1. Identify the source (non-optimized) marker
+# 2. Run baseline FaIR to get the target temperature at the departure year
+# 3. Optimise CO2 FFI parameters via `optimize_scenario`
+# 4. Write the augmented emissions CSV with the new scenario appended
 
 # %%
-print("Running baseline HL through FaIR (memory_limited)...")
-temp_baseline_hl = run_fair_single_scenario(
-    base_emissions_csv, "HL", memory_limited=True
-)
-
-# FaIR returns 752 values (timebound boundaries 1750.0–2501.0);
-# trim to 751 to match year-centred timebounds
 timebounds = np.arange(1750, 2501, 1.0)
-temp_baseline_hl = temp_baseline_hl[:len(timebounds)]
-departure_year = cfg.optimization["HL-CF"]["departure_year"]
-dep_idx = np.searchsorted(timebounds, departure_year)
-target_temp = temp_baseline_hl[dep_idx]
 
-print(f"HL temperature at {departure_year}: {target_temp:.4f} K above pre-industrial")
-print(f"HL peak temperature: {temp_baseline_hl.max():.4f} K at year {timebounds[temp_baseline_hl.argmax()]:.0f}")
-
-# %%
-# Quick plot of baseline HL temperature
-fig, ax = plt.subplots(figsize=(10, 4))
-ax.plot(timebounds, temp_baseline_hl, label="HL baseline", color=cfg.plot_colors["HL"])
-ax.axhline(target_temp, color="gray", ls="--", alpha=0.7, label=f"Target ({target_temp:.2f} K)")
-ax.axvline(departure_year, color="red", ls="--", alpha=0.5, label=f"Departure ({departure_year})")
-ax.set_xlabel("Year")
-ax.set_ylabel("Temperature anomaly (K)")
-ax.set_xlim(1900, 2500)
-ax.legend()
-ax.set_title("HL baseline temperature — target for HL-CF")
-plt.tight_layout()
-plt.savefig(cfg.plots_dir / "hl_baseline_temperature.png", dpi=150)
-plt.show()
-
-# %% [markdown]
-# ## Run optimization
-#
-# Search over `[exp_targ, sig_start, sig_end]` to find CO2 FFI extension
-# parameters that hold temperature at the departure-year level.
-
-# %%
-print("Starting optimization for HL-CF...")
-result = optimize_scenario(
-    cfg,
-    marker="HL-CF",
-    base_emissions_csv=base_emissions_csv,
-    memory_limited=True,
-)
-
-print(f"\nOptimized ECS params for HL-CF:")
-print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr")
-print(f"  sig_start = {result['sig_start']:.0f}")
-print(f"  sig_end   = {result['sig_end']:.0f}")
-print(f"  Target T  = {result['target_temp']:.4f} K")
-print(f"  Final cost = {result['final_cost']:.6f}")
-
-# %% [markdown]
-# ## Verify: run optimized HL-CF through FaIR
-
-# %%
-# Build the optimized emissions CSV
-ch4_traj = result["ch4_trajectory"]
-
-# Rebuild CO2 trajectory with optimized params
-df_emis = pd.read_csv(base_emissions_csv)
-source = df_emis[(df_emis["scenario"] == "HL") & (df_emis["variable"] == "CO2 FFI")]
-year_cols = [c for c in df_emis.columns if c.replace(".", "").replace("-", "").isdigit()]
-years = np.array([float(c) for c in year_cols])
-co2_opt = source[year_cols].values.flatten().copy()
-
-dep_idx_emis = np.searchsorted(years, departure_year + 0.5)
-dep_value = co2_opt[dep_idx_emis]
-exp_targ = result["exp_targ"]
-sig_start = result["sig_start"]
-sig_end = result["sig_end"]
-exp_end = int(sig_start)
-
-for i in range(dep_idx_emis, len(co2_opt)):
-    yr_total = exp_end - departure_year
-    if years[i] <= exp_end + 0.5 and yr_total > 0:
-        frac = (years[i] - departure_year) / yr_total
-        co2_opt[i] = dep_value + (exp_targ - dep_value) * min(frac, 1.0)
-    elif years[i] <= sig_start + 0.5:
-        co2_opt[i] = exp_targ
-    elif years[i] <= sig_end + 0.5:
-        frac = (years[i] - sig_start) / (sig_end - sig_start)
-        t = np.clip(frac, 0, 1)
-        s = 3 * t**2 - 2 * t**3
-        co2_opt[i] = exp_targ * (1 - s)
+# Collect markers to optimize
+markers_to_optimize = []
+for marker, opt_settings in cfg.optimization.items():
+    if opt_settings.get("enabled", True):
+        markers_to_optimize.append(marker)
     else:
-        co2_opt[i] = 0.0
+        print(f"Skipping {marker} (disabled)")
 
-final_csv = str(cfg.outputs_dir / "emissions_1750-2500.csv")
-modify_emissions_csv(
-    base_emissions_csv, "HL", "HL-CF",
-    co2_ffi_trajectory=co2_opt,
-    ch4_trajectory=ch4_traj,
-    departure_year=departure_year,
-    output_path=final_csv,
-)
+print(f"\nWill optimize {len(markers_to_optimize)} marker(s): {markers_to_optimize}")
 
-# Run FaIR with both HL and HL-CF
-# HL-CF needs scenario_mapping so it inherits HL's volcanic/solar forcing
-from flex.optimise import setup_fair
-f = setup_fair(
-    final_csv, ["HL", "HL-CF"],
-    memory_limited=True,
-    scenario_mapping={"HL-CF": "HL"},
-)
-f.run()
+# Run optimizations in parallel or serial mode
+opt_results: dict[str, dict] = {}
+
+if n_jobs_effective > 1 and len(markers_to_optimize) > 1:
+    # PARALLEL MODE
+    print(f"\n{'='*60}")
+    print(f"Running optimizations in PARALLEL with {n_jobs_effective} workers")
+    print(f"{'='*60}")
+    
+    from joblib import Parallel, delayed
+    
+    def optimize_single_marker(marker, cfg, base_emissions_csv):
+        """Wrapper function for parallel execution."""
+        print(f"\n{'='*60}")
+        print(f"[PARALLEL] Starting optimization: {marker}")
+        print(f"{'='*60}")
+        
+        result = optimize_scenario(
+            cfg,
+            marker=marker,
+            base_emissions_csv=base_emissions_csv,
+            memory_limited=True,
+        )
+        
+        print(f"\n[PARALLEL] Completed {marker}:")
+        print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr (total CO2)")
+        print(f"  sig_start = {result['sig_start']:.0f}")
+        print(f"  sig_end   = {result['sig_end']:.0f}")
+        print(f"  Target T  = {result['target_temp']:.4f} K")
+        print(f"  Departure = {result['departure_year']}")
+        print(f"  Final cost = {result['final_cost']:.6f}")
+        
+        return marker, result
+    
+    parallel_results = Parallel(n_jobs=n_jobs_effective, verbose=10)(
+        delayed(optimize_single_marker)(marker, cfg, base_emissions_csv)
+        for marker in markers_to_optimize
+    )
+    
+    opt_results = {marker: result for marker, result in parallel_results}
+    
+    print(f"\n{'='*60}")
+    print(f"All {len(opt_results)} optimizations complete!")
+    print(f"{'='*60}")
+    
+else:
+    # SEQUENTIAL MODE
+    if n_jobs_effective > 1:
+        print(f"\nNote: Only {len(markers_to_optimize)} scenario(s) to optimize - running sequentially")
+    
+    for marker in markers_to_optimize:
+        print(f"\n{'='*60}")
+        print(f"Optimizing: {marker}")
+        print(f"{'='*60}")
+
+        result = optimize_scenario(
+            cfg,
+            marker=marker,
+            base_emissions_csv=base_emissions_csv,
+            memory_limited=True,
+        )
+        opt_results[marker] = result
+        
+        print(f"\nOptimized ECS params for {marker}:")
+        print(f"  exp_targ  = {result['exp_targ']:.1f} Mt CO2/yr (total CO2)")
+        print(f"  sig_start = {result['sig_start']:.0f}")
+        print(f"  sig_end   = {result['sig_end']:.0f}")
+        print(f"  Target T  = {result['target_temp']:.4f} K")
+        print(f"  Departure = {result['departure_year']}")
+        print(f"  Final cost = {result['final_cost']:.6f}")
+
+# %% [markdown]
+# ## Save optimization results
+#
+# Write the optimized parameters to JSON for use in the next step (5196_apply_optimised)
 
 # %%
-# Plot comparison
-fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+import json
 
-# Temperature
-ax = axes[0]
-for scen, color in [("HL", cfg.plot_colors["HL"]), ("HL-CF", cfg.plot_colors["HL-CF"])]:
-    temp = f.temperature.sel(scenario=scen, layer=0)
-    median = temp.median(dim="config").values
-    p05 = temp.quantile(0.05, dim="config").values
-    p95 = temp.quantile(0.95, dim="config").values
-    tb = np.arange(1750, 2502, 1.0)
-    ax.plot(tb, median, color=color, label=scen)
-    ax.fill_between(tb, p05, p95, color=color, alpha=0.15)
-ax.axhline(target_temp, color="gray", ls="--", alpha=0.5)
-ax.axvline(departure_year, color="red", ls="--", alpha=0.3)
-ax.set_xlim(2000, 2500)
-ax.set_xlabel("Year")
-ax.set_ylabel("Temperature anomaly (K)")
-ax.set_title("Temperature")
-ax.legend()
+results_file = OUTPUTS_DIR / "optimization_results.json"
 
-# CO2 FFI emissions
-ax = axes[1]
-for scen, color in [("HL", cfg.plot_colors["HL"]), ("HL-CF", cfg.plot_colors["HL-CF"])]:
-    co2 = f.emissions.sel(scenario=scen, specie="CO2 FFI", config=f.configs[0]).values
-    ax.plot(f.timepoints, co2, color=color, label=scen)
-ax.axvline(departure_year, color="red", ls="--", alpha=0.3)
-ax.set_xlim(2000, 2500)
-ax.set_xlabel("Year")
-ax.set_ylabel("CO2 FFI (Mt/yr)")
-ax.set_title("CO2 FFI Emissions")
-ax.legend()
+# Convert results to serializable format
+results_data = {
+    "config": config_name,
+    "optimization_results": {}
+}
 
-# CH4 emissions
-ax = axes[2]
-for scen, color in [("HL", cfg.plot_colors["HL"]), ("HL-CF", cfg.plot_colors["HL-CF"])]:
-    ch4 = f.emissions.sel(scenario=scen, specie="CH4", config=f.configs[0]).values
-    ax.plot(f.timepoints, ch4, color=color, label=scen)
-ax.axvline(departure_year, color="red", ls="--", alpha=0.3)
-ax.set_xlim(2000, 2500)
-ax.set_xlabel("Year")
-ax.set_ylabel("CH4 (Mt/yr)")
-ax.set_title("CH4 Emissions")
-ax.legend()
+for marker, result in opt_results.items():
+    results_data["optimization_results"][marker] = {
+        "exp_targ": float(result["exp_targ"]),
+        "sig_start": float(result["sig_start"]),
+        "sig_end": float(result["sig_end"]),
+        "target_temp": float(result["target_temp"]),
+        "departure_year": int(result["departure_year"]),
+        "final_cost": float(result["final_cost"]),
+        "success": bool(result["success"]),
+        "message": str(result.get("message", "")),
+    }
 
-plt.suptitle(f"HL vs HL-CF (departure {departure_year}, target {target_temp:.2f} K)", fontsize=14)
-plt.tight_layout()
-plt.savefig(cfg.plots_dir / "hl_cf_optimization_result.png", dpi=150)
-plt.show()
+with open(results_file, "w") as f:
+    json.dump(results_data, f, indent=2)
 
-print("Done!")
+print(f"\nOptimization results saved to: {results_file}")
+
+# %% [markdown]
+# ## Summary
+#
+# Print a summary table of the optimization results
+
+# %%
+print(f"\n{'='*80}")
+print("OPTIMIZATION SUMMARY")
+print(f"{'='*80}")
+summary_data = []
+for marker, result in opt_results.items():
+    summary_data.append({
+        'Marker': marker,
+        'Departure': result['departure_year'],
+        'Target T (K)': f"{result['target_temp']:.4f}",
+        'exp_targ': f"{result['exp_targ']:.0f}",
+        'sig_start': f"{result['sig_start']:.0f}",
+        'sig_end': f"{result['sig_end']:.0f}",
+        'Cost': f"{result['final_cost']:.6f}",
+        'Success': result['success'],
+    })
+
+df_summary = pd.DataFrame(summary_data)
+print(df_summary.to_string(index=False))
+print(f"{'='*80}")
+print(f"\nNext step: Run 5196_apply_optimised to generate emissions files with these parameters")
+

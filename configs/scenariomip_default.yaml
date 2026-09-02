@@ -110,8 +110,11 @@ removal_strategy:
     type: NEG
     params: [80, 20]
 
-# --- Non-CO2 global targets (endpoint values at extensions_end_year) ---
-# null means no explicit target (use default decay)
+# --- Non-CO2 global targets ---
+# Bare number = target with default sigmoid (shift=40, len=50, branch at scenario_end_year)
+# Dict = full control: {target, sigmoid_shift, sigmoid_len, branch_year}
+# null = auto-calculate target from data (original ScenarioMIP behavior)
+# Scenario not listed = skip extension, follow source scenario
 non_co2_targets:
   "Emissions|CH4":
     VL: 95.0

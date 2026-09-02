@@ -24,7 +24,6 @@
 # %%
 import glob
 import re
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -36,18 +35,7 @@ import pandas_openscm
 import seaborn as sns
 import tqdm.auto
 
-# Add src directory to path for extensions imports
-src_dir = (Path(__file__).parent.parent / "src" if "__file__" in globals() 
-           else Path().resolve().parent / "src")
-
-if str(src_dir) not in sys.path:
-    sys.path.insert(0, str(src_dir))
-
-# Data directories
-DATA_DIR = Path().resolve().parent / "data"
-
-# Package imports
-from flex.config import load_config
+from flex.config import load_config, DATA_DIR
 from flex.afolu_extension_functions import (
     get_cumulative_afolu,
     extend_one_scenario_afolu,
@@ -105,31 +93,38 @@ dump_csvs: bool = cfg.dump_csvs
 # ## Loading scenarios
 
 # %%
-# Load data from CSV files
+# Load data from CSV files — uses cfg.data_sources if set, otherwise standard defaults
+ds = cfg.data_sources or {}
+
+# scenarios_global: list of files to concatenate, or single default
+_global_paths = ds.get("scenarios_global", ["scenarios_complete_global.csv"])
+if isinstance(_global_paths, str):
+    _global_paths = [_global_paths]
+
 print("Loading scenarios_complete_global from CSV...")
-scenarios_complete_global = pd.read_csv(
-    DATA_DIR / "scenarios_complete_global.csv",
-    index_col=[0, 1, 2, 3, 4]
-)
+_global_dfs = [pd.read_csv(DATA_DIR / p, index_col=[0, 1, 2, 3, 4]) for p in _global_paths]
+scenarios_complete_global = pd.concat(_global_dfs) if len(_global_dfs) > 1 else _global_dfs[0]
 print(f"Loaded scenarios_complete_global: {scenarios_complete_global.shape}")
 
 print("Loading history from CSV...")
 history = pd.read_csv(
-    DATA_DIR / "history.csv",
+    DATA_DIR / ds.get("history", "history.csv"),
     index_col=[0, 1, 2, 3, 4]
 )
 print(f"Loaded history: {history.shape}")
 
+# scenarios_regional: may have 5 or 6-level index depending on data source
+_regional_path = ds.get("scenarios_regional", "scenarios_regional.csv")
 print("Loading scenarios_regional from CSV...")
-scenarios_regional = pd.read_csv(
-    DATA_DIR / "scenarios_regional.csv",
-    index_col=[0, 1, 2, 3, 4, 5]
-)
+# Detect index width by counting non-numeric leading columns
+_regional_preview = pd.read_csv(DATA_DIR / _regional_path, nrows=0)
+_n_idx = sum(1 for c in _regional_preview.columns if not c.replace('.', '', 1).lstrip('-').isdigit())
+scenarios_regional = pd.read_csv(DATA_DIR / _regional_path, index_col=list(range(_n_idx)))
 print(f"Loaded scenarios_regional: {scenarios_regional.shape}")
 
 print("Loading history_regional from CSV...")
 history_regional = pd.read_csv(
-    DATA_DIR / "history_regional.csv",
+    DATA_DIR / ds.get("history_regional", "history_regional.csv"),
     index_col=[0, 1, 2, 3, 4, 5]
 )
 
@@ -163,10 +158,29 @@ print(f"  history columns dtype: {history.columns.dtype}")
 print(f"  scenarios_regional columns dtype: {scenarios_regional.columns.dtype}")
 print(f"  history_regional columns dtype: {history_regional.columns.dtype}")
 
+# Apply regional_scenario_fallback: duplicate regional data for missing scenarios
+_fallback = ds.get("regional_scenario_fallback", {})
+if _fallback:
+    _new_dfs = []
+    for target_scen, source_scen in _fallback.items():
+        source = scenarios_regional.loc[pix.ismatch(scenario=source_scen)]
+        if not source.empty:
+            new = source.rename(index={source_scen: target_scen}, level="scenario")
+            _new_dfs.append(new)
+            print(f"  Fallback: copied regional data from '{source_scen}' -> '{target_scen}'")
+    if _new_dfs:
+        scenarios_regional = pd.concat([scenarios_regional] + _new_dfs)
+
 # %%
 unique_model_scenario_pairs = scenarios_complete_global.index.droplevel(
     ["region", "variable", "unit"]
 ).drop_duplicates()
+
+# Filter to only model/scenario pairs used by this config's markers
+_config_pairs = {(v[1], v[0]) for v in cfg.scenario_model_match.values()}
+unique_model_scenario_pairs = unique_model_scenario_pairs[
+    unique_model_scenario_pairs.isin(_config_pairs)
+]
 
 print(f"Number of unique model-scenario pairs: {len(unique_model_scenario_pairs)}")
 print("\nUnique model-scenario pairs:")
@@ -191,7 +205,9 @@ for model, scen in unique_model_scenario_pairs.to_list():
     print(f"Processing {model} | {scen}")
     tot_co2 = scenarios_complete_global.loc[pix.ismatch(scenario=scen, model=model, variable="Emissions|CO2")]
     scen_here = scenarios_regional.loc[pix.ismatch(scenario=scen, model=model, variable="Emissions|CO2**")]
-    fractions_list = get_2100_compound_composition_co2(scen_here[2100])
+    # Use SCENARIO_END_YEAR if available, otherwise fall back to last available year
+    _fractions_year = SCENARIO_END_YEAR if SCENARIO_END_YEAR in scen_here.columns else scen_here.columns[-1]
+    fractions_list = get_2100_compound_composition_co2(scen_here[_fractions_year])
     fractions_fossil_total[(model, scen)] = {
         "fractions_tot_fossil": fractions_list[0],
         "fractions_cdr": fractions_list[1],
@@ -217,7 +233,8 @@ def calculate_afolu_extensions(scenarios_complete_global, history, cumulative_hi
     temp_list_for_new_data_linear_ramp_down = []
     for s, meta in scenario_model_match.items():
         df_afolu_linear_ramp_down = extend_one_scenario_afolu(
-            scenarios_complete_global, history, cumulative_history_afolu, meta[1], meta[0]
+            scenarios_complete_global, history, cumulative_history_afolu, meta[1], meta[0],
+            extension_end_year=EXTENSIONS_END_YEAR,
         )
 
         temp_list_for_new_data_linear_ramp_down.append(df_afolu_linear_ramp_down)
@@ -280,11 +297,26 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
         if history.loc[pix.ismatch(variable=f"{variable}")].shape[0] < 1:
             continue
         for s, meta in tqdm.auto.tqdm(scenario_model_match.items()):
-            if variable in component_global_targets.keys():
-                global_target = component_global_targets[variable][s]
+            # Parse the normalized non_co2_targets entry.
+            # If the variable is configured and this scenario is NOT listed,
+            # skip it (keep source data).  If the variable is not configured
+            # at all, every scenario gets the default auto-decay extension.
+            var_targets = component_global_targets.get(variable)
+            if var_targets is not None and s not in var_targets:
+                print(f"{s}: {meta}, SKIP (not configured for {variable})")
+                continue
+            if var_targets is not None:
+                target_entry = var_targets[s]
+                global_target = target_entry.get("target")
+                sig_shift = target_entry.get("sigmoid_shift", 40)
+                sig_len = target_entry.get("sigmoid_len", 50)
+                branch_year = target_entry.get("branch_year", int(SCENARIO_END_YEAR))
             else:
                 global_target = None
-            print(f"{s}: {meta}, target: {global_target}")
+                sig_shift = 40
+                sig_len = 50
+                branch_year = int(SCENARIO_END_YEAR)
+            print(f"{s}: {meta}, target: {global_target}, branch: {branch_year}")
             df_comp_scen_model = do_single_component_for_scenario_model_regionally(
                 meta[0],
                 meta[1],
@@ -293,6 +325,10 @@ def do_all_non_co2_extensions(scenarios_complete_global, history):  # noqa: PLR0
                 scenarios_complete_global,
                 history,
                 global_target=global_target,
+                end_year=EXTENSIONS_END_YEAR,
+                end_scenario_year=branch_year,
+                sigmoid_shift=sig_shift,
+                sigmoid_len=sig_len,
             )
             # if "workflow" in df_comp_scen_model.index.names:
             #     print("Dropping workflow level from index")
@@ -322,9 +358,9 @@ if do_and_write_to_csv:
         scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots
     )
     if dump_csvs:
-        df_all.to_csv("first_draft_extended_nonCO2_all.csv")
+        df_all.to_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
-            afolu_df.to_csv(f"first_draft_extended_afolu_{name}.csv")
+            afolu_df.to_csv(OUTPUTS_DIR / f"first_draft_extended_afolu_{name}.csv")
 
 
 # %%
@@ -409,7 +445,7 @@ for s, meta in scenario_model_match.items():
 
 fossil_extension_df = pd.concat(temp_list_for_new_data)
 if dump_csvs:
-    fossil_extension_df.to_csv(f"co2_fossil_fuel_extenstions_{name}.csv")
+    fossil_extension_df.to_csv(OUTPUTS_DIR / f"co2_fossil_fuel_extenstions_{name}.csv")
 
 # %% [markdown]
 # # Dataframe cleanup
@@ -513,108 +549,113 @@ removal_dictionary = cfg.removal_dictionary
 # %%
 # --- Extension of co2_gross_positive and global_cdr to 2500 using rule-based logic ---
 
-
 # Extension configuration
 years_extension = np.arange(SCENARIO_END_YEAR + 1, EXTENSIONS_END_YEAR + 1)
 
-# Initialize extension DataFrames with all new columns at once
-# Create empty DataFrames for the extension years with same index
-extension_cols_gross_pos = pd.DataFrame(np.nan, index=co2_gross_positive.index, columns=years_extension)
-extension_cols_cdr = pd.DataFrame(np.nan, index=global_cdr.index, columns=years_extension)
+if co2_gross_positive is not None:
+    # Initialize extension DataFrames with all new columns at once
+    # Create empty DataFrames for the extension years with same index
+    extension_cols_gross_pos = pd.DataFrame(np.nan, index=co2_gross_positive.index, columns=years_extension)
+    extension_cols_cdr = pd.DataFrame(np.nan, index=global_cdr.index, columns=years_extension)
 
-# Concatenate original data with extension columns
-co2_gross_positive_ext = pd.concat([co2_gross_positive, extension_cols_gross_pos], axis=1)
-global_cdr_ext = pd.concat([global_cdr, extension_cols_cdr], axis=1)
+    # Concatenate original data with extension columns
+    co2_gross_positive_ext = pd.concat([co2_gross_positive, extension_cols_gross_pos], axis=1)
+    global_cdr_ext = pd.concat([global_cdr, extension_cols_cdr], axis=1)
+else:
+    co2_gross_positive_ext = None
+    global_cdr_ext = None
+    print("Skipping CDR extension — no gross positive data available")
 
 print(f"Extension setup complete. Extending from {SCENARIO_END_YEAR + 1} to {EXTENSIONS_END_YEAR}")
 print(f"Number of extension years: {len(years_extension)}")
 
-# Map removal_dictionary keys to actual scenario names
-removal_strategy_map = {}
-for marker, info in scenario_model_match.items():
-    scenario = info[0]  # Get the full scenario name
-    if marker in removal_dictionary:
-        removal_strategy_map[scenario] = removal_dictionary[marker]
+if co2_gross_positive is not None:
+    # Map removal_dictionary keys to actual scenario names
+    removal_strategy_map = {}
+    for marker, info in scenario_model_match.items():
+        scenario = info[0]  # Get the full scenario name
+        if marker in removal_dictionary:
+            removal_strategy_map[scenario] = removal_dictionary[marker]
 
-print(f"Mapped removal dictionary to {len(removal_strategy_map)} scenarios")
+    print(f"Mapped removal dictionary to {len(removal_strategy_map)} scenarios")
 
-# Apply extension strategies to each scenario
-processed_count = 0
-for idx in co2_gross_positive.index:
-    model, scenario, variable, unit = idx
+    # Apply extension strategies to each scenario
+    processed_count = 0
+    for idx in co2_gross_positive.index:
+        model, scenario, variable, unit = idx
 
-    # Get extension strategy and parameters
-    if scenario not in removal_strategy_map:
-        print(f"Scenario {scenario} not in removal_dictionary, skipping.")
-        continue
+        # Get extension strategy and parameters
+        if scenario not in removal_strategy_map:
+            print(f"Scenario {scenario} not in removal_dictionary, skipping.")
+            continue
 
-    strategy_info = removal_strategy_map[scenario]
-    strategy = strategy_info[0]
+        strategy_info = removal_strategy_map[scenario]
+        strategy = strategy_info[0]
 
-    print(f"Processing {model}, {scenario} with strategy: {strategy}")
+        print(f"Processing {model}, {scenario} with strategy: {strategy}")
 
-    # Get fossil extension data for this scenario/model
-    try:
-        fossil_row = fossil_extension_df.loc[
-            (
-                model,
-                scenario,
-                "World",
-                "Emissions|CO2|Energy and Industrial Processes",
-                unit,
+        # Get fossil extension data for this scenario/model
+        try:
+            fossil_row = fossil_extension_df.loc[
+                (
+                    model,
+                    scenario,
+                    "World",
+                    "Emissions|CO2|Energy and Industrial Processes",
+                    unit,
+                )
+            ]
+        except KeyError:
+            print(f"No fossil extension for {model}, {scenario}, skipping.")
+            continue
+
+        # Get 2100 baseline values
+        cdr_idx = (model, scenario, "Emissions|CO2|Gross Removals", unit)
+        cdr_2100 = global_cdr.loc[cdr_idx, 2100.0]
+        gross_pos_2100 = co2_gross_positive.loc[idx, 2100.0]
+
+        if strategy == "POS":
+            # POS strategy: CDR remains constant, gross positive adjusts to match fossil trajectory
+            print(f"  Using POS strategy: CDR constant at {cdr_2100:.2f}")
+            cdr_extension = np.full(len(years_extension), cdr_2100)
+            fossil_vals = fossil_row[years_extension].values
+            gross_pos_extension = fossil_vals - cdr_2100
+
+        elif strategy == "NEG":
+            # NEG strategy: Gross positive follows sigmoid decay, CDR adjusts as residual
+            decay_timescale = strategy_info[1]
+            offset = strategy_info[2]
+            print(f"  Using NEG strategy with decay_timescale={decay_timescale}, offset={offset}")
+            offset_shift = (1.25 * decay_timescale) / 2
+            gross_pos_extension = sigmoid_function(
+                0,
+                gross_pos_2100,
+                years_extension[0] + offset - offset_shift,
+                years_extension[0] + offset + offset_shift,
+                years_extension,
+                adjust_from=True,
             )
-        ]
-    except KeyError:
-        print(f"No fossil extension for {model}, {scenario}, skipping.")
-        continue
+            # Calculate CDR as residual to match fossil trajectory
+            fossil_vals = fossil_row[years_extension].values
+            cdr_extension = fossil_vals - gross_pos_extension
 
-    # Get 2100 baseline values
-    cdr_idx = (model, scenario, "Emissions|CO2|Gross Removals", unit)
-    cdr_2100 = global_cdr.loc[cdr_idx, 2100.0]
-    gross_pos_2100 = co2_gross_positive.loc[idx, 2100.0]
+        else:
+            print(f"Unknown strategy {strategy} for scenario {scenario}, skipping.")
+            continue
 
-    if strategy == "POS":
-        # POS strategy: CDR remains constant, gross positive adjusts to match fossil trajectory
-        print(f"  Using POS strategy: CDR constant at {cdr_2100:.2f}")
-        cdr_extension = np.full(len(years_extension), cdr_2100)
-        fossil_vals = fossil_row[years_extension].values
-        gross_pos_extension = fossil_vals - cdr_2100
+        # Apply extensions to DataFrames using vectorized assignment
+        co2_gross_positive_ext.loc[idx, years_extension] = gross_pos_extension
+        global_cdr_ext.loc[cdr_idx, years_extension] = cdr_extension
 
-    elif strategy == "NEG":
-        # NEG strategy: Gross positive follows sigmoid decay, CDR adjusts as residual
-        decay_timescale = strategy_info[1]
-        offset = strategy_info[2]
-        print(f"  Using NEG strategy with decay_timescale={decay_timescale}, offset={offset}")
-        offset_shift = (1.25 * decay_timescale) / 2
-        gross_pos_extension = sigmoid_function(
-            0,
-            gross_pos_2100,
-            years_extension[0] + offset - offset_shift,
-            years_extension[0] + offset + offset_shift,
-            years_extension,
-            adjust_from=True,
-        )
-        # Calculate CDR as residual to match fossil trajectory
-        fossil_vals = fossil_row[years_extension].values
-        cdr_extension = fossil_vals - gross_pos_extension
+        processed_count += 1
 
-    else:
-        print(f"Unknown strategy {strategy} for scenario {scenario}, skipping.")
-        continue
-
-    # Apply extensions to DataFrames using vectorized assignment
-    co2_gross_positive_ext.loc[idx, years_extension] = gross_pos_extension
-    global_cdr_ext.loc[cdr_idx, years_extension] = cdr_extension
-
-    processed_count += 1
-
-print(f"\nProcessed {processed_count} scenarios")
+    print(f"\nProcessed {processed_count} scenarios")
 
 # %%
 # Create a sanity check plot: stacked area plot of positive and negative CO2 components
 # with separate subplots for each scenario
 
-if make_plots:
+if make_plots and co2_gross_positive_ext is not None:
     # Get year columns for plotting
     years = [col for col in co2_gross_positive_ext.columns if isinstance(col, int | float)]
     years = sorted(years)
@@ -732,7 +773,7 @@ if make_plots:
     )
 
     plt.tight_layout()
-    plt.savefig("gross_positive_vs_cdr_vs_ffi_by_scenario.png")
+    plt.savefig(cfg.plots_dir / "gross_positive_vs_cdr_vs_ffi_by_scenario.png")
 
 
 # %% [markdown]
@@ -741,67 +782,75 @@ if make_plots:
 # %%
 # --- Extension of individual CDR components maintaining 2100 ratios ---
 
-# First, let's understand the structure of our CDR DataFrames
-print("=== CDR DataFrames Structure Check ===")
-print(f"co2_beccs shape: {co2_beccs.shape}")
-print(f"co2_dacc shape: {co2_dacc.shape}")
-print(f"co2_ocean shape: {co2_ocean.shape}")
-print(f"co2_ew shape: {co2_ew.shape}")
-print(f"global_cdr_ext shape: {global_cdr_ext.shape}")
+if global_cdr_ext is not None:
+    # First, let's understand the structure of our CDR DataFrames
+    print("=== CDR DataFrames Structure Check ===")
+    print(f"co2_beccs shape: {co2_beccs.shape}")
+    print(f"co2_dacc shape: {co2_dacc.shape}")
+    print(f"co2_ocean shape: {co2_ocean.shape}")
+    print(f"co2_ew shape: {co2_ew.shape}")
+    print(f"global_cdr_ext shape: {global_cdr_ext.shape}")
 
-print(f"\nco2_beccs index names: {co2_beccs.index.names}")
-print(f"global_cdr_ext index names: {global_cdr_ext.index.names}")
-
-
-# Check scenarios overlap
-beccs_scenarios = set(co2_beccs.index.get_level_values("scenario").unique())
-global_scenarios = set(global_cdr_ext.index.get_level_values("scenario").unique())
-common_scenarios = beccs_scenarios & global_scenarios
-print(f"\nCommon scenarios between CDR components and global_cdr_ext: {len(common_scenarios)}")
-print(f"Scenarios: {sorted(common_scenarios)}")
+    print(f"\nco2_beccs index names: {co2_beccs.index.names}")
+    print(f"global_cdr_ext index names: {global_cdr_ext.index.names}")
 
 
-# === EXECUTE VECTORIZED EXTENSION ===
-
-# Define CDR components
-cdr_components = {
-    "BECCS": co2_beccs,
-    "DACCS": co2_dacc,
-    "Ocean": co2_ocean,
-    "Enhanced_Weathering": co2_ew,
-    "Biochar": co2_biochar,
-    "Soil_Management": co2_soil,
-    "Other_CDR": co2_othercdr,
-}
-
-extended_cdr_components = extend_cdr_components_vectorized(cdr_components, global_cdr_ext)
-
-# Extract extended DataFrames
-co2_beccs_ext = extended_cdr_components["BECCS"]
-co2_dacc_ext = extended_cdr_components["DACCS"]
-co2_ocean_ext = extended_cdr_components["Ocean"]
-co2_ew_ext = extended_cdr_components["Enhanced_Weathering"]
-co2_biochar_ext = extended_cdr_components["Biochar"]
-co2_soil_ext = extended_cdr_components["Soil_Management"]
-co2_other_cdr_ext = extended_cdr_components["Other_CDR"]
-# sys.exit(4)
+    # Check scenarios overlap
+    beccs_scenarios = set(co2_beccs.index.get_level_values("scenario").unique())
+    global_scenarios = set(global_cdr_ext.index.get_level_values("scenario").unique())
+    common_scenarios = beccs_scenarios & global_scenarios
+    print(f"\nCommon scenarios between CDR components and global_cdr_ext: {len(common_scenarios)}")
+    print(f"Scenarios: {sorted(common_scenarios)}")
 
 
-# === VERIFICATION ===
-test_year = 2200.0
-if test_year in co2_beccs_ext.columns:
-    # Sum all CDR components for verification
-    total_sum = (
-        co2_beccs_ext[test_year].groupby("scenario").sum()
-        + co2_dacc_ext[test_year].groupby("scenario").sum()
-        + co2_ocean_ext[test_year].groupby("scenario").sum()
-        + co2_ew_ext[test_year].groupby("scenario").sum()
-        + co2_biochar_ext[test_year].groupby("scenario").sum()
-        + co2_soil_ext[test_year].groupby("scenario").sum()
-        + co2_other_cdr_ext[test_year].groupby("scenario").sum()
-    )
+    # === EXECUTE VECTORIZED EXTENSION ===
 
-    global_reference = global_cdr_ext[test_year].groupby("scenario").first()
+    # Define CDR components
+    cdr_components = {
+        "BECCS": co2_beccs,
+        "DACCS": co2_dacc,
+        "Ocean": co2_ocean,
+        "Enhanced_Weathering": co2_ew,
+        "Biochar": co2_biochar,
+        "Soil_Management": co2_soil,
+        "Other_CDR": co2_othercdr,
+    }
+
+    extended_cdr_components = extend_cdr_components_vectorized(cdr_components, global_cdr_ext)
+
+    # Extract extended DataFrames
+    co2_beccs_ext = extended_cdr_components["BECCS"]
+    co2_dacc_ext = extended_cdr_components["DACCS"]
+    co2_ocean_ext = extended_cdr_components["Ocean"]
+    co2_ew_ext = extended_cdr_components["Enhanced_Weathering"]
+    co2_biochar_ext = extended_cdr_components["Biochar"]
+    co2_soil_ext = extended_cdr_components["Soil_Management"]
+    co2_other_cdr_ext = extended_cdr_components["Other_CDR"]
+
+    # === VERIFICATION ===
+    test_year = 2200.0
+    if test_year in co2_beccs_ext.columns:
+        # Sum all CDR components for verification
+        total_sum = (
+            co2_beccs_ext[test_year].groupby("scenario").sum()
+            + co2_dacc_ext[test_year].groupby("scenario").sum()
+            + co2_ocean_ext[test_year].groupby("scenario").sum()
+            + co2_ew_ext[test_year].groupby("scenario").sum()
+            + co2_biochar_ext[test_year].groupby("scenario").sum()
+            + co2_soil_ext[test_year].groupby("scenario").sum()
+            + co2_other_cdr_ext[test_year].groupby("scenario").sum()
+        )
+
+        global_reference = global_cdr_ext[test_year].groupby("scenario").first()
+else:
+    co2_beccs_ext = None
+    co2_dacc_ext = None
+    co2_ocean_ext = None
+    co2_ew_ext = None
+    co2_biochar_ext = None
+    co2_soil_ext = None
+    co2_other_cdr_ext = None
+    print("Skipping CDR component extensions — no global CDR extension data")
 
 
 # %% [markdown]
@@ -814,22 +863,23 @@ if test_year in co2_beccs_ext.columns:
 # %%
 # Merge dataframes into df_everything
 print("=== MERGING ALL DATAFRAMES INTO df_everything ===")
-df_everything = fix_up_and_concatenate_extensions(
-    {
-        "fossil_extension": fossil_extension_df,
-        "afolu_extensions": df_afolu,
-        "non_co2_extensions": df_all,
-        "gross_positive_extensions": co2_gross_positive_ext,
-        "cdr_extensions": global_cdr_ext,
-        "beccs_extensions": co2_beccs_ext,
-        "dacc_extensions": co2_dacc_ext,
-        "ocean_extensions": co2_ocean_ext,
-        "ew_extensions": co2_ew_ext,
-        "biochar_extensions": co2_biochar_ext,
-        "soil_extensions": co2_soil_ext,
-        "other_cdr_extensions": co2_other_cdr_ext,
-    }
-)
+_merge_dict = {
+    "fossil_extension": fossil_extension_df,
+    "afolu_extensions": df_afolu,
+    "non_co2_extensions": df_all,
+    "gross_positive_extensions": co2_gross_positive_ext,
+    "cdr_extensions": global_cdr_ext,
+    "beccs_extensions": co2_beccs_ext,
+    "dacc_extensions": co2_dacc_ext,
+    "ocean_extensions": co2_ocean_ext,
+    "ew_extensions": co2_ew_ext,
+    "biochar_extensions": co2_biochar_ext,
+    "soil_extensions": co2_soil_ext,
+    "other_cdr_extensions": co2_other_cdr_ext,
+}
+# Filter out None entries (e.g. when CDR data is unavailable)
+_merge_dict = {k: v for k, v in _merge_dict.items() if v is not None}
+df_everything = fix_up_and_concatenate_extensions(_merge_dict)
 print(df_everything.head())
 print(f"✅ Successfully merged all DataFrames! Shape: {df_everything.shape}")
 print(df_everything.shape)
@@ -909,7 +959,9 @@ print("=== EXECUTING CONCISE HISTORICAL-FUTURE MERGE ===")
 
 
 # Execute the concise merge
-continuous_timeseries_concise = merge_historical_future_timeseries(history, df_everything)
+continuous_timeseries_concise = merge_historical_future_timeseries(
+    history, df_everything, overlap_year=int(FUTURE_START_YEAR)
+)
 
 
 # %% [markdown]
@@ -978,3 +1030,15 @@ if dump_csvs:
 
 # %%
 scenarios_complete_global.to_csv(OUTPUTS_DIR / "scenarios_complete_global_before_extensions.csv")
+
+# %%
+# Generate FaIR-format emissions CSV from the continuous timeseries
+from flex.general_utils_for_extensions import convert_continuous_to_fair_csv
+
+_continuous_csv = OUTPUTS_DIR / "continuous_emissions_timeseries_1750_2500.csv"
+if _continuous_csv.exists():
+    convert_continuous_to_fair_csv(
+        str(_continuous_csv),
+        str(OUTPUTS_DIR / "emissions_1750-2500.csv"),
+        cfg.scenario_model_match,
+    )

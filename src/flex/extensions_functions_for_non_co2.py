@@ -93,6 +93,8 @@ def do_single_component_for_scenario_model_regionally(  # noqa: PLR0913, PLR0912
     global_target=None,
     end_year=2500,
     end_scenario_year=2100,
+    sigmoid_shift: int = 40,
+    sigmoid_len: int = 50,
 ):
     """
     For given scenario, model and variable, do extensions per sector and region and combine
@@ -150,7 +152,9 @@ def do_single_component_for_scenario_model_regionally(  # noqa: PLR0913, PLR0912
 
     full_years = np.arange(data_regional.columns[0], end_year + 1)
 
-    fractions = get_2100_compound_composition(data_regional[end_scenario_year].copy(), variable)
+    # Fall back to the last available year if end_scenario_year isn't in the columns
+    _esy = end_scenario_year if end_scenario_year in data_regional.columns else data_regional.columns[-1]
+    fractions = get_2100_compound_composition(data_regional[_esy].copy(), variable)
 
     sectors = data_regional.pix.unique("variable")
     regions = data_regional.pix.unique("region")
@@ -158,11 +162,15 @@ def do_single_component_for_scenario_model_regionally(  # noqa: PLR0913, PLR0912
     # Hook for species that are not regional, and just infilled
     if len(regions) <= 1 and len(sectors) <= 1:
         scen_full = interpolate_to_annual(data_scenario_global)
+        _t_extend = _esy - int(scen_full.columns[0])
+        _vals = scen_full.values[0, : _t_extend + 1] if _t_extend + 1 < len(scen_full.columns) else scen_full.values[0, :]
         data_extend = do_simple_sigmoid_or_exponential_extension_to_target(
-            scen_full.values[0, :],
+            _vals,
             np.arange(scen_full.columns[0], end_year + 1),
-            end_scenario_year - int(scen_full.columns[0]),
+            _t_extend,
             global_target,
+            sigmoid_shift=sigmoid_shift,
+            sigmoid_len=sigmoid_len,
         )
         if scen_full.columns[0] != full_years[0]:
             print("Warning: start year of scenario and regional data do not match, check if this is intended")
@@ -187,11 +195,15 @@ def do_single_component_for_scenario_model_regionally(  # noqa: PLR0913, PLR0912
             data = data_sector.loc[pix.ismatch(region=f"{region}")]
             target = global_target * fractions.loc[pix.ismatch(variable=f"{sector}", region=f"{region}")].values[0, 0]
             target_sum = target_sum + target
+            _t_extend = _esy - int(data.columns[0])
+            _vals = data.values[0, : _t_extend + 1] if _t_extend + 1 < len(data.columns) else data.values[0, :]
             data_extend = do_simple_sigmoid_or_exponential_extension_to_target(
-                data.values[0, :],
+                _vals,
                 full_years,
-                end_scenario_year - int(data.columns[0]),
+                _t_extend,
                 target,
+                sigmoid_shift=sigmoid_shift,
+                sigmoid_len=sigmoid_len,
             )
             df_regional = pd.DataFrame(data=[data_extend], columns=full_years, index=data.index)
             if total_sector is None:

@@ -49,6 +49,11 @@ class FlexConfig:
 
     # Optimization settings (empty dict if no optimization configured)
     optimization: dict[str, dict] = field(default_factory=dict)
+    counterfactual_suffix: str = "-CF"
+    # Optional alternate data sources (paths relative to DATA_DIR)
+    data_sources: dict | None = None
+    # Maps marker names to volcanic_solar.csv scenario IDs (e.g. "VL")
+    forcing_scenario: dict[str, str] = field(default_factory=dict)
     # Derived paths
     outputs_dir: Path = field(init=False)
     plots_dir: Path = field(init=False)
@@ -120,6 +125,30 @@ def _convert_removal_strategy(raw: dict[str, dict]) -> dict[str, list]:
     }
 
 
+def _normalize_non_co2_targets(raw_targets: dict[str, dict]) -> dict[str, dict]:
+    """Normalize non_co2_targets entries to a consistent dict format.
+
+    Accepts three formats per scenario entry:
+    - bare number (e.g. 95.0) → {"target": 95.0}
+    - null/None → {"target": None} (auto-calculate target from data)
+    - dict with at least "target" key → passed through
+
+    Scenarios not listed under a variable are not extended for that
+    variable (they keep the source scenario data).
+    """
+    normalized: dict[str, dict] = {}
+    for variable, scenarios in raw_targets.items():
+        normalized[variable] = {}
+        for marker, value in scenarios.items():
+            if value is None:
+                normalized[variable][marker] = {"target": None}
+            elif isinstance(value, dict):
+                normalized[variable][marker] = value
+            else:
+                normalized[variable][marker] = {"target": float(value)}
+    return normalized
+
+
 def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
     """Load a FLEX configuration by name.
 
@@ -157,12 +186,15 @@ def load_config(name: str, configs_dir: Path | None = None) -> FlexConfig:
         # Flags
         make_plots=raw["flags"]["make_plots"],
         dump_csvs=raw["flags"]["dump_csvs"],
+        counterfactual_suffix=raw["flags"].get("counterfactual_suffix", "-CF"),
         # Core dicts (converted to notebook-compatible format)
         scenario_model_match=_convert_scenario_model_match(raw["scenario_model_match"]),
         fossil_evolution_dictionary=_convert_fossil_evolution(raw["fossil_evolution"]),
         removal_dictionary=_convert_removal_strategy(raw["removal_strategy"]),
-        component_global_targets=raw["non_co2_targets"],
+        component_global_targets=_normalize_non_co2_targets(raw["non_co2_targets"]),
         optimization=raw.get("optimization", {}),
+        data_sources=raw.get("data_sources", None),
+        forcing_scenario=raw.get("forcing_scenario", {}),
     )
 
 
