@@ -396,7 +396,7 @@ print(f"  File size estimate: ~{len(ecdf_data) * 80 / 1024:.1f} KB")
 # %%
 # Export emissions by species (first config for diagnostic plots)
 print("Exporting emissions by species...")
-emissions_species = ['CO2 FFI', 'CO2 AFOLU', 'CH4', 'Sulfur', 'VOC', 'CO', 'NOx']
+emissions_species = ['CO2 FFI', 'CO2 AFOLU', 'CH4', 'Sulfur', 'VOC', 'CO', 'NOx', "NH3", "BC", "OC", "N2O"]
 emis_species_list = []
 
 for scenario in f.scenarios:

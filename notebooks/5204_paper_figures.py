@@ -41,7 +41,6 @@ wiemip_config = "WIEMIP"
 import warnings
 import glob
 import os
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as pl
@@ -125,8 +124,7 @@ def save(fig, name):
     print(f"  Saved {path.name}")
     #pl.show()
     pl.close(fig)
-print(OUTPUTS_DIR)
-#sys.exit(4)
+
 
 # %% [markdown]
 # ## A — Load scenariomip_default outputs
@@ -137,12 +135,9 @@ emis_df     = pd.read_csv(OUTPUTS_DIR / "fair_emissions_by_species.csv")
 co2e_df     = pd.read_csv(OUTPUTS_DIR / "fair_co2e_emissions_1750-2500.csv")
 ecdf_df     = pd.read_csv(OUTPUTS_DIR / "fair_temperature_ecdf_data.csv")
 forcing_df  = pd.read_csv(OUTPUTS_DIR / "fair_forcing_sum_1750-2500.csv")
-forcing_persp_df  = pd.read_csv(OUTPUTS_DIR / "fair_forcing_1750-2500.csv")
 conc_df     = pd.read_csv(OUTPUTS_DIR / "fair_concentration_ghgs_1750-2500.csv")
 cont_df     = pd.read_csv(OUTPUTS_DIR / "continuous_emissions_timeseries_1750_2500.csv")
 
-print(cont_df.head())
-sys.exit(4)
 print(emis_df["Species"].unique())
 #sys.exit(4)
 # Compute temperature anomaly relative to 1850-1900 for each scenario
@@ -166,20 +161,8 @@ def temp_anom(scenario):
     return d
 
 # Helper: get species emissions for one scenario
-def get_emis(scenario, species, dataframe=emis_df):
-    df = dataframe[(dataframe["Scenario"] == scenario) & (dataframe["Species"] == species)]
-    print(dataframe["Species"].unique())
-
-    print(scenario, species, df.shape)
-    print(dataframe.head())
-    if df.shape[0] == 0:
-        print(f"Warning: no data for scenario {scenario}, species {species}")
-        years, vals = get_cont(scenario, species)
-        print(df.head())
-        print(years)
-        print(vals)
-        sys.exit(4)
-    return df
+def get_emis(scenario, species):
+    return emis_df[(emis_df["Scenario"] == scenario) & (emis_df["Species"] == species)]
 
 # Helper: get variable from continuous timeseries
 def get_cont(scenario, variable):
@@ -395,7 +378,7 @@ color = SCEN_COLOR[scen]
 # Panel 0: Net CO2 (FFI + AFOLU)
 d_ffi = get_emis(scen, "CO2 FFI")
 d_afolu = get_emis(scen, "CO2 AFOLU")
-net = (d_ffi["Emissions"].values + d_afolu["Emissions"].values) 
+net = (d_ffi["Emissions"].values + d_afolu["Emissions"].values) / 1e6
 ax = axes[0]
 ax.plot(d_ffi["Year"], net, color=color, lw=2)
 ax.axhline(0, color="k", lw=0.5, ls=":")
@@ -439,7 +422,7 @@ for scen in ["L", "LN"]:
 
     d_co2 = get_emis(scen, "CO2 FFI")
     d_afolu = get_emis(scen, "CO2 AFOLU")
-    net = (d_co2["Emissions"].values + d_afolu["Emissions"].values) 
+    net = (d_co2["Emissions"].values + d_afolu["Emissions"].values) / 1e6
 
     axes[0].plot(d_co2["Year"], net, color=color, lw=2, ls=ls, label=scen)
 
@@ -486,7 +469,7 @@ for scen in ["ML", "M"]:
 
     d_co2 = get_emis(scen, "CO2 FFI")
     d_afolu = get_emis(scen, "CO2 AFOLU")
-    net = (d_co2["Emissions"].values + d_afolu["Emissions"].values)
+    net = (d_co2["Emissions"].values + d_afolu["Emissions"].values) / 1e6
 
     axes[0].plot(d_co2["Year"], net, color=color, lw=2, ls=ls, label=scen)
 
@@ -533,7 +516,7 @@ for scen in ["H", "HL"]:
 
     d_co2 = get_emis(scen, "CO2 FFI")
     d_afolu = get_emis(scen, "CO2 AFOLU")
-    net = (d_co2["Emissions"].values + d_afolu["Emissions"].values)
+    net = (d_co2["Emissions"].values + d_afolu["Emissions"].values) / 1e6
 
     axes[0].plot(d_co2["Year"], net, color=color, lw=2, ls=ls, label=scen)
 
@@ -686,27 +669,17 @@ save(fig, "F07_ch4_sulfur_2100.png")
 
 def get_emis_from_ssp_cmip6(filepath, component):
     """Load emissions for a given component from an SSP CMIP6 file."""
-    df = pd.read_csv(filepath, sep="\t", skiprows = [1,2,3])
-    df.columns = df.columns.str.replace(' ', '')
+    df = pd.read_csv(filepath, sep="\t")
     # Assume the file has columns "Year" and "Emissions"
-    mult = 1
-    if component == "Sulfur":
-        component = "SO2"
-    elif component == "CO2 FFI":
-        component = "CO2"
-        mult = (44.01 / 12.01)  # Convert from GtC to GtCO2
-    elif component == "CO2 AFOLU":
-        component = "CO2.1"
-        mult = (44.01 / 12.01)  # Convert from GtC to GtCO2
     print(df.head())
-    print(df.columns)
-    years = df["Component"].values
-    data = df[component].values * mult
-    return years, data
+    sys.exit(4)
+    return df[["Year", "Emissions"]]
 
 
 def make_emissions_plots_with_ssp_overlay(component="Sulfur", endyear = 2100):
 
+
+    
     fig, ax = pl.subplots(figsize=(8, 5))
 
     for scen in SCEN_LABELS:
@@ -715,7 +688,7 @@ def make_emissions_plots_with_ssp_overlay(component="Sulfur", endyear = 2100):
         ax.plot(d.loc[mask, "Year"], d.loc[mask, "Emissions"],
                 color=SCEN_COLOR[scen], lw=2, label=scen)
 
-
+    ax.set_xlim(2000, endyear)
     ax.set_xlabel("Year")
     ax.set_ylabel(f"{component} emissions")
     ax.set_title(f"All scenarios: {component} emissions to {endyear}")
@@ -725,18 +698,18 @@ def make_emissions_plots_with_ssp_overlay(component="Sulfur", endyear = 2100):
     ssp_path = "/home/masan/temp/rcmip_inputs_cscm/"
     for sspfile in glob.glob(f"{ssp_path}/ssp*_em_gases_vupdate_2024_WMO_added_new.txt"):
         ssp_name = os.path.basename(sspfile).split("_")[0]  # e.g. "ssp126"
-        years, data = get_emis_from_ssp_cmip6(sspfile, component)
-        ax.plot(years, data,
+        d_ssp = get_emis_from_ssp_cmip6(sspfile, component)
+        mask_ssp = (d_ssp["Year"] >= 2000) & (d_ssp["Year"] <= endyear)
+        ax.plot(d_ssp.loc[mask_ssp, "Year"], d_ssp.loc[mask_ssp, "Emissions"],
                 lw=1.5, ls="--", label=f"{ssp_name} (CMIP6)")
-
-    ax.set_xlim(2000, endyear)   
+    
     ax.legend(ncol=2, fontsize=9)   
     pl.tight_layout()
     save(fig, f"Extra_trajectories_{component.lower()}_{endyear}.png")
 
-comps_to_plot = ["CH4", "Sulfur", "BC", "OC", "CO2 FFI", "CO2 AFOLU"]
+comps_to_plot = ["CH4", "Sulfur", "BC", "OC"]
 for comp in comps_to_plot:
-    make_emissions_plots_with_ssp_overlay(component=comp, endyear=2150)
+    make_emissions_plots_with_ssp_overlay(component=comp, endyear=2100)
 # %% [markdown]
 # ### F08 — Temperature 2000–2100 (all scenarios + SSP2-com)
 
@@ -784,10 +757,10 @@ save(fig, "F08_temperature_2100.png")
 # ### F09 — CO₂ storyline types + per-scenario fossil 1750–2500
 
 # %%
-fig, axes = pl.subplots(2, 2, figsize=(15, 9))
+fig, axes = pl.subplots(1, 3, figsize=(18, 4.5))
 
 # Left: analytic illustration of CS, ECS, CSCS shapes
-ax = axes[0,0]
+ax = axes[0]
 t = np.linspace(0, 400, 1000)
 
 def sigmoid(t, t0, width):
@@ -811,26 +784,24 @@ ax.axhline(0, color="k", lw=0.5, ls=":")
 ax.set_xlim(2100, 2500)
 ax.set_ylim(-1, 12)
 ax.set_xlabel("Year")
-ax.set_ylabel("CO₂ Total  (schematic units)")
+ax.set_ylabel("CO₂ Total (schematic units)")
 ax.set_title("(a) Storyline types: CS, ECS, CSCS")
 ax.legend()
 ax.grid(alpha=0.3)
 
 # Middle: per-scenario AFOLU CO2 1750-2500
-ax = axes[0,1]
+ax = axes[1]
 for scen in SCEN_LABELS:
     d = get_emis(scen, "CO2 AFOLU")
     mask = d["Year"] >= 1900
-    #print(d.head())
-    #sys.exit(4)
-    ax.plot(d["Year"][mask], d["Emissions"][mask] ,
+    ax.plot(d["Year"][mask], d["Emissions"][mask] / 1e6,
             color=SCEN_COLOR[scen], lw=1.8, label=scen)
 
 ax.axvline(EXT_START, color="#aaa", lw=1, ls=":", zorder=0)
 ax.axhline(0, color="k", lw=0.5, ls=":")
 ax.set_xlim(1900, 2200)
 ax.set_xlabel("Year")
-ax.set_ylabel("CO₂ AFOLU GtCO₂ yr⁻¹")
+ax.set_ylabel("CO₂ AFOLU, GtCO₂ yr⁻¹")
 ax.set_title("(b) Per-scenario AFOLU CO₂, 1900–2200")
 ax.legend(fontsize=8, ncol=2)
 ax.grid(alpha=0.3)
@@ -838,31 +809,23 @@ ax.text(2077, ax.get_ylim()[1] * 0.95, "← IAM | FLEX →",
         fontsize=8, color="#999", ha="left")
 
 # Right: per-scenario fossil CO2 1750-2500
-axem = axes[1,0]
-axcum = axes[1,1]
+ax = axes[2]
 for scen in SCEN_LABELS:
     d = get_emis(scen, "CO2 FFI")
-    d_afolu = get_emis(scen, "CO2 AFOLU")
     mask = d["Year"] >= 1900
-    axem.plot(d["Year"][mask], d["Emissions"][mask],
+    ax.plot(d["Year"][mask], d["Emissions"][mask] / 1e6,
             color=SCEN_COLOR[scen], lw=1.8, label=scen)
-    dcum = np.cumsum(d["Emissions"].values + d_afolu["Emissions"].values)  # cumulative CO2 (FFI + AFOLU)
-    print(d["Year"])
-    axcum.plot(d["Year"][mask], dcum[1900-int(d["Year"].values[0]):]/1e3, color=SCEN_COLOR[scen], lw=1.8, label=scen)
-for ax in [axem, axcum]:
-    ax.axvline(EXT_START, color="#aaa", lw=1, ls=":", zorder=0)
-    ax.axhline(0, color="k", lw=0.5, ls=":")
-    ax.set_xlim(1900, 2500)
-    ax.set_xlabel("Year")
-    ax.legend(fontsize=8, ncol=2)
-    ax.grid(alpha=0.3)
-    ax.text(2052, ax.get_ylim()[1] * 0.95, "← IAM | FLEX →",
-        fontsize=8, color="#999", ha="left")
-axem.set_ylabel("CO₂ FFI GtCO₂ yr⁻¹")
-axem.set_title("(c) Per-scenario fossil CO₂, 1900–2500")
-axcum.set_ylabel("Cumulative CO₂ TtCO₂")
-axcum.set_title("(d) Per-scenario cumulative total CO₂, 1900–2500")
 
+ax.axvline(EXT_START, color="#aaa", lw=1, ls=":", zorder=0)
+ax.axhline(0, color="k", lw=0.5, ls=":")
+ax.set_xlim(1900, 2500)
+ax.set_xlabel("Year")
+ax.set_ylabel("CO₂ FFI, GtCO₂ yr⁻¹")
+ax.set_title("(b) Per-scenario fossil CO₂, 1900–2500")
+ax.legend(fontsize=8, ncol=2)
+ax.grid(alpha=0.3)
+ax.text(2052, ax.get_ylim()[1] * 0.95, "← IAM | FLEX →",
+        fontsize=8, color="#999", ha="left")
 
 pl.tight_layout()
 save(fig, "F09_storyline_types_CO2.png")
@@ -971,8 +934,8 @@ for ax_now in ax:
     ax_now.grid(alpha=0.3)
 ax[0].set_ylabel("CH₄ emissions, Mt CH₄ yr⁻¹")
 ax[0].set_title("Methane emissions 1900–2300: IAM + FLEX extension\n(circles = 2500 targets)")
-ax[1].set_ylabel("Sulfur emissions, Mt SO2 yr⁻¹")
-ax[1].set_title("Sulfur emissions 1900–2300: IAM + FLEX extension\n(circles = 2500 targets)")
+ax[0].set_ylabel("Sulfur emissions, Mt SO2 yr⁻¹")
+ax[0].set_title("Sulfur emissions 1900–2300: IAM + FLEX extension\n(circles = 2500 targets)")
 pl.tight_layout()
 save(fig, "F11_ch4_1750_2500.png")
 
@@ -1097,213 +1060,6 @@ for ax, col, title in zip(axes, columns, panels):
 axes[2].legend(fontsize=8, loc="lower right")
 pl.tight_layout()
 save(fig, "F14_temperature_ecdfs.png")
-
-
-# %% [markdown]
-# ### F15 — Ozone exploration figure
-
-# %%
-fig, axes = pl.subplots(4, 2, figsize=(15, 15))
-panels = ["(a) Ozone ERF", "(b) NOx emissions", "(c) CH4 concentration",
-          "(d) VOC emissions", "(e) CO emissions", "(f) EESC concentration", 
-          "(g) NH3 emissions", "(h) N2O concentrations"]
-columns = ["Ozone", "NOx", "CH4", "VOC", "CO", "Equivalent effective stratospheric chlorine", "NH3", "N2O"]
-units = ["W m⁻²", "Mt NOx yr⁻¹", "ppb", "Mt VOC yr⁻¹", "Mt CO yr⁻¹", "ppb", "Mt NH3 yr⁻¹", "ppb"]
-for i, (col, title) in enumerate(zip(columns, panels)):
-    ax = axes[i // 2, i % 2]
-    for scen in SCEN_LABELS:
-        if "emissions" in title.lower():
-            d = get_emis(scen, col)
-            col_use = "Emissions"
-        elif "concentration" in title.lower():
-            d = get_emis(scen, col, dataframe=conc_df)
-            col_use = "Concentration_median"
-        else:
-            d = get_emis(scen, col, dataframe=forcing_persp_df)
-            col_use = "Forcing_median"
-        mask = (d["Year"] >= 1850) & (d["Year"] <= 2500)
-        print(d.columns)
-        if d.shape[0] == 0:
-            print(f"No data for {scen} and {col}")
-            print(d.head())
-            print(col)
-            print(emis_df["Species"].unique())
-            sys.exit(4)
-        ax.plot(d.loc[mask, "Year"], d.loc[mask, col_use],
-                color=SCEN_COLOR[scen], lw=2, label=scen)
-        if col_use.endswith("median"):
-            print("Hello, plotting uncertainty for", col, "in scenario", scen)
-            ax.fill_between(d.loc[mask, "Year"],
-                            d.loc[mask, col_use.replace("median", "p05")],
-                            d.loc[mask, col_use.replace("median", "p95")],
-                            color=SCEN_COLOR[scen], alpha=0.25, lw=0)
-            #print(d.loc[mask, col_use.replace("median", "p05")].tail())
-            #print(d.loc[mask, col_use.replace("median", "p95")].tail())
-            #sys.exit(4)
-    ax.axvline(EXT_START, color="#aaa", lw=1, ls=":", zorder=0)
-    #ax.axhline(0, color="k", lw=0.5, ls=":")
-
-
-    ax.set_xlabel("Year")
-    ax.set_ylabel(f"{col} ({units[columns.index(col)]})")
-    ax.set_title(title, fontsize=12)
-
-    ax.grid(alpha=0.3)
-    ax.set_xlim(1850, 2500)   
-    ax.legend(ncol=2, fontsize=9)   
-pl.tight_layout()
-save(fig, f"Ozone_stability_exploration.png")
-#axes[2].legend(fontsize=8, loc="lower right")
-
-# %% [markdown]
-# ### F15 — Emissions factor exploration figure
-
-# %%
-fig, axes = pl.subplots(3, 2, figsize=(15, 15))
-fig1, axes1 = pl.subplots(3, 2, figsize=(15, 15))
-fig2, axes2 = pl.subplots(3, 2, figsize=(15, 15))
-panels = ["(a) Methane", "(b) Sulfur", "(c) CFC11",
-          "(d) BC", "(e) CO", "(f) N2O"]
-columns = ["CH4", "Sulfur", "CFC11", "BC", "CO", "N2O"]
-units = ["Mt CH4", "Mt Sulfur", "Mt CFC11", "Mt BC", "Mt CO", "Mt NMVOC"]
-for i, (col, title) in enumerate(zip(columns, panels)):
-    ax = axes[i // 2, i % 2]
-    ax2 = axes2[i // 2, i % 2]
-    ax1 = axes1[i // 2, i % 2]
-    for scen in SCEN_LABELS:
-
-        #axes[2].legend(fontsize=8, loc="lower right")
-        # Get gross removals from continuous timeseries (post-2100)
-        scen_name = SCENARIO_META[scen]["scenario"]
-        gr_mask = (cont_df["scenario"] == scen_name) & (cont_df["variable"] == "Emissions|CO2|Gross Positive Emissions")
-        gr_row = cont_df[gr_mask]
-        print(gr_row.head())
-        print(cont_df["variable"].unique())
-        d_mask = (cont_df["scenario"] == scen_name) & (cont_df["variable"] == f"Emissions|{col}")
-        year_cols = [c for c in gr_row.columns if str(c).replace(".","").isdigit()]
-        gr_years = np.array([float(c) for c in year_cols])
-        gr_vals  = gr_row[year_cols].values.flatten().astype(float)
-        # post-2100 extension years
-        ext_mask = (gr_years < 2200) & (gr_years >= 2000)
-        ext_years = gr_years[ext_mask].astype(int)
-
-        ext_total = gr_vals[ext_mask]
-        d_total = cont_df[d_mask][year_cols].values.flatten().astype(float)[ext_mask]
-        if d_total.shape[0] == 0:
-            print(f"No data for {scen} and {col}")
-            print(d.head())
-            print(col)
-            print(emis_df["Species"].unique())
-            sys.exit(4)
-        ax.plot(ext_years, d_total / ext_total,
-                color=SCEN_COLOR[scen], lw=2, label=scen)
-        ax1.plot(ext_years, d_total,
-                color=SCEN_COLOR[scen], lw=2, label=scen)
-        if col == "N2O":
-            ax2.plot(ext_years, ext_total,
-                color=SCEN_COLOR[scen], lw=2, label=scen)
-        else:
-            ax2.plot(ext_years, d_total,
-            color=SCEN_COLOR[scen], lw=2, label=scen)
-
-    for ax_now in [ax, ax2, ax1]:
-        ax_now.axvline(EXT_START, color="#aaa", lw=1, ls=":", zorder=0)
-        #ax.axhline(0, color="k", lw=0.5, ls=":")
-        ax_now.set_title(title, fontsize=12)
-
-        ax_now.set_xlabel("Year")
-        
-
-        ax_now.grid(alpha=0.3)
-        ax_now.set_xlim(2000, 2200)   
-        ax_now.legend(ncol=2, fontsize=9)
-    ax1.set_xlim(2050, 2150)
-    ax.set_ylabel(f"{col} ({units[columns.index(col)]}/ CO₂ gross emissions)")
-    ax1.set_ylabel(f"{col} ({units[columns.index(col)]})")
-    ax2.set_ylabel(f"{col} ({units[columns.index(col)]})")
-    if col == "N2O":
-        ax2.set_ylabel(f"{col} (CO₂ gross emissions)")
-        ax2.set_title(f"f) CO2 gross emissions", fontsize=12)
-       
-pl.tight_layout()
-save(fig, f"Emissions_factor_exploration.png")
-save(fig1, f"Emissions_exploration_absolute.png")
-save(fig2, f"Gross_emissions.png")
-
-
-
-# %% [markdown]
-# ### F18 — Per-scenario CO₂ diagnostics, 1900–2500
-
-# %%
-fig, axes = pl.subplots(2, 2, figsize=(14, 9))
-
-def plot_five_year_overlay(ax, years, values, color, label, show_overlay=True):
-    ax.plot(years, values, color=color, lw=1.8, label=label)
-    if not show_overlay:
-        return
-
-    sample_mask = ((years - 1900) % 5 == 0)
-    sampled_years = years[sample_mask]
-    sampled_values = values[sample_mask]
-    if sampled_years.size >= 2:
-        interp_years = years[(years >= sampled_years.min()) & (years <= sampled_years.max())]
-        interp_values = np.interp(interp_years, sampled_years, sampled_values)
-        ax.plot(interp_years, interp_values,
-                color=color, lw=1.2, ls="--", alpha=0.9)
-
-def get_cont_panel_data(scen, variable):
-    scen_name = SCENARIO_META[scen]["scenario"]
-    data_mask = (cont_df["scenario"] == scen_name) & (cont_df["variable"] == variable)
-    data_row = cont_df[data_mask]
-    year_cols = [c for c in data_row.columns if str(c).replace(".", "").isdigit()]
-    years = np.array([float(c) for c in year_cols])
-    values = data_row[year_cols].values.flatten().astype(float)
-    return years, values
-
-panel_specs = [
-    (axes[0, 0], "cont", "Emissions|CO2|Energy and Industrial Processes", 1e6,
-     "CO₂ FFI, GtCO₂ yr⁻¹", "(a) Fossil CO₂", True, False),
-    (axes[0, 1], "conc", "CO2", 1.0,
-     "CO₂ concentration, ppm", "(b) CO₂ concentration", False, False),
-    (axes[1, 0], "cont", "Emissions|CO2|Gross Positive Emissions", 1e6,
-     "CO₂ gross emissions, GtCO₂ yr⁻¹", "(c) CO₂ gross emissions", True, False),
-    (axes[1, 1], "cont", "Emissions|CO2|Gross Removals", 1e6,
-     "CO₂ gross removals, GtCO₂ yr⁻¹", "(d) CO₂ gross removals", True, True),
-]
-
-for ax, source_kind, variable, scale, ylabel, title, show_overlay, use_abs in panel_specs:
-    for scen in SCEN_LABELS:
-        if source_kind == "conc":
-            d = get_emis(scen, variable, dataframe=conc_df)
-            mask = d["Year"] >= 2080
-            years = d.loc[mask, "Year"].to_numpy()
-            values = d.loc[mask, "Concentration_median"].to_numpy() / scale
-        else:
-            years, values = get_cont_panel_data(scen, variable)
-            mask = years >= 2080
-            years = years[mask]
-            values = values[mask] / scale
-        if use_abs:
-            values = np.abs(values)
-        plot_five_year_overlay(ax, years, values, SCEN_COLOR[scen], scen, show_overlay=show_overlay)
-
-    ax.axvline(EXT_START, color="#aaa", lw=1, ls=":", zorder=0)
-    if source_kind == "cont":
-        ax.axhline(0, color="k", lw=0.5, ls=":")
-    ax.set_xlim(2080, 2120)
-    ax.set_xlabel("Year")
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
-    ax.grid(alpha=0.3)
-    ax.legend(fontsize=8, ncol=2)
-
-#axes[0, 0].text(2052, axes[0, 0].get_ylim()[1] * 0.95, "← IAM | FLEX →",
-#                fontsize=8, color="#999", ha="left")
-
-pl.tight_layout()
-save(fig, "F18_interpolated_output_comparison.png")
-
 
 # %% [markdown]
 # ## Summary
