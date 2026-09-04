@@ -626,6 +626,7 @@ for scenario, meta in scenario_model_match.items():
 axt.axhline(1.5, color="k", ls="--", lw=1.0)
 axt.text(2300, 1.51, "1.5 C", fontsize=9)
 axt.set_xlim(2000, 2500)
+axt.set_ylim(1.4,1.6)
 axt.set_xlabel("Year")
 axt.set_ylabel("Temperature above 1850-1900, K")
 axt.set_title("(a) FaIR temperature: median (dashed) vs reference member (solid)")

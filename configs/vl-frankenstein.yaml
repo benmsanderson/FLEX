@@ -203,8 +203,8 @@ optimization:
     # within ~1.50-1.52 C). Peaks ~1.64 C vs 1850-1900 around 2051.
     # target_temp = 1.5795 K = 1.5 C vs 1850-1900.
     fixed_result:
-      exp_targ: 4050.0
-      sig_start: 2080.0
+      exp_targ: 2950.0
+      sig_start: 2100.0
       sig_end: 2600.0
       departure_year: 2033
       target_temp: 1.5795
