@@ -35,7 +35,18 @@ from fair import FAIR
 from fair.interface import initialise
 from fair.io import read_properties
 
-from flex.config import load_config, DATA_DIR
+from flex.config import (
+    load_config,
+    DATA_DIR,
+    FAIR_FORCING_FILE,
+    FAIR_CALIBRATION_DOI,
+    FAIR_CALIBRATION_VERSION,
+    FAIR_PARAMS_FILE,
+    FAIR_REFERENCE_CONFIG,
+    FAIR_PARAMS_FILE_HASH,
+    FAIR_PARAMS_FILE_NAME,
+    FAIR_SPECIES_FILE,
+)
 from flex.optimise import _get_conc_driven_species, _fill_concentrations_from_file
 
 # %% tags=["parameters"]
@@ -58,7 +69,7 @@ print(f"Outputs: {OUTPUTS_DIR}")
 f = FAIR()
 
 # Determine ensemble size: match the optimiser by default
-params_file = DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
+params_file = FAIR_PARAMS_FILE
 if not full_ensemble:
     _opt_cfgs = cfg.optimization or {}
     n_fair_configs = max(
@@ -73,7 +84,7 @@ snames = cfg.markers
 
 f.define_time(1750, 2501, 1)
 f.define_scenarios(snames)
-species, properties = read_properties(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
+species, properties = read_properties(str(FAIR_SPECIES_FILE))
 
 # When a concentrations file is configured, switch all non-CO2 GHG species
 # to concentration-driven mode before defining species in FaIR.
@@ -98,25 +109,38 @@ f.ch4_method = "Thornhill2021"
 
 # %%
 if not params_file.exists():
-    ZENODO_DOI = "10.5281/zenodo.7112539"
-    FILE_NAME = "calibrated_constrained_parameters.csv"
-    FILE_HASH = "md5:8a70a3fb05d0e0cf35e136de382582a5"
     data_pooch = pooch.create(
         path=str(DATA_DIR / "fair-inputs"),
-        base_url=f"doi:{ZENODO_DOI}",
-        version="1.5.0",
-        registry={FILE_NAME: FILE_HASH},
+        base_url=f"doi:{FAIR_CALIBRATION_DOI}",
+        version=FAIR_CALIBRATION_VERSION,
+        registry={FAIR_PARAMS_FILE_NAME: FAIR_PARAMS_FILE_HASH},
     )
-    local_file_path = data_pooch.fetch(FILE_NAME)
+    local_file_path = data_pooch.fetch(FAIR_PARAMS_FILE_NAME)
     print(f"Downloaded parameters to: {local_file_path}")
 
 # %%
-df_configs = pd.read_csv(params_file, index_col=0)
+df_all_configs = pd.read_csv(params_file, index_col=0)
+df_configs = df_all_configs
 if n_fair_configs is not None and n_fair_configs < len(df_configs):
     indices = np.linspace(0, len(df_configs) - 1, n_fair_configs, dtype=int)
     df_configs = df_configs.iloc[indices]
+    # Keep the reference member in a subsampled ensemble so its individual
+    # trajectory can still be reported next to the median.  A no-op for the
+    # full ensemble, which already contains it.
+    if (FAIR_REFERENCE_CONFIG is not None
+            and FAIR_REFERENCE_CONFIG in df_all_configs.index
+            and FAIR_REFERENCE_CONFIG not in df_configs.index):
+        _keep = set(df_configs.index) | {FAIR_REFERENCE_CONFIG}
+        df_configs = df_all_configs.loc[[c for c in df_all_configs.index if c in _keep]]
+        print(f"  added reference config {FAIR_REFERENCE_CONFIG} to the subsample")
 f.define_configs(df_configs.index)
 print(f"Using {len(df_configs)} ensemble member(s)")
+
+# Individual member reported alongside the median in the plots (None if absent).
+REF_CONFIG = FAIR_REFERENCE_CONFIG if FAIR_REFERENCE_CONFIG in df_configs.index else None
+if REF_CONFIG is None and FAIR_REFERENCE_CONFIG is not None:
+    print(f"  NOTE reference config {FAIR_REFERENCE_CONFIG} not in {params_file.parent.name} "
+          f"calibration; only the ensemble median will be reported")
 
 # %%
 f.allocate()
@@ -154,7 +178,7 @@ gwpmat = pd.read_csv(DATA_DIR / "fair-inputs" / "gwp_mass_adjusted_100y.csv", in
 # so they inherit volcanic/solar forcing from their source scenario
 import tempfile
 
-forcing_path = str(DATA_DIR / "fair-inputs" / "volcanic_solar.csv")
+forcing_path = str(FAIR_FORCING_FILE)
 forcing_map = {**cfg.scenario_mapping, **cfg.forcing_scenario}
 if forcing_map:
     # Duplicate forcing rows for mapped scenarios
@@ -256,7 +280,7 @@ co2e = co2eo * 1e6  # -co2eo.loc[dict(timepoints=2019.5)].values+53.e6
 # ## Run FaIR
 
 # %%
-f.fill_species_configs(str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv"))
+f.fill_species_configs(str(FAIR_SPECIES_FILE))
 f.override_defaults(str(params_file))
 f.climate_configs["stochastic_run"][:] = False
 initialise(f.concentration, f.species_configs["baseline_concentration"])
@@ -299,6 +323,8 @@ for scenario in f.scenarios:
         'Temperature_p05': temp_data.quantile(0.05, dim='config').values,
         'Temperature_p95': temp_data.quantile(0.95, dim='config').values,
     })
+    if REF_CONFIG is not None:
+        df_temp['Temperature_ref'] = temp_data.sel(config=REF_CONFIG).values
     temp_df_list.append(df_temp)
 
 temp_summary = pd.concat(temp_df_list, ignore_index=True)

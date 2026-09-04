@@ -23,6 +23,39 @@ CONFIGS_DIR = REPO_ROOT / "configs"
 # avoids that entirely. See data/README.md.
 DATA_DIR = Path(os.environ.get("FLEX_DATA_DIR") or REPO_ROOT / "data").expanduser()
 
+# --- FaIR calibration inputs -------------------------------------------------
+# Single source of truth for the FaIR calibrated-constrained parameter set, so
+# the package, the notebooks and scripts/fetch_data.py can never drift onto
+# different calibration vintages.  To move to a new calibration, bump the
+# version, the record DOI and the hash together.
+#
+# 1.6.0 is the CMIP7-era calibration (841 members), Zenodo record 18828694.
+# The concept DOI 10.5281/zenodo.7112539 always resolves to the *latest*
+# record, so the version-specific record DOI is used here to keep fetches
+# reproducible.
+FAIR_CALIBRATION_VERSION = "1.6.0"
+FAIR_CALIBRATION_DOI = "10.5281/zenodo.18828694"
+FAIR_PARAMS_FILE_NAME = "calibrated_constrained_parameters.csv"
+FAIR_PARAMS_FILE_HASH = "md5:b0fadc337e7b66525703f5b7f5fce2db"
+
+FAIR_INPUTS_DIR = DATA_DIR / "fair-inputs"
+FAIR_PARAMS_FILE = FAIR_INPUTS_DIR / FAIR_CALIBRATION_VERSION / FAIR_PARAMS_FILE_NAME
+FAIR_SPECIES_FILE = FAIR_INPUTS_DIR / "species_configs_properties_1.4.1.csv"
+FAIR_FORCING_FILE = FAIR_INPUTS_DIR / "volcanic_solar.csv"
+
+# Ensemble size used when a caller asks for a small, fast run and does not name
+# an explicit n_configs.  Members are drawn evenly spaced from FAIR_PARAMS_FILE
+# so the reduced ensemble is always a subset of the calibration in use.
+FAIR_SMALL_ENSEMBLE_SIZE = 5
+
+# The single calibration member WIEMIP uses as its default FaIR configuration.
+# Its individual trajectory is reported alongside the ensemble median, so it is
+# force-included in the ensemble even when subsampling would drop it (it sits at
+# position 448 of 841 and is not picked by the evenly-spaced subsample).
+# Present in calibration 1.6.0 only; set to None to report the median alone.
+FAIR_REFERENCE_CONFIG = 867236
+FAIR_REFERENCE_CONFIG_LABEL = "WIEMIP default (config 867236)"
+
 
 @dataclass
 class FlexConfig:

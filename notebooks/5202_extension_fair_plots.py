@@ -34,7 +34,7 @@ import matplotlib.pyplot as pl
 import numpy as np
 import pandas as pd
 
-from flex.config import load_config
+from flex.config import load_config, FAIR_REFERENCE_CONFIG_LABEL
 
 # %% tags=["parameters"]
 config_name = "vl-frankenstein"
@@ -54,6 +54,25 @@ print(f"Saving to: {PLOTS_DIR}")
 # %%
 # Load temperature data
 temp_df = pd.read_csv(OUTPUTS_DIR / 'fair_temperature_1750-2500.csv')
+
+# --- Reference FaIR member ---------------------------------------------------
+# 5201 exports Temperature_ref for a single calibration member (the config
+# WIEMIP uses by default) alongside the full-ensemble statistics.  Temperature
+# panels draw the ensemble median dashed and that single member solid.  If the
+# column is missing (older outputs, or the member is not in the calibration in
+# use) the plots fall back to the median alone, drawn solid.
+HAS_REF = "Temperature_ref" in temp_df.columns
+REF_LABEL = FAIR_REFERENCE_CONFIG_LABEL
+MED_LS = "--" if HAS_REF else "-"
+if not HAS_REF:
+    print("No Temperature_ref column — plotting the ensemble median only.")
+
+
+def temp_anomalies(d, baseline_mean):
+    """Median and reference-member anomalies for one scenario slice of temp_df."""
+    med = d["Temperature_median"].values - baseline_mean
+    ref = (d["Temperature_ref"].values - baseline_mean) if HAS_REF else None
+    return med, ref
 print(f"Temperature data: {len(temp_df)} rows")
 
 # Load forcing data
@@ -162,7 +181,7 @@ for scenario, meta in scenario_model_match.items():
     baseline_mask = (scenario_temp['Year'] >= 1850) & (scenario_temp['Year'] <= 1901)
     baseline_mean = scenario_temp[baseline_mask]['Temperature_median'].mean()
     
-    temp_median = scenario_temp['Temperature_median'].values - baseline_mean
+    temp_median, temp_ref = temp_anomalies(scenario_temp, baseline_mean)
     temp_p05 = scenario_temp['Temperature_p05'].values - baseline_mean
     temp_p95 = scenario_temp['Temperature_p95'].values - baseline_mean
     
@@ -176,6 +195,9 @@ for scenario, meta in scenario_model_match.items():
         alpha=0.3,
         label=scenario,
     )
+    ax[1].plot(years, temp_median, color=meta[2], ls=MED_LS, lw=1.5)
+    if temp_ref is not None:
+        ax[1].plot(years, temp_ref, color=meta[2], ls="-", lw=1.5)
 
 # Add historical overlay (black shading up to 2023)
 hist_scenario = temp_df[temp_df['Scenario'] == list(scenario_model_match.keys())[0]]
@@ -364,7 +386,7 @@ for scenario, meta in scenario_model_match.items():
     baseline_mask = (scenario_data['Year'] >= 1850) & (scenario_data['Year'] <= 1901)
     baseline_mean = scenario_data[baseline_mask]['Temperature_median'].mean()
     
-    temp_median = scenario_data['Temperature_median'].values - baseline_mean
+    temp_median, temp_ref = temp_anomalies(scenario_data, baseline_mean)
     temp_p05 = scenario_data['Temperature_p05'].values - baseline_mean
     temp_p95 = scenario_data['Temperature_p95'].values - baseline_mean
     
@@ -376,7 +398,9 @@ for scenario, meta in scenario_model_match.items():
         alpha=0.3,
         lw=0
     )
-    ax[3, 1].plot(years, temp_median, color=meta[2])
+    ax[3, 1].plot(years, temp_median, color=meta[2], ls=MED_LS)
+    if temp_ref is not None:
+        ax[3, 1].plot(years, temp_ref, color=meta[2], ls="-")
 
 ax[3, 1].set_ylabel("Temperature anomaly,\\nK above 1850-1900")
 ax[3, 1].set_xlabel("Year")
@@ -467,24 +491,50 @@ else:
         _opt_data = _json.load(_fh)
     opt_results_plot = _opt_data["optimization_results"]
 
-cf_pairs = [(s.replace("-CF", ""), s) for s in opt_results_plot if s.endswith("-CF")]
+# Pair each optimised marker with the pathway it departs from.  The source is
+# the first *other* marker sharing the same scenario + model, exactly as 5196
+# resolves it — do not infer it from the marker name.  Names no longer encode
+# the relationship: "-CF" now marks the historical-counterfactual family and
+# "-CTAP" the constant-temperature-after-peak variants, and a source such as
+# VL-CF-base is not recoverable by stripping a suffix.
+def _source_marker(marker):
+    info = scenario_model_match.get(marker)
+    if info is None:
+        return None
+    for _m, _i in scenario_model_match.items():
+        if _m != marker and _i[0] == info[0] and _i[1] == info[1]:
+            return _m
+    return None
+
+cf_pairs = [(_src, s) for s in opt_results_plot
+            if (_src := _source_marker(s)) is not None]
+_missing = [s for s in opt_results_plot if _source_marker(s) is None]
+if _missing:
+    print(f"No source marker in this config for: {_missing} — omitted from the plot.")
 
 if not cf_pairs:
     print("No CF scenario pairs found — skipping cf_scenarios plot.")
 else:
+    _cf_markers = {cf for _, cf in cf_pairs}
+
     def ls_for(scenario):
-        return "--" if scenario.endswith("-CF") else "-"
+        return "--" if scenario in _cf_markers else "-"
 
     def color_for(scenario):
-        src = scenario.replace("-CF", "")
-        return scenario_model_match[src][2]
+        # Each marker carries its own colour: several counterfactuals can share
+        # one source, so colouring by the source would collapse them together.
+        return scenario_model_match[scenario][2]
 
     fig, axes = pl.subplots(1, 2, figsize=(14, 5))
 
     # --- Left: total CO2 emissions ---
     ax = axes[0]
+    _plotted = set()
     for src, cf in cf_pairs:
         for scenario in (src, cf):
+            if scenario in _plotted:
+                continue  # shared source pathway, already drawn
+            _plotted.add(scenario)
             ffi = emis_species_df[
                 (emis_species_df["Scenario"] == scenario) & (emis_species_df["Species"] == "CO2 FFI")
             ].set_index("Year")["Emissions"]
@@ -505,18 +555,28 @@ else:
 
     # --- Right: median temperature with ensemble range ---
     ax = axes[1]
+    _plotted = set()
     for src, cf in cf_pairs:
         target_temp = opt_results_plot[cf]["target_temp"]
         color = color_for(cf)
 
         for scenario in (src, cf):
+            if scenario in _plotted:
+                continue  # shared source pathway, already drawn
+            _plotted.add(scenario)
             d = temp_df[temp_df["Scenario"] == scenario]
             baseline_mean = d[(d["Year"] >= 1850) & (d["Year"] <= 1901)]["Temperature_median"].mean()
-            t_med = d["Temperature_median"].values - baseline_mean
+            t_med, t_ref = temp_anomalies(d, baseline_mean)
             t_p05 = d["Temperature_p05"].values - baseline_mean
             t_p95 = d["Temperature_p95"].values - baseline_mean
-            ax.fill_between(d["Year"], t_p05, t_p95, color=color, alpha=0.12, lw=0)
-            ax.plot(d["Year"], t_med, color=color, ls=ls_for(scenario), lw=1.8, label=scenario)
+            ax.fill_between(d["Year"], t_p05, t_p95, color=color_for(scenario), alpha=0.12, lw=0)
+            # Scenarios are separated by colour in this panel, so linestyle
+            # carries median (dashed) vs reference member (solid) instead.
+            ax.plot(d["Year"], t_med, color=color_for(scenario), ls=MED_LS, lw=1.8,
+                    label=f"{scenario} (median)" if t_ref is not None else scenario)
+            if t_ref is not None:
+                ax.plot(d["Year"], t_ref, color=color_for(scenario), ls="-", lw=1.8,
+                        label=f"{scenario} ({REF_LABEL})")
 
         # temperature target reference line
         # baseline offset: use the source scenario's 1850-1900 baseline
@@ -529,7 +589,7 @@ else:
     ax.axhline(0, color="k", lw=0.5, ls=":")
     ax.set_xlabel("Year")
     ax.set_ylabel("Temperature anomaly, K above 1850–1900")
-    ax.set_title("(b) Temperature (median ± 5–95%)")
+    ax.set_title("(b) Temperature: median (dashed), reference member (solid), 5–95% band")
     ax.legend(fontsize=9)
     ax.grid(alpha=0.3)
 
@@ -542,15 +602,12 @@ else:
 # %% [markdown]
 # ## Plot 5: Hold-variant comparison — temperature & total CO2 (hold_comparison.png)
 #
-# Compares every scenario in the config (e.g. the base plus the -hold / -1p5 /
-# -1p6 / -1p5x hold variants): FaIR median temperature relative to 1850-1900
-# (with a 1.5 C reference line) and total CO2 (FFI + AFOLU). Markers whose name
-# ends in "x" are drawn dashed.
+# Compares every scenario in the config (e.g. VL-CF-base plus the VL-CF and
+# VL-CF-CTAP variants): FaIR temperature relative to 1850-1900 (with a 1.5 C
+# reference line) and total CO2 (FFI + AFOLU).  The ensemble median is dashed
+# and the single reference calibration member is solid.
 
 # %%
-def _hold_ls(scenario):
-    return "--" if scenario.endswith("x") else "-"
-
 fig, axes = pl.subplots(1, 2, figsize=(14, 5))
 
 # --- (a) FaIR median temperature relative to 1850-1900 ---
@@ -560,14 +617,18 @@ for scenario, meta in scenario_model_match.items():
     if d.empty:
         continue
     baseline = d[(d["Year"] >= 1850) & (d["Year"] <= 1901)]["Temperature_median"].mean()
-    axt.plot(d["Year"], d["Temperature_median"].values - baseline,
-             color=meta[2], ls=_hold_ls(scenario), lw=2.0, label=scenario)
+    t_med, t_ref = temp_anomalies(d, baseline)
+    axt.plot(d["Year"], t_med, color=meta[2], ls=MED_LS, lw=2.0,
+             label=f"{scenario} (median)" if t_ref is not None else scenario)
+    if t_ref is not None:
+        axt.plot(d["Year"], t_ref, color=meta[2], ls="-", lw=2.0,
+                 label=f"{scenario} ({REF_LABEL})")
 axt.axhline(1.5, color="k", ls="--", lw=1.0)
 axt.text(2300, 1.51, "1.5 C", fontsize=9)
 axt.set_xlim(2000, 2500)
 axt.set_xlabel("Year")
-axt.set_ylabel("Median temperature above 1850-1900, K")
-axt.set_title("(a) FaIR median temperature")
+axt.set_ylabel("Temperature above 1850-1900, K")
+axt.set_title("(a) FaIR temperature: median (dashed) vs reference member (solid)")
 axt.grid(alpha=0.3)
 axt.legend(fontsize=8.5)
 
@@ -583,8 +644,8 @@ for scenario, meta in scenario_model_match.items():
     if ffi.empty:
         continue
     total = ffi.add(afolu, fill_value=0.0) / 1e6
-    axc.plot(total.index, total.values, color=meta[2], ls=_hold_ls(scenario),
-             lw=2.0, label=scenario)
+    # Emissions have no ensemble dimension, so no median/reference distinction.
+    axc.plot(total.index, total.values, color=meta[2], lw=2.0, label=scenario)
 axc.axhline(0, color="k", lw=0.5, ls=":")
 axc.set_xlim(2000, 2500)
 axc.set_xlabel("Year")

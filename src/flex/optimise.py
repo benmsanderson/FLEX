@@ -11,7 +11,14 @@ from fair.interface import initialise
 from fair.io import read_properties
 from scipy.optimize import differential_evolution
 
-from flex.config import DATA_DIR, FlexConfig
+from flex.config import (
+    DATA_DIR,
+    FAIR_FORCING_FILE,
+    FAIR_PARAMS_FILE,
+    FAIR_SMALL_ENSEMBLE_SIZE,
+    FAIR_SPECIES_FILE,
+    FlexConfig,
+)
 
 
 def _get_conc_driven_species(properties: dict) -> list[str]:
@@ -116,14 +123,14 @@ def setup_fair(
     scenarios
         List of scenario short names (e.g. ["LN"]).
     memory_limited
-        If True, use 5-member ensemble; otherwise full ~1000 member.
-        Ignored when *n_configs* is set.
+        If True, subsample a 5-member ensemble from the calibration set;
+        otherwise use all 841 members.  Ignored when *n_configs* is set.
     scenario_mapping
         Maps new scenario names to base scenarios for the forcing file.
         E.g. {"HL-CF": "HL"} means HL-CF reuses HL's volcanic/solar forcing.
     n_configs
         Explicit number of configs to use, drawn evenly-spaced from the
-        full ~1000-member parameter set.  Overrides *memory_limited* when
+        full 841-member parameter set.  Overrides *memory_limited* when
         set.  Use 1 for a fast deterministic run during optimization.
     concentrations_file
         Optional path to a CSV with pre-computed concentration timeseries.
@@ -136,15 +143,11 @@ def setup_fair(
     -------
     Configured FAIR instance (not yet run).
     """
-    fair_inputs = DATA_DIR / "fair-inputs"
-
     f = FAIR()
     f.define_time(1750, 2501, 1)
     f.define_scenarios(scenarios)
 
-    species, properties = read_properties(
-        str(fair_inputs / "species_configs_properties_1.4.1.csv")
-    )
+    species, properties = read_properties(str(FAIR_SPECIES_FILE))
 
     # When a concentrations file is provided, switch all non-CO2 GHG species
     # to concentration-driven mode before defining species in FaIR.
@@ -157,16 +160,14 @@ def setup_fair(
     f.define_species(species, properties)
     f.ch4_method = "Thornhill2021"
 
-    if n_configs is not None:
-        # Always draw from the full parameter set so any ensemble size
-        # from 1 up to ~1000 is representative.
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
-    elif memory_limited:
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters_short.csv"
-    else:
-        params_file = fair_inputs / "1.5.0" / "calibrated_constrained_parameters.csv"
+    # One calibration vintage for the whole pipeline (see flex.config).  Any
+    # reduced ensemble is subsampled from it rather than read from a separate
+    # file, so a small run is always a strict subset of the full run.
+    params_file = FAIR_PARAMS_FILE
 
     df_configs = pd.read_csv(params_file, index_col=0)
+    if n_configs is None and memory_limited:
+        n_configs = FAIR_SMALL_ENSEMBLE_SIZE
     if n_configs is not None and n_configs < len(df_configs):
         indices = np.linspace(0, len(df_configs) - 1, n_configs, dtype=int)
         df_configs = df_configs.iloc[indices]
@@ -174,7 +175,7 @@ def setup_fair(
     f.allocate()
 
     # Prepare forcing file: add rows for new scenarios not in the original
-    forcing_path = str(fair_inputs / "volcanic_solar.csv")
+    forcing_path = str(FAIR_FORCING_FILE)
     if scenario_mapping:
         import tempfile
         df_forcing = pd.read_csv(forcing_path)
@@ -206,7 +207,7 @@ def setup_fair(
         f.forcing.loc[dict(scenario=s, specie="Solar")] = 0
 
     # Fill species configs and calibrated parameters
-    f.fill_species_configs(str(fair_inputs / "species_configs_properties_1.4.1.csv"))
+    f.fill_species_configs(str(FAIR_SPECIES_FILE))
     f.override_defaults(str(params_file))
     f.climate_configs["stochastic_run"][:] = False
 

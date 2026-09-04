@@ -41,3 +41,14 @@ notebooks/co2_fossil_fuel_extenstions_*.csv
 data/scenarios_complete_global.csv
 data/scenarios_regional.csv
 data/vl-extensions-inputs/
+
+# The ScenarioMIP marker release itself, wherever it is downloaded to
+ScenarioMIP_emissions_marker_scenarios*.xlsx
+
+# Emissions DERIVED from the ScenarioMIP marker delivery. These carry the
+# marker pathways forward (all seven markers, 1750-2500) and so inherit the
+# same restriction as the source files above - do not publish them.
+# Derived outputs under outputs/ are already excluded further up.
+data/fair-inputs/emissions_*.csv
+data/fair-inputs/emissions_*_metadata.json
+data/*_published/

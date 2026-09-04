@@ -26,6 +26,16 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("FLEX_DATA_DIR") or REPO_ROOT / "data").expanduser()
 
+# Mirrors flex.config.FAIR_* — keep the two in step. This script has to run
+# before the package is importable, so the constants are repeated rather than
+# imported. 1.6.0 is Zenodo record 18828694; the version-specific record DOI is
+# used instead of the concept DOI (10.5281/zenodo.7112539) so the fetch stays
+# reproducible once a later calibration is published.
+FAIR_CALIBRATION_VERSION = "1.6.0"
+FAIR_CALIBRATION_DOI = "10.5281/zenodo.18828694"
+FAIR_PARAMS_FILE_NAME = "calibrated_constrained_parameters.csv"
+FAIR_PARAMS_FILE_HASH = "md5:b0fadc337e7b66525703f5b7f5fce2db"
+
 # SHA-256 of each input as the pipeline was developed against it. Several
 # branches were built on different releases of the upstream datasets, so more
 # than one hash can be legitimate; each is labelled with where it was used. An
@@ -93,23 +103,24 @@ def looks_like_lfs_pointer(path):
 
 def fetch_fair_inputs():
     """Download the FaIR calibrated-constrained parameters if not present."""
-    target = DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
+    rel = f"fair-inputs/{FAIR_CALIBRATION_VERSION}/{FAIR_PARAMS_FILE_NAME}"
+    target = DATA_DIR / "fair-inputs" / FAIR_CALIBRATION_VERSION / FAIR_PARAMS_FILE_NAME
     if target.exists():
-        print(f"  ok       fair-inputs/1.5.0/{target.name} (already present)")
+        print(f"  ok       {rel} (already present)")
         return
     try:
         import pooch
     except ImportError:
         print("  SKIP     pooch not installed; cannot fetch FaIR parameters")
         return
-    print("  fetching FaIR calibrated-constrained parameters from Zenodo ...")
+    print(f"  fetching FaIR {FAIR_CALIBRATION_VERSION} calibrated-constrained "
+          "parameters from Zenodo ...")
     pooch.create(
         path=str(DATA_DIR / "fair-inputs"),
-        base_url="doi:10.5281/zenodo.7112539",
-        version="1.5.0",
-        registry={"calibrated_constrained_parameters.csv":
-                  "md5:8a70a3fb05d0e0cf35e136de382582a5"},
-    ).fetch("calibrated_constrained_parameters.csv")
+        base_url=f"doi:{FAIR_CALIBRATION_DOI}",
+        version=FAIR_CALIBRATION_VERSION,
+        registry={FAIR_PARAMS_FILE_NAME: FAIR_PARAMS_FILE_HASH},
+    ).fetch(FAIR_PARAMS_FILE_NAME)
     print(f"  ok       {target}")
 
 

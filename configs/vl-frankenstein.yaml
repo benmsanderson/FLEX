@@ -1,16 +1,36 @@
-# ScenarioMIP Default Extension Configuration
-# =============================================
-# This is the baseline configuration for the FLEX extension pipeline,
-# reproducing the standard ScenarioMIP marker scenario extensions.
+# VL Historical-Counterfactual Extension Configuration
+# ====================================================
+# Marker names follow namings.csv:
 #
-# To create a custom ensemble, copy this file and modify the parameters.
+#   new         long name
+#   ----------  ----------------------------------------------------------
+#   VL-CF       SSP1 - Very Low Emissions (historical counterfactual)
+#   VL-CF-CTAP  SSP1 - Very Low Emissions (historical counterfactual,
+#                 constant temperature after peak)
+#
+# The long names are display labels only; the `scenario:` field below must keep
+# the underlying IAM scenario name, since that is the data lookup key.
+#
+# VL-CF-base is not a published marker and is not named by namings.csv, but it
+# must stay in this config and stay listed first: it is the unconstrained
+# counterfactual pathway that both VL-CF and VL-CF-CTAP depart from, and 5196
+# resolves each optimised marker's departure trajectory as the first *other*
+# marker sharing the same scenario + model, raising if there is none.
+#
+# Kept separate from WIEMIP.yaml on purpose.  That ensemble harmonises futures
+# from 2023 and runs fully emissions-driven; this one harmonises earlier (the
+# pre-2023 divergence is what makes it a counterfactual history) and fixes
+# non-CO2 concentrations via concentrations_file.  A config carries one
+# future_start_year and one concentrations_file, so the two cannot be merged
+# without per-marker overrides.
 
 name: vl-frankenstein
 description: >
-  Frankenstein-style scenario extensions for the SSP1-1.9 (VL) marker scenario,
+  Historical-counterfactual extensions for the SSP1-1.9 (VL) marker scenario,
   harmonised from 2015 and using different fossil fuel and possibly also AFOLU
-  targets. The -hold variants branch at 2050 and are optimized to hold
-  FaIR median temperature constant at the 2050 level.
+  targets. VL-CF branches at 2050 and is optimized to hold FaIR median
+  temperature constant at the 2050 level; VL-CF-CTAP holds near 1.5 C.
+  Non-CO2 GHGs are run concentration-driven.
 
 # --- Time range constants ---
 time:
@@ -32,31 +52,23 @@ flags:
 # --- Scenario-to-model mapping ---
 # Each marker maps to: [scenario_name, model_name, plot_color]
 scenario_model_match:
-  VL-fossil-frankenstein:
+  VL-CF-base:
     scenario: "SSP1 - Very Low Emissions Ref1p5"
     model: "REMIND-MAgPIE 3.5-4.11"
     color: "#2196F3"
-  VL-fossil-frankenstein-hold:
+  VL-CF:
     scenario: "SSP1 - Very Low Emissions Ref1p5"
     model: "REMIND-MAgPIE 3.5-4.11"
     color: "#9C27B0"
-  VL-fossil-frankenstein-1p5:
+  VL-CF-CTAP:
     scenario: "SSP1 - Very Low Emissions Ref1p5"
     model: "REMIND-MAgPIE 3.5-4.11"
     color: "#00A651"
-  VL-fossil-frankenstein-1p6:
-    scenario: "SSP1 - Very Low Emissions Ref1p5"
-    model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#FF9800"
-  VL-fossil-frankenstein-1p5x:
-    scenario: "SSP1 - Very Low Emissions Ref1p5"
-    model: "REMIND-MAgPIE 3.5-4.11"
-    color: "#009688"
-  # VL-fossil-frankenstein-zero-afolu:
+  # VL-CF-zero-afolu:
   #   scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
   #   model: "REMIND-MAgPIE 3.5-4.11"
   #   color: "#FF9800"
-  # VL-fossil-frankenstein-zero-afolu-hold:
+  # VL-CF-zero-afolu-hold:
   #   scenario: "SSP1 - Very Low Emissions fossil frankenstein AFOLU zero"
   #   model: "REMIND-MAgPIE 3.5-4.11"
   #   color: "#E91E63"
@@ -69,25 +81,19 @@ scenario_model_match:
 #
 # exp_targ=null means linear interpolation instead of exponential decay
 fossil_evolution:
-  VL-fossil-frankenstein:
+  VL-CF-base:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]
-  VL-fossil-frankenstein-zero-afolu:
+  VL-CF-zero-afolu:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]
-  VL-fossil-frankenstein-hold:
+  VL-CF:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]  # initial guess; optimized
-  VL-fossil-frankenstein-1p5:
+  VL-CF-CTAP:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]  # placeholder; overwritten by fixed_result
-  VL-fossil-frankenstein-1p6:
-    type: ECS
-    params: [2200, -3500.0, 2450, 2500, 20, 20]  # placeholder; overwritten by fixed_result
-  VL-fossil-frankenstein-1p5x:
-    type: ECS
-    params: [2200, -3500.0, 2450, 2500, 20, 20]  # placeholder; overwritten by fixed_result
-  VL-fossil-frankenstein-zero-afolu-hold:
+  VL-CF-zero-afolu-hold:
     type: ECS
     params: [2200, -3500.0, 2450, 2500, 20, 20]  # initial guess; optimized
 
@@ -95,16 +101,10 @@ fossil_evolution:
 # NEG: [type, decbay_timescale, offset] — gross positive decays, CDR as residual
 # POS: [type] — CDR constant, gross positive adjusts to follow fossil
 removal_strategy:
-  VL-fossil-frankenstein:
+  VL-CF-base:
     type: NEG
     params: [100, 60]
-  VL-fossil-frankenstein-zero-afolu:
-    type: NEG
-    params: [100, 60]
-  VL-fossil-frankenstein-CF:
-    type: NEG
-    params: [100, 60]
-  VL-fossil-frankenstein-zero-afolu-CF:
+  VL-CF-zero-afolu:
     type: NEG
     params: [100, 60]
 
@@ -115,13 +115,13 @@ removal_strategy:
 # Scenario not listed = skip extension, follow source scenario
 non_co2_targets:
   "Emissions|CH4":
-    VL-fossil-frankenstein: 95.0
-    VL-fossil-frankenstein-zero-afolu: 95.0
-    # -hold variants not listed: they follow the source scenario's CH4
+    VL-CF-base: 95.0
+    VL-CF-zero-afolu: 95.0
+    # VL-CF / VL-CF-CTAP not listed: they follow the source scenario's CH4
   "Emissions|Sulfur":
-    VL-fossil-frankenstein: 20.0
-    VL-fossil-frankenstein-zero-afolu: 20.0
-    # -hold variants not listed: they follow the source scenario's sulfur
+    VL-CF-base: 20.0
+    VL-CF-zero-afolu: 20.0
+    # VL-CF / VL-CF-CTAP not listed: they follow the source scenario's sulfur
 
 # --- Data sources (paths relative to data/) ---
 # Overrides the default CSVs when loading input data.
@@ -137,13 +137,11 @@ data_sources:
 # --- Forcing scenario mapping ---
 # Maps marker names to scenario IDs in volcanic_solar.csv
 forcing_scenario:
-  VL-fossil-frankenstein: VL
-  VL-fossil-frankenstein-zero-afolu: VL
-  VL-fossil-frankenstein-hold: VL
-  VL-fossil-frankenstein-1p5: VL
-  VL-fossil-frankenstein-1p6: VL
-  VL-fossil-frankenstein-1p5x: VL
-  VL-fossil-frankenstein-zero-afolu-hold: VL
+  VL-CF-base: VL
+  VL-CF-zero-afolu: VL
+  VL-CF: VL
+  VL-CF-CTAP: VL
+  VL-CF-zero-afolu-hold: VL
 
 # --- Concentrations file (optional) ---
 # When set, all non-CO2 GHG species (CH4, N2O, F-gases, halocarbons, etc.)
@@ -160,17 +158,17 @@ forcing_scenario:
 concentrations_file: fair-inputs/concentrations_1750-2500_VL.csv
 
 # --- Optimization settings ---
-# The -hold variants are optimized to hold FaIR median temperature
-# constant at the peak level from the source scenario.
+# VL-CF and VL-CF-CTAP are optimized against a FaIR median temperature
+# target, departing from the VL-CF-base pathway.
 # target_year: "peak" finds the peak temperature from the baseline run.
 # departure_year: "peak" + departure_offset: -15 starts the trajectory
 # modification 15 years before the peak, giving a smooth transition.
 # Only fossil CO2 is optimized; methane is left untouched.
 optimization:
-  VL-fossil-frankenstein-hold:
+  VL-CF:
     enabled: true
     # --- Pinned published parameters (optimizer bypassed) ---
-    # The published -hold optimization FAILED: every FaIR evaluation raised
+    # The published VL-CF optimization FAILED: every FaIR evaluation raised
     # ("Scenario '_opt_0' not found in concentrations file"), so
     # differential_evolution returned its seed-42 initial guess unchanged
     # (final_cost=1e6). These values reproduce the published output exactly and
@@ -197,7 +195,7 @@ optimization:
       exp_targ: [0.0, 5000.0]
       sig_start: [2030, 2170]
       sig_end: [2100, 2250]
-  VL-fossil-frankenstein-1p5:
+  VL-CF-CTAP:
     enabled: true
     # --- Hand-tuned 1.5 C hold (pinned) ---
     # Departs the base at 2037 and holds total CO2 at a sustained positive level
@@ -205,10 +203,10 @@ optimization:
     # within ~1.50-1.52 C). Peaks ~1.64 C vs 1850-1900 around 2051.
     # target_temp = 1.5795 K = 1.5 C vs 1850-1900.
     fixed_result:
-      exp_targ: 3370.0
-      sig_start: 2045.0
+      exp_targ: 4050.0
+      sig_start: 2080.0
       sig_end: 2600.0
-      departure_year: 2037
+      departure_year: 2033
       target_temp: 1.5795
       final_cost: 3.0887085042221676
       success: true
@@ -225,63 +223,7 @@ optimization:
       exp_targ: [-5000.0, 5000.0]
       sig_start: [2025, 2100]
       sig_end: [2060, 3500]
-  VL-fossil-frankenstein-1p6:
-    enabled: true
-    # --- Hand-tuned ~1.6 C ("hold near the peak") variant (pinned) ---
-    # Companion to -1p5, offered so colleagues can choose the hold level.
-    # Departs at 2034 and holds total CO2 higher (exp_targ=5300) so the FaIR
-    # median sits roughly at the base peak level (~1.6 C vs 1850-1900),
-    # creeping to ~1.67 C by 2300 then easing.
-    fixed_result:
-      exp_targ: 5300.0
-      sig_start: 2070.0
-      sig_end: 2400.0
-      departure_year: 2034
-      target_temp: 1.5795
-      final_cost: 3.0887085042221676
-      success: true
-      note: "Hand-tuned ~1.6 C hold-near-peak (2026-08); companion choice to -1p5."
-    # Optimiser settings retained for provenance; unused while fixed_result set.
-    target_temp_abs: 1.6795
-    departure_year: 2034
-    departure_offset: 0
-    n_configs: 50
-    optimize_params: [exp_targ, sig_start, sig_end]
-    fixed_params: {}
-    overshoot_weight: 30
-    bounds:
-      exp_targ: [-5000.0, 8000.0]
-      sig_start: [2025, 2150]
-      sig_end: [2060, 3500]
-  VL-fossil-frankenstein-1p5x:
-    enabled: true
-    # --- Hand-tuned aggressive-early, low-overshoot 1.5 C hold (pinned) ---
-    # Departs the base at 2016 and cuts total CO2 hard (38 -> ~4 Gt/yr by 2030),
-    # roughly halving the peak overshoot (peak ~1.57-1.58 C vs 1850-1900) while
-    # still holding near 1.5 C long term. A more aggressive near-term companion
-    # to -1p5 for colleagues who want a smaller overshoot.
-    fixed_result:
-      exp_targ: 4300.0
-      sig_start: 2030.0
-      sig_end: 2500.0
-      departure_year: 2016
-      target_temp: 1.5795
-      final_cost: 3.0887085042221676
-      success: true
-      note: "Hand-tuned aggressive-early 1.5 C hold (2026-08); departs 2016, smaller overshoot than -1p5."
-    # Optimiser settings retained for provenance; unused while fixed_result set.
-    target_temp_abs: 1.5795
-    departure_year: 2016
-    departure_offset: 0
-    n_configs: 50
-    optimize_params: [exp_targ, sig_start, sig_end]
-    fixed_params: {}
-    overshoot_weight: 30
-    bounds:
-      exp_targ: [-5000.0, 8000.0]
-      sig_start: [2020, 2100]
-      sig_end: [2060, 3500]
-  # VL-fossil-frankenstein-zero-hold:
+  # VL-CF-zero-hold:
   #   enabled: true
   #   target_year: peak
   #   departure_year: peak

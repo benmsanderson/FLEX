@@ -47,7 +47,7 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import CubicSpline
 
-from flex.config import load_config, DATA_DIR
+from flex.config import load_config, DATA_DIR, FAIR_PARAMS_FILE, FAIR_SPECIES_FILE, FAIR_FORCING_FILE
 
 warnings.filterwarnings("ignore", message="All-NaN slice encountered")
 
@@ -327,9 +327,9 @@ from fair import FAIR
 from fair.interface import initialise
 from fair.io import read_properties
 
-params_file = DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
-species_file = str(DATA_DIR / "fair-inputs" / "species_configs_properties_1.4.1.csv")
-forcing_file = str(DATA_DIR / "fair-inputs" / "volcanic_solar.csv")
+params_file = FAIR_PARAMS_FILE
+species_file = str(FAIR_SPECIES_FILE)
+forcing_file = str(FAIR_FORCING_FILE)
 emis_file    = str(OUTPUTS_DIR / "emissions_1750-2500.csv")  # use ML as template
 
 # SSP2-com FaIR run: set up with [ML, SSP2-com], fill from pipeline CSV, copy ML to SSP2-com, override.
