@@ -1,53 +1,44 @@
+"""Check FLEX reproduces the extensions from the CMIP7 emissions harmonization pipeline.
+
+Compares the outputs of notebooks/5191_extension.py against those written by
+notebooks/5191_extension.py in iiasa/emissions_harmonization_historical. Both
+runs have to be made first, on the same inputs. The em-harm checkout is looked
+for in EM_HARM_DIR, defaulting to a sibling of this repository.
+"""
+
 import os
 
 import pandas as pd
-import pandas.testing as pdt
-
+import pytest
 
 here = os.path.dirname(os.path.abspath(__file__))
 
-def test_global_output_csv():
+FLEX_OUTPUTS = os.path.join(here, "..", "..", "outputs")
+EM_HARM_DIR = os.environ.get("EM_HARM_DIR") or os.path.join(here, "..", "..", "..", "emissions_harmonization_historical")
+EM_HARM_OUTPUTS = os.path.join(os.path.expanduser(EM_HARM_DIR), "notebooks")
 
-    global_output_csv = os.path.join(here, "..", "..", "outputs", "continuous_emissions_timeseries_1750_2500.csv")
-    orig_output_csv = os.path.join(here, "..", "..", "..","emissions_harmonization_historical", "notebooks", "continuous_emissions_timeseries_1750_2500.csv")
 
-    if not os.path.exists(global_output_csv):
-        raise FileNotFoundError(f"Global output CSV not found at {global_output_csv}")
-    if not os.path.exists(orig_output_csv):
-        raise FileNotFoundError(f"Original output CSV not found at {orig_output_csv}")
-    
-    df_global = pd.read_csv(global_output_csv, index_col=[0, 1, 2, 3, 4, 5])
-    df_orig = pd.read_csv(orig_output_csv, index_col=[0, 1, 2, 3, 4, 5])
+def load_pair(filename):
+    flex_csv = os.path.join(FLEX_OUTPUTS, filename)
+    orig_csv = os.path.join(EM_HARM_OUTPUTS, filename)
+    for path in (flex_csv, orig_csv):
+        if not os.path.exists(path):
+            pytest.skip(f"{path} not found; run both 5191_extension notebooks first")
 
-    print(df_global["2024.0"].head())
-    print(df_orig["2024.0"].head())
-    print(df_global.shape)
+    df_flex = pd.read_csv(flex_csv, index_col=[0, 1, 2, 3, 4, 5])
+    df_orig = pd.read_csv(orig_csv, index_col=[0, 1, 2, 3, 4, 5])
+    print(df_flex.shape)
     print(df_orig.shape)
-    try:
-        pd.testing.assert_frame_equal(df_global, df_orig, rtol=1e-5, atol=1e-6)
-    except AssertionError as e:
-        print("DataFrames are not equal:")
-        print(e)
-        raise
+    return df_flex, df_orig
 
 
-def test_regional_output_csv():
-
-    regional_output_csv = os.path.join(here, "..", "..", "outputs", "extensions_full_emissions_timeseries_2023_2500.csv")
-    orig_output_csv = os.path.join(here, "..", "..", "..","emissions_harmonization_historical", "notebooks", "extensions_full_emissions_timeseries_2023_2500.csv")
-
-    if not os.path.exists(regional_output_csv):
-        raise FileNotFoundError(f"Regional output CSV not found at {regional_output_csv}")
-    if not os.path.exists(orig_output_csv):
-        raise FileNotFoundError(f"Original output CSV not found at {orig_output_csv}")
-    
-    df_regional = pd.read_csv(regional_output_csv, index_col=[0, 1, 2, 3, 4, 5])
-    df_orig = pd.read_csv(orig_output_csv, index_col=[0, 1, 2, 3, 4, 5])
-
-    print(df_regional["2024.0"].head())
-    print(df_orig["2024.0"].head())
-    print(df_regional.shape)
-    print(df_orig.shape)
-
-
-    pd.testing.assert_frame_equal(df_regional, df_orig, rtol=1e-5, atol=1e-6)
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "continuous_emissions_timeseries_1750_2500.csv",
+        "extensions_full_emissions_timeseries_2023_2500.csv",
+    ],
+)
+def test_matches_em_harm(filename):
+    df_flex, df_orig = load_pair(filename)
+    pd.testing.assert_frame_equal(df_flex, df_orig, rtol=1e-5, atol=1e-6)

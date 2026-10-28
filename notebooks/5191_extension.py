@@ -23,6 +23,7 @@
 
 # %%
 import glob
+import os
 import re
 import sys
 from pathlib import Path
@@ -36,16 +37,20 @@ import pandas_openscm
 import seaborn as sns
 import tqdm.auto
 
+# Repository root: from the script location when run with python, else from the
+# notebook's working directory (notebooks/) when run in Jupyter
+REPO_ROOT = (Path(__file__).resolve().parent.parent if "__file__" in globals()
+             else Path().resolve().parent)
+
 # Add src directory to path for extensions imports
-src_dir = (Path(__file__).parent.parent / "src" if "__file__" in globals() 
-           else Path().resolve().parent / "src")
+src_dir = REPO_ROOT / "src"
 
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-# Data directories
-DATA_DIR = Path().resolve().parent / "data"
-OUTPUTS_DIR = Path().resolve().parent / "outputs"
+# Data directories; FLEX_DATA_DIR relocates the inputs outside the repository
+DATA_DIR = Path(os.environ.get("FLEX_DATA_DIR") or REPO_ROOT / "data").expanduser()
+OUTPUTS_DIR = REPO_ROOT / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
@@ -339,16 +344,16 @@ if do_and_write_to_csv:
         scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots
     )
     if dump_csvs:
-        df_all.to_csv("first_draft_extended_nonCO2_all.csv")
+        df_all.to_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
-            afolu_df.to_csv(f"first_draft_extended_afolu_{name}.csv")
+            afolu_df.to_csv(OUTPUTS_DIR / f"first_draft_extended_afolu_{name}.csv")
 
 
 # %%
 if not do_and_write_to_csv:
-    df_all = pd.read_csv("first_draft_extended_nonCO2_all.csv", index_col=[0, 1, 2, 3, 4, 5])
+    df_all = pd.read_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv", index_col=[0, 1, 2, 3, 4, 5])
     afolu_dfs = {}
-    for afolu_file in glob.glob("first_draft_extended_afolu_linear*.csv"):
+    for afolu_file in glob.glob(str(OUTPUTS_DIR / "first_draft_extended_afolu_linear*.csv")):
         print("Reading " + afolu_file)
         name = afolu_file.split("first_draft_extended_afolu_")[-1].split(".csv")[0]
 
@@ -434,7 +439,7 @@ for s, meta in scenario_model_match.items():
 
 fossil_extension_df = pd.concat(temp_list_for_new_data)
 if dump_csvs:
-    fossil_extension_df.to_csv(f"co2_fossil_fuel_extenstions_{name}.csv")
+    fossil_extension_df.to_csv(OUTPUTS_DIR / f"co2_fossil_fuel_extenstions_{name}.csv")
 
 # %% [markdown]
 # # Dataframe cleanup
