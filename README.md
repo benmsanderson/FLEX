@@ -1,5 +1,7 @@
 # FLEX: ScenarioMIP Extensions
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23736599.svg)](https://doi.org/10.5281/zenodo.23736599)
+
 This repository contains the methodology and code for extending ScenarioMIP marker scenarios from 2100 to 2500.
 
 ## Overview
@@ -165,9 +167,16 @@ If you use FLEX, please cite the description paper:
 Submitted to *Environmental Research Letters*. The DOI above is the concept DOI
 and always resolves to the most recent version.
 
-Please also cite the software version you ran. Releases are archived on Zenodo;
-`CITATION.cff` has the details, and GitHub's "Cite this repository" button
-formats them.
+Please also cite the software version you ran. For v1.0.0:
+
+> Sandstad, M. and Sanderson, B. M. (2026). *FLEX: ScenarioMIP CMIP7 Post-2100
+> Extensions Framework (software)*, v1.0.0. Zenodo.
+> https://doi.org/10.5281/zenodo.23736600
+
+Every release is archived on Zenodo under the concept DOI
+[10.5281/zenodo.23736599](https://doi.org/10.5281/zenodo.23736599), which
+resolves to the latest version. `CITATION.cff` has the details, and GitHub's
+"Cite this repository" button formats them.
 
 ## License
 
@@ -182,4 +191,5 @@ attribution of every input.
 
 ## Contact
 
-Benjamin Sanderson
+Marit Sandstad and Benjamin Sanderson, CICERO Center for International Climate
+Research, Oslo.
