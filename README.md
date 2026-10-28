@@ -1,4 +1,4 @@
-# ScenarioMIP Extensions Methodology
+# FLEX: ScenarioMIP Extensions
 
 This repository contains the methodology and code for extending ScenarioMIP marker scenarios from 2100 to 2500.
 
@@ -9,90 +9,120 @@ The extension methodology takes CMIP7 ScenarioMIP marker scenarios (pre-2100) an
 - Sigmoid transitions for non-CO2 greenhouse gases
 - Regional disaggregation maintaining 2100 composition ratios
 
+FLEX is a standalone copy of the extension step (`notebooks/5191_extension.py`)
+of the CMIP7 emissions harmonization pipeline,
+[iiasa/emissions_harmonization_historical](https://github.com/iiasa/emissions_harmonization_historical).
+Given the same inputs it reproduces that pipeline's extended emissions; see
+[Reproducing the harmonization pipeline](#reproducing-the-harmonization-pipeline).
+
 ## Repository Structure
 
 ```
 .
-├── data/                           # Input data (CSV files)
-│   ├── history.csv                 # Historical emissions (global)
-│   ├── history_regional.csv        # Historical emissions (regional)
-│   ├── scenarios_complete_global.csv  # Pre-2100 scenarios (global)
-│   └── scenarios_regional.csv      # Pre-2100 scenarios (regional)
+├── data/                           # Inputs; see data/README.md
+│   ├── history.csv                 # Historical emissions, global (Git LFS)
+│   └── history_regional.csv        # Historical emissions, regional (Git LFS)
 ├── notebooks/
-│   └── 5191_extension.py          # Main extension notebook (jupytext format)
+│   └── 5191_extension.py           # Main extension notebook (jupytext format)
+├── scripts/
+│   ├── fetch_data.py               # Check inputs are present and which release they are
+│   └── convert_scenario_release.py # Convert the public v0.2 spreadsheet to CSV
 ├── src/
-│   └── extensions/                 # Extension functions
-├── outputs/                        # Generated output files
+│   └── flex/                       # Extension functions
+├── tests/regression/               # Comparison against the harmonization pipeline
+├── outputs/                        # Generated output files (not tracked)
 ├── pixi.toml                       # Pixi environment specification
 └── README.md                       # This file
 ```
+
+The scenario inputs, `data/scenarios_complete_global.csv` and
+`data/scenarios_regional.csv`, are not distributed with FLEX; see
+[Input Data](#input-data).
 
 ## Getting Started
 
 ### Prerequisites
 
 - [Pixi](https://pixi.sh/) package manager
+- [Git LFS](https://git-lfs.com/), for the historical emissions files
 
 ### Installation
 
-1. Clone this repository:
+1. Clone this repository and pull the historical data:
    ```bash
-   git clone <repository-url>
-   cd scenariomip-extensions
-   ```
-
-2. Install Git LFS (if not already installed):
-   ```bash
-   # macOS
-   brew install git-lfs
-   
-   # Ubuntu/Debian
-   sudo apt-get install git-lfs
-   
-   # Initialize Git LFS
+   git clone https://github.com/benmsanderson/FLEX.git
+   cd FLEX
    git lfs install
-   ```
-
-3. Pull large data files:
-   ```bash
    git lfs pull
    ```
 
-4. Install dependencies with pixi:
+2. Install dependencies with pixi:
    ```bash
    pixi install
    ```
 
-### Running the Extension
-
-1. Launch Jupyter Lab:
+3. Put the scenario files in `data/` (or in `$FLEX_DATA_DIR`) and check them:
    ```bash
-   pixi run notebook
+   pixi run python scripts/fetch_data.py
    ```
 
-2. Open and run `notebooks/5191_extension.py` (it will be displayed as a notebook thanks to jupytext)
+### Running the Extension
 
-Alternatively, run directly with Python:
+Run the notebook as a script from the repository root:
 ```bash
 pixi run python notebooks/5191_extension.py
 ```
 
+or open `notebooks/5191_extension.py` in Jupyter Lab (`pixi run notebook`);
+jupytext displays it as a notebook. Intermediate CSVs
+(`first_draft_extended_*.csv`, `co2_fossil_fuel_extenstions_*.csv`) are written
+to the working directory.
+
 ## Input Data
 
-The `data/` folder contains pre-processed CSV files (~488 MB total, managed by Git LFS):
-- **scenarios_complete_global.csv** (8 MB): Global marker scenarios (1750-2100)
-- **history.csv** (192 KB): Historical emissions for harmonization
-- **scenarios_regional.csv** (320 MB): Regional scenarios (1750-2100)
-- **history_regional.csv** (160 MB): Regional historical emissions
+| File | Contents | Source |
+|------|----------|--------|
+| `scenarios_complete_global.csv` | Harmonised and infilled marker scenarios, World, 2023-2100 | ScenarioMIP release, obtain separately |
+| `scenarios_regional.csv` | Harmonised marker scenarios, IAM regions | Regional delivery, obtain separately |
+| `history.csv` | Historical emissions, global | Included (Git LFS) |
+| `history_regional.csv` | Historical emissions, regional | Included (Git LFS) |
 
-**Note**: These files are tracked with Git Large File Storage (Git LFS). Make sure you've run `git lfs pull` after cloning to download them. See [data/README.md](data/README.md) for more details on working with these files.
+The ScenarioMIP marker scenarios carry IIASA's terms and are not redistributed
+here. The open v0.2 release
+([10.5281/zenodo.19825038](https://doi.org/10.5281/zenodo.19825038)) provides the
+global file via `scripts/convert_scenario_release.py`, but has no regional
+breakdown. See [data/README.md](data/README.md) for where to get each file, its
+licence and required attribution.
+
+Set `FLEX_DATA_DIR` to read inputs from a directory outside the repository.
 
 ## Output Data
 
 Generated files are saved to `outputs/`:
-- **extended_scenarios_1750_2500.csv**: Final extended scenarios
+- **extended_scenarios_1750_2500.csv**: Final extended scenarios, global
 - **continuous_emissions_timeseries_1750_2500.csv**: Continuous historical-future merge
-- Per-model CSV files for individual scenarios
+- **extensions_full_emissions_timeseries_2023_2500.csv**: Extended scenarios, all regions
+- **scenarios_complete_global_1750_2100.csv**: Input scenarios glued to history
+- **extensions_<model>.csv**: Per-model extended scenarios
+
+## Reproducing the harmonization pipeline
+
+The code in `src/flex` is the `extensions` package of
+emissions_harmonization_historical, and `notebooks/5191_extension.py` is that
+repository's `notebooks/5191_extension.py` with database access replaced by CSV
+files and plotting removed. The two produce the same numbers.
+
+To check this, run `5191_extension.py` in both repositories on the same inputs,
+then:
+
+```bash
+EM_HARM_DIR=/path/to/emissions_harmonization_historical pixi run test
+```
+
+This compares `continuous_emissions_timeseries_1750_2500.csv` and
+`extensions_full_emissions_timeseries_2023_2500.csv` from both runs (rtol 1e-5,
+atol 1e-6). `EM_HARM_DIR` defaults to a sibling checkout; the tests are skipped
+if either set of outputs is missing.
 
 ## Extension Methodology
 
@@ -134,6 +164,10 @@ If you use FLEX, please cite the description paper:
 
 Submitted to *Environmental Research Letters*. The DOI above is the concept DOI
 and always resolves to the most recent version.
+
+Please also cite the software version you ran. Releases are archived on Zenodo;
+`CITATION.cff` has the details, and GitHub's "Cite this repository" button
+formats them.
 
 ## License
 

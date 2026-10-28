@@ -29,7 +29,7 @@ pixi run python scripts/convert_scenario_release.py \
 
 That writes `data/scenarios_complete_global.csv`. The script strips the
 `Climate Assessment|Harmonized and Infilled|` prefix the release puts on every
-series, renames scenarios to the names the configs use (mapping via the model
+series, renames scenarios to the names the notebook uses (mapping via the model
 column, which is identical in both), and trims the year columns to 2023 onward.
 The result has the same 364 rows, 52 variables and 2023-2100 columns as the
 delivery the pipeline was built on.
@@ -37,10 +37,15 @@ delivery the pipeline was built on.
 Two things to know before you run:
 
 1. **There is no regional data in the published release.** The spreadsheet is
-   World-only, so `data/scenarios_regional.csv` cannot be built from it. Global
-   workflows run from the open release; anything needing the regional or
-   gridded breakdown requires the regional delivery, requested through the
-   portal above.
+   World-only, so `data/scenarios_regional.csv` cannot be built from it, and
+   `notebooks/5191_extension.py` needs it. Request the regional (harmonised,
+   per-IAM-region) delivery through the portal above. Inside the CMIP7
+   emissions harmonization pipeline this is the harmonised scenario database
+   written before the extension step.
+2. **v0.2 is not byte-identical to the delivery FLEX was validated against.**
+   The regression test against the harmonization pipeline was run on the v0.1
+   delivery ([10.5281/zenodo.18497404](https://doi.org/10.5281/zenodo.18497404),
+   access-restricted). `scripts/fetch_data.py` tells you which one you have.
 
 Expected layout: IAMC wide format, index columns
 `model, scenario, region, variable, unit`, one column per year.
@@ -64,29 +69,12 @@ These are retained here for convenience and are redistributable, but they are
 
 If you use these series, cite the sources above rather than FLEX.
 
-## Bespoke scenario deliveries — not included
-
-`data/vl-extensions-inputs/`
-
-Purpose-built deliveries supplied directly by the scenario providers for the
-`vl-frankenstein` configuration. Pre-release material, not redistributable;
-request them from the providers. Every other configuration runs without them.
-
-## FaIR inputs — fetched automatically
-
-`data/fair-inputs/`
-
-FaIR calibrated-constrained parameters,
-[10.5281/zenodo.7112539](https://doi.org/10.5281/zenodo.7112539). Downloaded on
-demand by `notebooks/5201_extension_fair_simulations.py` and by
-`scripts/fetch_data.py`.
-
 ## Use a custom data directory
 
 The scenario files used to be tracked here. When you pull the commit that
 removes them, **git deletes them from your working tree** — adding them to
 `.gitignore` does not prevent this, because `.gitignore` only applies to files
-git is not already tracking. `data/history.csv` and `data/fair-inputs/` are
+git is not already tracking. `data/history.csv` and `data/history_regional.csv` are
 unaffected; they are still tracked.
 
 Before pulling, copy them somewhere safe:

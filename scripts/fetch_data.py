@@ -4,16 +4,14 @@ The ScenarioMIP scenario files are not redistributable and so are not stored in
 this repository; you have to download them yourself. The historical files do
 ship here. See data/README.md for the source and terms of each.
 
-This script does three things:
+This script does two things:
 
-  * downloads the inputs that can be fetched automatically (FaIR parameters),
   * checks that the scenario files you supplied are present and readable,
   * verifies everything against the SHA-256 it had when the pipeline was built.
 
 Usage
 -----
-    pixi run python scripts/fetch_data.py            # fetch what is fetchable, then check
-    pixi run python scripts/fetch_data.py --check    # check only, no downloads
+    pixi run python scripts/fetch_data.py
 """
 
 import argparse
@@ -22,7 +20,7 @@ import os
 import sys
 from pathlib import Path
 
-# Mirrors flex.config: FLEX_DATA_DIR relocates the inputs outside the repository.
+# Mirrors notebooks/5191_extension.py: FLEX_DATA_DIR relocates the inputs outside the repository.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("FLEX_DATA_DIR") or REPO_ROOT / "data").expanduser()
 
@@ -69,11 +67,6 @@ WHERE_FROM = {
     "history_regional.csv": "Ships with this repository via Git LFS; run `git lfs pull`.",
 }
 
-# Only vl-frankenstein needs these, so their absence is a warning, not an error.
-OPTIONAL_DIRS = {
-    "vl-extensions-inputs": "Bespoke deliveries; request from the scenario providers.",
-}
-
 
 def sha256(path, chunk=1 << 20):
     h = hashlib.sha256()
@@ -89,28 +82,6 @@ def looks_like_lfs_pointer(path):
         return False
     with open(path, "rb") as fh:
         return fh.read(40).startswith(b"version https://git-lfs")
-
-
-def fetch_fair_inputs():
-    """Download the FaIR calibrated-constrained parameters if not present."""
-    target = DATA_DIR / "fair-inputs" / "1.5.0" / "calibrated_constrained_parameters.csv"
-    if target.exists():
-        print(f"  ok       fair-inputs/1.5.0/{target.name} (already present)")
-        return
-    try:
-        import pooch
-    except ImportError:
-        print("  SKIP     pooch not installed; cannot fetch FaIR parameters")
-        return
-    print("  fetching FaIR calibrated-constrained parameters from Zenodo ...")
-    pooch.create(
-        path=str(DATA_DIR / "fair-inputs"),
-        base_url="doi:10.5281/zenodo.7112539",
-        version="1.5.0",
-        registry={"calibrated_constrained_parameters.csv":
-                  "md5:8a70a3fb05d0e0cf35e136de382582a5"},
-    ).fetch("calibrated_constrained_parameters.csv")
-    print(f"  ok       {target}")
 
 
 def report(name, missing):
@@ -155,31 +126,16 @@ def check():
         if name not in MUST_OBTAIN:
             report(name, missing)
 
-    print("\nOptional inputs:")
-    for name, note in OPTIONAL_DIRS.items():
-        p = DATA_DIR / name
-        present = p.is_dir() and any(p.iterdir())
-        print(f"  {'ok      ' if present else 'absent  '} data/{name}/")
-        if not present:
-            print(f"      Only needed by the vl-frankenstein config. {note}")
-
     return missing
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--check", action="store_true",
-                    help="verify existing files only; do not download anything")
-    args = ap.parse_args()
+    ap.parse_args()
 
     print(f"Data directory: {DATA_DIR}"
           f"{'  (from FLEX_DATA_DIR)' if os.environ.get('FLEX_DATA_DIR') else ''}")
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not args.check:
-        print("Automatically fetchable inputs:")
-        fetch_fair_inputs()
 
     missing = check()
 

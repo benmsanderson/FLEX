@@ -7,7 +7,7 @@ differ in three ways, all handled here:
 
   * the release prefixes every series with
     "Climate Assessment|Harmonized and Infilled|", which is stripped;
-  * the release names scenarios "Very Low - SSP1 (Marker)" where the configs use
+  * the release names scenarios "Very Low - SSP1 (Marker)" where the pipeline uses
     "SSP1 - Very Low Emissions", so scenarios are renamed. The mapping is derived
     from the model column, which is identical in both and pairs 1:1 with the
     scenario, rather than by parsing scenario strings;
@@ -23,9 +23,9 @@ Writes data/scenarios_complete_global.csv. See data/README.md for where to get
 the spreadsheet.
 
 REGIONAL DATA IS NOT IN THE PUBLISHED RELEASE. The spreadsheet is World-only, so
-this script cannot produce `data/scenarios_regional.csv`. Configurations that
-need the regional breakdown require the regional delivery, requested through the
-ScenarioMIP Explorer.
+this script cannot produce `data/scenarios_regional.csv`, which
+notebooks/5191_extension.py also needs. Request the regional delivery through
+the ScenarioMIP Explorer.
 """
 
 import argparse
@@ -35,15 +35,15 @@ from pathlib import Path
 
 import pandas as pd
 
-# Mirrors flex.config: FLEX_DATA_DIR relocates the inputs outside the repository.
+# Mirrors notebooks/5191_extension.py: FLEX_DATA_DIR relocates the inputs outside the repository.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("FLEX_DATA_DIR") or REPO_ROOT / "data").expanduser()
 
 PREFIX = "Climate Assessment|Harmonized and Infilled|Emissions|"
 
-# Fallback used only when the config cannot be imported. The pipeline's scenario
-# names, keyed by the model that produced them.
-FALLBACK_BY_MODEL = {
+# The pipeline's scenario names (scenario_model_match in
+# notebooks/5191_extension.py), keyed by the model that produced them.
+SCENARIO_BY_MODEL = {
     "REMIND-MAgPIE 3.5-4.11": "SSP1 - Very Low Emissions",
     "AIM 3.0": "SSP2 - Low Overshoot_a",
     "MESSAGEix-GLOBIOM-GAINS 2.1-M-R12": "SSP2 - Low Emissions",
@@ -62,21 +62,7 @@ DROP_VARIABLES = {
 }
 
 
-def scenario_by_model(config_name):
-    """Map model -> pipeline scenario name, preferring the config over the fallback."""
-    try:
-        from flex.config import load_config
-        cfg = load_config(config_name)
-    except Exception as exc:                                    # noqa: BLE001
-        print(f"  note: using built-in scenario names ({type(exc).__name__}: {exc})")
-        return dict(FALLBACK_BY_MODEL)
-    mapping = {}
-    for scenario, model, *_ in cfg.scenario_model_match.values():
-        mapping[model] = scenario
-    return mapping
-
-
-def convert(xlsx, out, config_name, from_year, keep_aggregates):
+def convert(xlsx, out, from_year, keep_aggregates):
     df = pd.read_excel(xlsx, sheet_name="data")
 
     missing = {"model", "scenario", "region", "variable", "unit"} - set(df.columns)
@@ -92,7 +78,7 @@ def convert(xlsx, out, config_name, from_year, keep_aggregates):
     if not keep_aggregates:
         emis = emis[~emis["variable"].isin(DROP_VARIABLES)]
 
-    by_model = scenario_by_model(config_name)
+    by_model = SCENARIO_BY_MODEL
     unknown = sorted(set(emis["model"]) - set(by_model))
     if unknown:
         print(f"  warning: no scenario name known for model(s) {unknown}; "
@@ -118,7 +104,7 @@ def convert(xlsx, out, config_name, from_year, keep_aggregates):
     if regions == ["World"]:
         print("\n  Global data only. The published release contains no regional")
         print("  breakdown, so data/scenarios_regional.csv cannot be produced from it.")
-        print("  Configurations needing regional output require the regional delivery")
+        print("  notebooks/5191_extension.py needs it: request the regional delivery")
         print("  from https://scenariomip.apps.ece.iiasa.ac.at - see data/README.md.")
 
 
@@ -129,8 +115,6 @@ def main():
     ap.add_argument("-o", "--out", type=Path,
                     default=DATA_DIR / "scenarios_complete_global.csv",
                     help="output CSV (default: data/scenarios_complete_global.csv)")
-    ap.add_argument("--config", default="scenariomip_default",
-                    help="config whose scenario names to target")
     ap.add_argument("--from-year", type=int, default=2023,
                     help="drop year columns before this (default: 2023)")
     ap.add_argument("--keep-aggregates", action="store_true",
@@ -139,7 +123,7 @@ def main():
 
     if not args.xlsx.exists():
         sys.exit(f"error: {args.xlsx} not found. See data/README.md for the download.")
-    convert(args.xlsx, args.out, args.config, args.from_year, args.keep_aggregates)
+    convert(args.xlsx, args.out, args.from_year, args.keep_aggregates)
     return 0
 
 

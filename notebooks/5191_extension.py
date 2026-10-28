@@ -23,6 +23,7 @@
 
 # %%
 import glob
+import os
 import re
 import sys
 from pathlib import Path
@@ -36,16 +37,20 @@ import pandas_openscm
 import seaborn as sns
 import tqdm.auto
 
+# Repository root: from the script location when run with python, else from the
+# notebook's working directory (notebooks/) when run in Jupyter
+REPO_ROOT = (Path(__file__).resolve().parent.parent if "__file__" in globals()
+             else Path().resolve().parent)
+
 # Add src directory to path for extensions imports
-src_dir = (Path(__file__).parent.parent / "src" if "__file__" in globals() 
-           else Path().resolve().parent / "src")
+src_dir = REPO_ROOT / "src"
 
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-# Data directories
-DATA_DIR = Path().resolve().parent / "data"
-OUTPUTS_DIR = Path().resolve().parent / "outputs"
+# Data directories; FLEX_DATA_DIR relocates the inputs outside the repository
+DATA_DIR = Path(os.environ.get("FLEX_DATA_DIR") or REPO_ROOT / "data").expanduser()
+OUTPUTS_DIR = REPO_ROOT / "outputs"
 OUTPUTS_DIR.mkdir(exist_ok=True)
 
 # Package imports
