@@ -11,8 +11,12 @@ repository-code: "https://github.com/benmsanderson/FLEX"
 authors:
   - family-names: Sandstad
     given-names: Marit
+    affiliation: "CICERO Center for International Climate Research"
+    orcid: "https://orcid.org/0009-0007-2329-694X"
   - family-names: Sanderson
-    given-names: Benjamin
+    given-names: Benjamin M.
+    affiliation: "CICERO Center for International Climate Research"
+    orcid: "https://orcid.org/0000-0001-8635-4624"
 preferred-citation:
   type: article
   title: "FLEX: ScenarioMIP CMIP7 Post-2100 Extensions Framework"

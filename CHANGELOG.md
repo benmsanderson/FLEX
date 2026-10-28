@@ -14,7 +14,8 @@ as used in the CMIP7 emissions harmonization pipeline.
   extension notebook.
 - The notebook finds `data/` and `outputs/` relative to the repository, so
   `python notebooks/5191_extension.py` works from the repository root, and
-  honours `FLEX_DATA_DIR`.
+  honours `FLEX_DATA_DIR`. Intermediate CSVs are written to `outputs/`
+  rather than the current directory.
 - Regression test against the harmonization pipeline's outputs
   (`tests/regression`), with the pipeline checkout located via `EM_HARM_DIR`.
 - ScenarioMIP scenario data are no longer distributed; `scripts/fetch_data.py`

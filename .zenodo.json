@@ -3,11 +3,24 @@
   "upload_type": "software",
   "description": "Code to extend the CMIP7 ScenarioMIP marker emissions scenarios from 2100 to 2500. FLEX is a standalone copy of the extension step of the CMIP7 emissions harmonization pipeline (iiasa/emissions_harmonization_historical, notebooks/5191_extension.py) and reproduces its output given the same inputs. Input scenario data are not included; see data/README.md.",
   "creators": [
-    {"name": "Sandstad, Marit"},
-    {"name": "Sanderson, Benjamin"}
+    {
+      "name": "Sandstad, Marit",
+      "affiliation": "CICERO Center for International Climate Research, Oslo, Norway",
+      "orcid": "0009-0007-2329-694X"
+    },
+    {
+      "name": "Sanderson, Benjamin M.",
+      "affiliation": "CICERO Center for International Climate Research, Oslo, Norway",
+      "orcid": "0000-0001-8635-4624"
+    }
   ],
   "license": "MIT",
-  "keywords": ["CMIP7", "ScenarioMIP", "emissions", "scenario extensions"],
+  "keywords": [
+    "CMIP7",
+    "ScenarioMIP",
+    "emissions",
+    "scenario extensions"
+  ],
   "related_identifiers": [
     {
       "identifier": "10.5281/zenodo.22212710",
