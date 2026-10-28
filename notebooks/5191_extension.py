@@ -344,16 +344,16 @@ if do_and_write_to_csv:
         scenarios_complete_global, history, cumulative_history_afolu, plot=make_plots
     )
     if dump_csvs:
-        df_all.to_csv("first_draft_extended_nonCO2_all.csv")
+        df_all.to_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv")
         for name, afolu_df in afolu_dfs.items():
-            afolu_df.to_csv(f"first_draft_extended_afolu_{name}.csv")
+            afolu_df.to_csv(OUTPUTS_DIR / f"first_draft_extended_afolu_{name}.csv")
 
 
 # %%
 if not do_and_write_to_csv:
-    df_all = pd.read_csv("first_draft_extended_nonCO2_all.csv", index_col=[0, 1, 2, 3, 4, 5])
+    df_all = pd.read_csv(OUTPUTS_DIR / "first_draft_extended_nonCO2_all.csv", index_col=[0, 1, 2, 3, 4, 5])
     afolu_dfs = {}
-    for afolu_file in glob.glob("first_draft_extended_afolu_linear*.csv"):
+    for afolu_file in glob.glob(str(OUTPUTS_DIR / "first_draft_extended_afolu_linear*.csv")):
         print("Reading " + afolu_file)
         name = afolu_file.split("first_draft_extended_afolu_")[-1].split(".csv")[0]
 
@@ -439,7 +439,7 @@ for s, meta in scenario_model_match.items():
 
 fossil_extension_df = pd.concat(temp_list_for_new_data)
 if dump_csvs:
-    fossil_extension_df.to_csv(f"co2_fossil_fuel_extenstions_{name}.csv")
+    fossil_extension_df.to_csv(OUTPUTS_DIR / f"co2_fossil_fuel_extenstions_{name}.csv")
 
 # %% [markdown]
 # # Dataframe cleanup

@@ -41,30 +41,34 @@ Two commits on top of `main` (f8c78e9), pushed, no PR yet:
 - Notebook runs as far as loading the inputs, then stops at the missing
   `scenarios_regional.csv`.
 
-## Not verified: the numerical regression run
+## Regression run: passed (2026-10-28, on the CICERO machine)
 
-Needs files that are not public, so do it on the machine that has them:
+Both regression tests pass, and both output files are bit-for-bit identical to
+em-harm (max abs diff 0.0): `continuous_emissions_timeseries_1750_2500.csv`
+(378 x 751) and `extensions_full_emissions_timeseries_2023_2500.csv`
+(16795 x 478).
 
-- v0.1 scenario delivery: `scenarios_complete_global.csv` (sha256
-  `d0eefa77…`) and `scenarios_regional.csv` (`2976247f…`).
-- em-harm's `5191_extension.py` outputs on the same inputs.
+How it was run:
 
-```bash
-git fetch origin
-git checkout claude/festive-ritchie-3uux76
-git lfs pull
-pixi install
-export FLEX_DATA_DIR=~/flex-data        # or copy the CSVs into data/
-pixi run python scripts/fetch_data.py   # should report "matches the version used on main"
-pixi run python notebooks/5191_extension.py
-EM_HARM_DIR=/path/to/emissions_harmonization_historical pixi run test
-```
+- Inputs: the `desc-paper` scenario files (sha256 `45353da8…`, `9f8a56b1…`)
+  plus `main` history. The v0.1 `main` scenario files (`d0eefa77…`,
+  `2976247f…`) are not on this machine. That doesn't matter for an
+  equivalence check: both pipelines read the same inputs.
+- em-harm baseline: a clean worktree at ca80efc, run in em-harm's own pixi
+  env (pandas 2.2.3, pandas-openscm 0.5.1; FLEX uses pandas 3.0.1,
+  pandas-openscm 0.9.1). The only patch: the database loads swapped for
+  FLEX's CSV-loading block verbatim, and the database writes stubbed.
+- Don't use em-harm's local `HEAD` (f4363d2) as the baseline. It changes
+  `np.zeros(len(extended_years))` to `np.zeros_like(extended_years)` in
+  `extend_co2_for_scen_storyline`, which makes the fossil-CO2 array
+  integer-typed.
 
-Both tests should pass (rtol 1e-5, atol 1e-6), not skip.
+Also fixed: the notebook wrote three intermediate CSVs into the current
+directory (the repo root when run as documented). They now go to `outputs/`.
 
 ## To do
 
-1. Run the regression check above.
+1. ~~Run the regression check.~~ Done, see above.
 2. Open a PR to `main`, merge (drop this file first).
 3. Enable the repo at <https://zenodo.org/account/settings/github>, then create
    GitHub release `v1.0.0`. Fix the date in `CITATION.cff` and
@@ -98,7 +102,8 @@ Both tests should pass (rtol 1e-5, atol 1e-6), not skip.
 > I sent for your double check. We'll let you know once a dataset DOI exists.
 > Ben
 
-Only keep the "match to rtol 1e-5" sentence once step 1 passes.
+Step 1 passed: the outputs are bit-for-bit identical, so the reply can say
+"reproduce the em-harm run exactly" rather than "to rtol 1e-5".
 
 ## Cloud sessions
 

@@ -22,10 +22,6 @@ build/
 outputs/
 *.db
 
-# Generated CSV outputs (in notebooks/)
-notebooks/first_draft_extended_*.csv
-notebooks/co2_fossil_fuel_extenstions_*.csv
-
 # Plots
 *.png
 *.pdf
