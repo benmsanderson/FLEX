@@ -6,6 +6,7 @@ title: "FLEX: ScenarioMIP CMIP7 Post-2100 Extensions Framework"
 type: software
 version: 1.0.0
 date-released: "2026-10-28"
+doi: "10.5281/zenodo.23736599"
 license: MIT
 repository-code: "https://github.com/benmsanderson/FLEX"
 authors:
