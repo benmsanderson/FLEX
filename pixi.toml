@@ -25,6 +25,7 @@ tqdm = ">=4.65"
 pip = "*"
 openpyxl = "*"
 pytest = "*"
+scipy = ">=1.10"
 
 [pypi-dependencies]
 pandas-indexing = "*"
